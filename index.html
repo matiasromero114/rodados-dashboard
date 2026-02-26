@@ -440,6 +440,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <div class="tab" onclick="goTab('autoel',this)">🏗️ AUTOELEVADORES</div>
   <div class="tab" onclick="goTab('kpis',this)">📈 KPIs MTTO</div>
   <div class="tab" onclick="goTab('alerts',this)">⚠️ ALERTAS</div>
+  <div class="tab" onclick="goTab('services',this)">🔧 SERVICES</div>
 </nav>
 
 <!-- ═══════════════════════════════════
@@ -646,6 +647,42 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   </div>
 </div>
 
+<!-- ── PAGE: SERVICES ── -->
+<div id="page-services" class="page">
+  <div class="slabel">SERVICES — PLANIFICACIÓN Y ESTADO</div>
+  <div class="kpi-row" id="kpi-services"></div>
+  <div class="slabel">PRÓXIMOS SERVICES — ALERTA POR VENCIMIENTO</div>
+  <div class="tbl-wrap">
+    <div class="tbl-filters">
+      <button class="fbtn on" onclick="filterServices("all",this)">TODOS</button>
+      <button class="fbtn fr" onclick="filterServices("VENCIDO",this)">🔴 VENCIDOS</button>
+      <button class="fbtn fa" onclick="filterServices("PRÓXIMO",this)">🟡 PRÓXIMOS</button>
+      <button class="fbtn fg" onclick="filterServices("OK",this)">✅ AL DÍA</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>MÁQUINA</th><th>MODELO</th><th>SECTOR</th><th>PROP/TERC</th>
+          <th>HORÓMETRO ACT.</th><th>SERVICE ANT.</th><th>SERVICE PRÓX.</th>
+          <th>HS RESTANTES</th><th>ESTADO</th><th>FECHA PLANIF.</th><th>ÚLT. ACTUALIZ.</th>
+        </tr>
+      </thead>
+      <tbody id="services-tbody"></tbody>
+    </table>
+  </div>
+  <div class="slabel">ANÁLISIS DE SERVICES</div>
+  <div class="charts2">
+    <div class="ccard">
+      <div class="ctitle">Estado de Services <span class="cbadge">DISTRIBUCIÓN</span></div>
+      <div class="ch"><canvas id="ch-srv-estado"></canvas></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Horas Restantes por Unidad <span class="cbadge">HS</span></div>
+      <div class="ch"><canvas id="ch-srv-horas"></canvas></div>
+    </div>
+  </div>
+</div>
+
 </main>
 
 <footer class="ftr">
@@ -669,12 +706,18 @@ const SHEET_NAMES = {
   mttoAutoelevadores:   'MANTENIMIENTO AUTOELEVADORES',
 };
 
+// ID del Sheet de Services (planilla separada)
+const SERVICES_SHEET_ID = '1JBqizva8iWP_FF_XpBlr3aAGrz3-JaXOwNiuPuybcxg';
+const SERVICES_GID = '0';
+
 // Estado global
 let G = {
   fleet: [],
   histPalas: [],
   histCam: [],
   histAut: [],
+  services: [],
+  servicesFilter: 'all',
   charts: {},
 };
 
@@ -750,6 +793,15 @@ async function fetchCSV(sheetName) {
   return fetchSheet(sheetName);
 }
 
+// Carga una hoja desde un Sheet DIFERENTE (planilla de services)
+async function fetchExternalSheet(sheetId, gid) {
+  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status} al cargar services`);
+  const text = await res.text();
+  return parseCSV(text);
+}
+
 // ═══════════════════════════════════════════════════════
 //  MAIN LOAD
 // ═══════════════════════════════════════════════════════
@@ -778,11 +830,20 @@ async function loadAllData() {
     G.histCam   = camRes.status   === 'fulfilled' ? parseHistorial(camRes.value)   : [];
     G.histAut   = autRes.status   === 'fulfilled' ? parseHistorial(autRes.value)   : [];
 
+    // Cargar services desde planilla externa
+    try {
+      const srvRows = await fetchExternalSheet(SERVICES_SHEET_ID, SERVICES_GID);
+      G.services = parseServices(srvRows);
+    } catch(e) {
+      console.warn('No se pudieron cargar los services:', e);
+      G.services = [];
+    }
+
     if (G.fleet.length === 0) {
       setStatus('err','❌ Hoja DISPONIBILIDAD vacía o nombres de columnas incorrectos');
     } else {
       const total = G.histPalas.length + G.histCam.length + G.histAut.length;
-      setStatus('ok',`✅ ${G.fleet.length} unidades · ${total} trabajos de mantenimiento`);
+      setStatus('ok',`✅ ${G.fleet.length} unidades · ${total} trabajos · ${G.services.length} services`);
     }
 
     renderAll();
@@ -831,33 +892,45 @@ function setStatus(type, msg) {
 // ═══════════════════════════════════════════════════════
 function parseDisponibilidad(rows) {
   const fleet = [];
-  // Buscar fila de encabezado (contiene UNIDAD)
-  let hdrIdx = rows.findIndex(r => r.some(c => c.toUpperCase().includes('UNIDAD')));
-  if (hdrIdx < 0) hdrIdx = 1;
-  const headers = rows[hdrIdx] ? rows[hdrIdx].map(h => h.toUpperCase().trim()) : [];
+  // Estructura exacta del Sheet:
+  // Col 0=UNIDAD, 1=MODELO, 2=SECTOR, 3=ESTADO, 4=OBSERVACION
+  // Col 5=UNIDADES TOTALES, 6=UNIDADES OPERATIVAS, 7=% → ignorar
 
-  const iUnit  = headers.findIndex(h => h === 'UNIDAD');
-  const iModel = headers.findIndex(h => h === 'MODELO');
-  const iSect  = headers.findIndex(h => h === 'SECTOR');
-  const iStat  = headers.findIndex(h => h === 'ESTADO');
-  const iObs   = headers.findIndex(h => h === 'OBSERVACION' || h === 'OBSERVACIONES');
+  // Buscar fila de encabezado
+  let hdrIdx = rows.findIndex(r => r.some(c => /^UNIDAD$/i.test((c||'').trim())));
+  if (hdrIdx < 0) hdrIdx = 1;
+  const headers = (rows[hdrIdx] || []).map(h => (h||'').toUpperCase().trim());
+
+  // Índices por nombre de columna con fallback a posición conocida
+  const iUnit  = headers.findIndex(h => h === 'UNIDAD')      >= 0 ? headers.findIndex(h => h === 'UNIDAD')      : 0;
+  const iModel = headers.findIndex(h => h === 'MODELO')      >= 0 ? headers.findIndex(h => h === 'MODELO')      : 1;
+  const iSect  = headers.findIndex(h => h === 'SECTOR')      >= 0 ? headers.findIndex(h => h === 'SECTOR')      : 2;
+  const iStat  = headers.findIndex(h => h === 'ESTADO')      >= 0 ? headers.findIndex(h => h === 'ESTADO')      : 3;
+  const iObs   = headers.findIndex(h => /OBSERVACI/.test(h)) >= 0 ? headers.findIndex(h => /OBSERVACI/.test(h)) : 4;
 
   for (let i = hdrIdx + 1; i < rows.length; i++) {
     const r = rows[i];
-    const unit = (r[iUnit >= 0 ? iUnit : 0] || '').trim();
-    if (!unit || unit.toUpperCase() === 'UNIDAD') continue;
+    const unit = (r[iUnit] || '').trim();
+    // Saltar filas vacías o de encabezado repetido
+    if (!unit || /^UNIDAD$/i.test(unit)) continue;
+    // Saltar filas que son solo totales (sin sector)
+    const sector = (r[iSect] || '').trim();
+    if (!sector) continue;
 
-    const statRaw = (r[iStat >= 0 ? iStat : 3] || '').toUpperCase();
+    const statRaw = (r[iStat] || '').toUpperCase();
     let status = 'good';
     if (statRaw.includes('MANTENIMIENTO') || statRaw.includes('FUERA')) status = 'bad';
     else if (statRaw.includes('ALERTA')) status = 'alert';
 
+    // Observacion: SOLO columna E (índice 4), ignorar columnas F,G,H
+    const obs = (r[iObs] || '').trim();
+
     fleet.push({
       unit,
-      model:  (r[iModel >= 0 ? iModel : 1] || '').trim(),
-      sector: (r[iSect  >= 0 ? iSect  : 2] || '').trim().toUpperCase(),
+      model:  (r[iModel] || '').trim(),
+      sector: sector.toUpperCase(),
       status,
-      obs:    (r[iObs   >= 0 ? iObs   : 4] || '').trim(),
+      obs,
     });
   }
   return fleet;
@@ -865,27 +938,36 @@ function parseDisponibilidad(rows) {
 
 function parseHistorial(rows) {
   if (!rows.length) return [];
-  // Buscar encabezado
-  let hdrIdx = rows.findIndex(r => r.some(c => /UNIDAD|EQUIPO|MAQUINA/i.test(c)));
-  if (hdrIdx < 0) hdrIdx = 0;
-  const headers = rows[hdrIdx].map(h => h.toUpperCase().trim());
 
-  const iUnit  = headers.findIndex(h => /UNIDAD|EQUIPO|MAQUINA/.test(h));
-  const iTipo  = headers.findIndex(h => /TIPO|PREV|MANT/.test(h));
-  const iIni   = headers.findIndex(h => /INICIO|FECHA INI/.test(h));
-  const iFin   = headers.findIndex(h => /FIN|FECHA FIN/.test(h));
-  const iDesc  = headers.findIndex(h => /DESC|TAREA|TRABAJO|DETALLE/.test(h));
+  // Buscar fila de encabezado — busca MODELO o TIPO MANTENIMIENTO
+  let hdrIdx = rows.findIndex(r => r.some(c => /MODELO|TIPO\s*MANT|FECHA\s*INICIO/i.test((c||'').trim())));
+  if (hdrIdx < 0) hdrIdx = 0;
+  const headers = (rows[hdrIdx] || []).map(h => (h||'').toUpperCase().trim());
+
+  // Estructura real: A=MODELO, B=FALLAS/REQUERIMIENTOS, C=TIPO MANTENIMIENTO
+  // D=RESPONSABLE, E=FECHA INICIO, F=FECHA FIN, G=ESTADO, I=DESCRIPCION
+  const iUnit  = headers.findIndex(h => /MODELO/.test(h))                    >= 0 ? headers.findIndex(h => /MODELO/.test(h))                    : 0;
+  const iTipo  = headers.findIndex(h => /TIPO.*MANT|TIPO/.test(h))           >= 0 ? headers.findIndex(h => /TIPO.*MANT|TIPO/.test(h))           : 2;
+  const iIni   = headers.findIndex(h => /FECHA.*INICIO|INICIO/.test(h))      >= 0 ? headers.findIndex(h => /FECHA.*INICIO|INICIO/.test(h))      : 4;
+  const iFin   = headers.findIndex(h => /FECHA.*FIN|FIN/.test(h))            >= 0 ? headers.findIndex(h => /FECHA.*FIN|FIN/.test(h))            : 5;
+  const iDesc  = headers.findIndex(h => /DESCRIP|TAREA|DETALLE|FALLA/.test(h)) >= 0 ? headers.findIndex(h => /DESCRIP|TAREA|DETALLE|FALLA/.test(h)) : 8;
 
   const hist = [];
   for (let i = hdrIdx + 1; i < rows.length; i++) {
     const r = rows[i];
-    const unit = (r[iUnit >= 0 ? iUnit : 0] || '').trim();
-    if (!unit) continue;
-    const tipo  = (r[iTipo >= 0 ? iTipo : 1] || '').trim();
-    const ini   = (r[iIni  >= 0 ? iIni  : 2] || '').trim();
-    const fin   = (r[iFin  >= 0 ? iFin  : 3] || '').trim();
-    const desc  = (r[iDesc >= 0 ? iDesc : 4] || '').trim();
-    hist.push({ unit, tipo, ini, fin, desc });
+    const unit = (r[iUnit] || '').trim();
+    if (!unit || /^MODELO$/i.test(unit)) continue;
+
+    const tipo = (r[iTipo] || '').trim();
+    // Aceptar tanto "PREVENTIVO" como "CORRECTIVO" y variantes
+    const tipoNorm = tipo.toUpperCase().includes('PREV') ? 'Preventivo' :
+                     tipo.toUpperCase().includes('CORR') ? 'Correctivo' : tipo;
+
+    const ini  = (r[iIni]  || '').trim();
+    const fin  = (r[iFin]  || '').trim();
+    const desc = (r[iDesc] || '').trim();
+
+    hist.push({ unit, tipo: tipoNorm, ini, fin, desc });
   }
   return hist;
 }
@@ -900,6 +982,7 @@ function renderAll() {
   renderHistorial('cam',   G.histCam);
   renderHistorial('aut',   G.histAut);
   renderKPIPage();
+  renderServicesPage();
   updateClock();
 }
 
@@ -1223,6 +1306,240 @@ function searchHist(key, val) {
 }
 
 // ─── KPI PAGE ───
+
+// ═══════════════════════════════════════════════════════
+//  SERVICES — PARSER Y RENDER
+// ═══════════════════════════════════════════════════════
+
+function parseServices(rows) {
+  if (!rows.length) return [];
+  // Buscar fila de encabezado
+  let hdrIdx = rows.findIndex(r => r.some(c => /MAQUINA|MÁQUINA|EQUIPO/i.test(c)));
+  if (hdrIdx < 0) hdrIdx = 0;
+  const headers = rows[hdrIdx].map(h => h.toUpperCase().trim());
+
+  const iMaq   = headers.findIndex(h => /MAQUINA|MÁQUINA/.test(h));
+  const iMod   = headers.findIndex(h => /MODELO/.test(h));
+  const iSect  = headers.findIndex(h => /SECTOR/.test(h));
+  const iProp  = headers.findIndex(h => /PROPIO|TERCERO/.test(h));
+  const iHAct  = headers.findIndex(h => /HOROMETRO ACTUAL|HORÓMETRO ACTUAL/.test(h));
+  const iHAnt  = headers.findIndex(h => /SERVICE ANTERIOR/.test(h));
+  const iHProx = headers.findIndex(h => /SERVICE PROXIMO|SERVICE PRÓXIMO/.test(h));
+  const iHRest = headers.findIndex(h => /HORAS RESTANTES/.test(h));
+  const iEst   = headers.findIndex(h => /ESTADO/.test(h));
+  const iFecha = headers.findIndex(h => /FECHA PLANIFICADA/.test(h));
+  const iAct   = headers.findIndex(h => /ULTIMA ACTUALIZACION|ÚLTIMA ACTUALIZACIÓN/.test(h));
+
+  const services = [];
+  for (let i = hdrIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    const maq = (r[iMaq >= 0 ? iMaq : 0] || '').trim();
+    if (!maq) continue;
+
+    const hRest = parseFloat((r[iHRest >= 0 ? iHRest : 7] || '0').replace(',','.').replace(/[^0-9.\-]/g,'')) || 0;
+    const estRaw = (r[iEst >= 0 ? iEst : 8] || '').trim().toUpperCase();
+
+    // 4 niveles según fórmula exacta del Sheet:
+    // < 50 hs → URGENTE (rojo)
+    // 50–75 hs → ALERTA (naranja)
+    // 76–150 hs → PLANIFICAR (amarillo)
+    // > 150 hs → OK (verde)
+    let alertLevel = 'ok';
+    if (hRest < 50)        alertLevel = 'urgente';
+    else if (hRest <= 75)  alertLevel = 'alerta';
+    else if (hRest <= 150) alertLevel = 'planificar';
+    else                   alertLevel = 'ok';
+
+    services.push({
+      maq,
+      modelo:  (r[iMod  >= 0 ? iMod  : 1] || '').trim(),
+      sector:  (r[iSect >= 0 ? iSect : 2] || '').trim(),
+      prop:    (r[iProp >= 0 ? iProp : 3] || '').trim(),
+      hAct:    (r[iHAct >= 0 ? iHAct : 4] || '').trim(),
+      hAnt:    (r[iHAnt >= 0 ? iHAnt : 5] || '').trim(),
+      hProx:   (r[iHProx>= 0 ? iHProx: 6] || '').trim(),
+      hRest,
+      estado:  (r[iEst  >= 0 ? iEst  : 8] || '').trim(),
+      fecha:   (r[iFecha>= 0 ? iFecha: 9] || '').trim(),
+      actuali: (r[iAct  >= 0 ? iAct  : 10]|| '').trim(),
+      alertLevel,
+    });
+  }
+  return services;
+}
+
+let srvFilter = 'all';
+
+function filterServices(f, btn) {
+  btn.closest('.tbl-filters').querySelectorAll('.fbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  srvFilter = f;
+  renderServicesTable();
+}
+
+function renderServicesPage() {
+  if (!G.services.length) {
+    const kpi = document.getElementById('kpi-services');
+    if (kpi) kpi.innerHTML = `<div style="grid-column:1/-1" class="no-data">No se pudieron cargar los services. Verificá que la planilla sea pública.</div>`;
+    return;
+  }
+
+  const total      = G.services.length;
+  const urgente    = G.services.filter(s => s.alertLevel === 'urgente').length;
+  const alerta     = G.services.filter(s => s.alertLevel === 'alerta').length;
+  const planificar = G.services.filter(s => s.alertLevel === 'planificar').length;
+  const ok         = G.services.filter(s => s.alertLevel === 'ok').length;
+  const cumpl      = total > 0 ? Math.round((ok / total) * 100) : 0;
+  const hrsPromedio = total > 0 ? Math.round(G.services.reduce((a,s) => a + s.hRest, 0) / total) : 0;
+
+  // KPI cards
+  const kpi = document.getElementById('kpi-services');
+  if (kpi) kpi.innerHTML = `
+    <div class="kcard kc-b">
+      <div class="klabel">TOTAL UNIDADES</div>
+      <div class="kvalue">${total}</div>
+      <div class="ksub">Con plan de service</div>
+    </div>
+    <div class="kcard kc-g">
+      <div class="klabel">OK — AL DÍA</div>
+      <div class="kvalue">${ok}</div>
+      <div class="ksub">&gt; 150 hs restantes</div>
+    </div>
+    <div class="kcard kc-a" style="--accent:var(--amber)">
+      <div class="klabel">PLANIFICAR</div>
+      <div class="kvalue" style="color:var(--amber)">${planificar}</div>
+      <div class="ksub">76 — 150 hs restantes</div>
+    </div>
+    <div class="kcard kc-orange" style="border-top:2px solid var(--orange)">
+      <div class="klabel">ALERTA</div>
+      <div class="kvalue" style="color:var(--orange)">${alerta}</div>
+      <div class="ksub">50 — 75 hs restantes</div>
+    </div>
+    <div class="kcard kc-r">
+      <div class="klabel">URGENTE</div>
+      <div class="kvalue">${urgente}</div>
+      <div class="ksub">&lt; 50 hs restantes</div>
+    </div>
+    <div class="kcard kc-c">
+      <div class="klabel">HS PROM. RESTANTES</div>
+      <div class="kvalue">${hrsPromedio}</div>
+      <div class="ksub">Promedio flota</div>
+    </div>
+  `;
+
+  renderServicesTable();
+  buildChartSrvEstado();
+  buildChartSrvHoras();
+}
+
+function renderServicesTable() {
+  const tbody = document.getElementById('services-tbody');
+  if (!tbody) return;
+
+  const filtered = G.services.filter(s => {
+    if (srvFilter === 'all') return true;
+    return s.alertLevel === srvFilter;
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="11" class="no-data">Sin resultados</td></tr>';
+    return;
+  }
+
+  // Ordenar: urgente primero, luego alerta, planificar, ok
+  const order = { urgente: 0, alerta: 1, planificar: 2, ok: 3 };
+  filtered.sort((a,b) => (order[a.alertLevel] ?? 9) - (order[b.alertLevel] ?? 9));
+
+  tbody.innerHTML = filtered.map(s => {
+    // 4 niveles exactos según fórmula del Sheet
+    const alertMap = {
+      urgente:    { cls: 'p-r',  lbl: '🔴 URGENTE',    color: 'var(--red)' },
+      alerta:     { cls: 'p-or', lbl: '🟠 ALERTA',     color: 'var(--orange)' },
+      planificar: { cls: 'p-a',  lbl: '🟡 PLANIFICAR', color: 'var(--amber)' },
+      ok:         { cls: 'p-g',  lbl: '✅ OK',          color: 'var(--green)' },
+    };
+    const am = alertMap[s.alertLevel] || alertMap.ok;
+    const hColor = am.color;
+    const hBar = s.hRest > 0 ? Math.min(Math.round((s.hRest / 300) * 100), 100) : 0;
+
+    return `
+      <tr>
+        <td><div class="uname">${s.maq}</div></td>
+        <td><div class="umodel">${s.modelo || '—'}</div></td>
+        <td><span class="stag">${s.sector || '—'}</span></td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${s.prop || '—'}</td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)">${s.hAct || '—'} hs</td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2)">${s.hAnt || '—'} hs</td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2)">${s.hProx || '—'} hs</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:${hColor}">${s.hRest > 0 ? s.hRest : '⚠️ '+Math.abs(s.hRest)} hs</span>
+          </div>
+          <div style="margin-top:4px;height:3px;background:var(--border);border-radius:2px;width:80px">
+            <div style="height:100%;border-radius:2px;background:${hColor};width:${hBar}%"></div>
+          </div>
+        </td>
+        <td><span class="pill ${am.cls}" style="${am.cls==='p-or'?'background:rgba(255,110,64,0.1);color:var(--orange);border:1px solid rgba(255,110,64,0.25)':''}">${am.lbl}</span></td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${s.fecha || '—'}</td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3)">${s.actuali || '—'}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function buildChartSrvEstado() {
+  const el = document.getElementById('ch-srv-estado');
+  if (!el) return;
+  if (G.charts['ch-srv-estado']) { try { G.charts['ch-srv-estado'].destroy(); } catch{} }
+  const urgente    = G.services.filter(s => s.alertLevel === 'urgente').length;
+  const alerta     = G.services.filter(s => s.alertLevel === 'alerta').length;
+  const planificar = G.services.filter(s => s.alertLevel === 'planificar').length;
+  const ok         = G.services.filter(s => s.alertLevel === 'ok').length;
+  G.charts['ch-srv-estado'] = new Chart(el, {
+    type: 'doughnut',
+    data: {
+      labels: ['OK (>150hs)', 'Planificar (75-150hs)', 'Alerta (50-75hs)', 'Urgente (<50hs)'],
+      datasets: [{ data: [ok, planificar, alerta, urgente],
+        backgroundColor: [C.green, C.amber, C.orange, C.red],
+        borderColor: '#0b1118', borderWidth: 3, hoverOffset: 6 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: pluginDef }
+  });
+}
+
+function buildChartSrvHoras() {
+  const el = document.getElementById('ch-srv-horas');
+  if (!el) return;
+  if (G.charts['ch-srv-horas']) { try { G.charts['ch-srv-horas'].destroy(); } catch{} }
+
+  // Mostrar las 10 unidades con menos horas restantes
+  const sorted = [...G.services]
+    .sort((a,b) => a.hRest - b.hRest)
+    .slice(0, 10);
+
+  G.charts['ch-srv-horas'] = new Chart(el, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(s => s.maq.length > 12 ? s.maq.substring(0,12)+'…' : s.maq),
+      datasets: [{
+        label: 'Horas restantes',
+        data: sorted.map(s => s.hRest),
+        backgroundColor: sorted.map(s => s.hRest < 0 ? C.red : s.hRest <= 50 ? C.amber : C.green),
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      indexAxis: 'y',
+      scales: {
+        ...scalesDef,
+        x: { ...scalesDef.x, ticks: { ...scalesDef.x.ticks, callback: v => v + ' hs' } }
+      },
+      plugins: { ...pluginDef, legend: { display: false } }
+    }
+  });
+}
+
 function renderKPIPage() {
   const allHist = [...G.histPalas, ...G.histCam, ...G.histAut];
   const { mttr, mtbf, prevPct } = calcMttoKPIs(allHist);
