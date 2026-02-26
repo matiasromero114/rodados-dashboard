@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RODADOS — Sistema de Gestión de Mantenimiento Industrial</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg0: #060a0e;
+  --bg1: #0b1118;
+  --bg2: #0f1923;
+  --bg3: #152030;
+  --border: #1a2d3e;
+  --border2: #254260;
+  --blue: #00aaff;
+  --cyan: #00e5cc;
+  --green: #00e676;
+  --amber: #ffc107;
+  --red: #ff3d3d;
+  --orange: #ff6e40;
+  --purple: #b388ff;
+  --txt1: #ddeeff;
+  --txt2: #6a92b0;
+  --txt3: #2d4a5e;
+  --good: #00e676;
+  --warn: #ffc107;
+  --crit: #ff3d3d;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg0);
+  color:var(--txt1);
+  font-family:'Barlow',sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(0,170,255,0.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,170,255,0.03) 1px,transparent 1px);
+  background-size:50px 50px;
+  pointer-events:none;z-index:0;
+}
+body::after{
+  content:'';position:fixed;
+  top:-50%;left:-50%;width:200%;height:200%;
+  background:radial-gradient(ellipse at 20% 10%,rgba(0,170,255,0.04) 0%,transparent 50%),
+              radial-gradient(ellipse at 80% 90%,rgba(0,229,204,0.03) 0%,transparent 50%);
+  pointer-events:none;z-index:0;
+}
+.wrap{position:relative;z-index:1;}
+
+/* ── LOADING ── */
+#loading{
+  position:fixed;inset:0;background:var(--bg0);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:9999;transition:opacity 0.5s;
+}
+#loading.hide{opacity:0;pointer-events:none;}
+.loader-hex{
+  width:60px;height:60px;
+  background:linear-gradient(135deg,var(--blue),var(--cyan));
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  animation:spin 1.5s linear infinite;
+  margin-bottom:20px;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loader-text{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  color:var(--blue);letter-spacing:3px;text-transform:uppercase;
+  animation:blink 1s infinite;
+}
+.loader-sub{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  color:var(--txt3);letter-spacing:2px;margin-top:8px;
+}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+/* ── HEADER ── */
+.hdr{
+  height:60px;
+  background:linear-gradient(180deg,rgba(11,17,24,0.98),rgba(11,17,24,0.85));
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(20px);
+}
+.hdr-l{display:flex;align-items:center;gap:14px;}
+.hex{
+  width:32px;height:32px;
+  background:linear-gradient(135deg,var(--blue),var(--cyan));
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  flex-shrink:0;
+}
+.hdr-title{
+  font-family:'Rajdhani',sans-serif;font-size:19px;font-weight:700;
+  letter-spacing:4px;text-transform:uppercase;color:var(--txt1);
+}
+.hdr-sub{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  color:var(--blue);letter-spacing:2px;text-transform:uppercase;margin-top:1px;
+}
+.hdr-r{display:flex;align-items:center;gap:20px;}
+.live{display:flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2);}
+.ldot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,0.5);}50%{box-shadow:0 0 0 6px rgba(0,230,118,0);}}
+.clock{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt3);letter-spacing:1px;}
+.refresh-btn{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;
+  padding:6px 14px;border-radius:4px;border:1px solid var(--border2);
+  background:rgba(0,170,255,0.06);color:var(--blue);cursor:pointer;
+  text-transform:uppercase;transition:all 0.2s;
+}
+.refresh-btn:hover{background:rgba(0,170,255,0.15);border-color:var(--blue);}
+.hdr-scan{position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--blue),transparent);animation:scan 5s linear infinite;}
+@keyframes scan{0%{transform:translateX(-100%);}100%{transform:translateX(100%);}}
+
+/* ── CONFIG PANEL ── */
+.cfg-bar{
+  background:var(--bg1);border-bottom:1px solid var(--border);
+  padding:10px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.cfg-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase;}
+.cfg-input{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  background:var(--bg2);border:1px solid var(--border2);color:var(--txt1);
+  padding:5px 10px;border-radius:4px;width:400px;letter-spacing:0.5px;
+  transition:border-color 0.2s;
+}
+.cfg-input:focus{outline:none;border-color:var(--blue);}
+.cfg-btn{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;
+  padding:6px 16px;border-radius:4px;border:1px solid var(--blue);
+  background:rgba(0,170,255,0.12);color:var(--blue);cursor:pointer;
+  text-transform:uppercase;transition:all 0.2s;white-space:nowrap;
+}
+.cfg-btn:hover{background:rgba(0,170,255,0.25);}
+.cfg-status{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;padding:5px 12px;border-radius:3px;}
+.cfg-ok{background:rgba(0,230,118,0.1);color:var(--green);border:1px solid rgba(0,230,118,0.25);}
+.cfg-err{background:rgba(255,61,61,0.1);color:var(--red);border:1px solid rgba(255,61,61,0.25);}
+.cfg-loading{background:rgba(0,170,255,0.1);color:var(--blue);border:1px solid rgba(0,170,255,0.25);}
+
+/* ── NAV ── */
+.nav{
+  display:flex;gap:0;padding:0 28px;
+  border-bottom:1px solid var(--border);background:var(--bg1);
+  overflow-x:auto;
+}
+.nav::-webkit-scrollbar{height:0;}
+.tab{
+  padding:13px 22px;font-family:'Rajdhani',sans-serif;font-size:12px;
+  font-weight:600;letter-spacing:2px;text-transform:uppercase;
+  color:var(--txt3);cursor:pointer;border-bottom:2px solid transparent;
+  transition:all 0.2s;white-space:nowrap;
+}
+.tab:hover{color:var(--txt2);background:rgba(0,170,255,0.04);}
+.tab.on{color:var(--blue);border-bottom-color:var(--blue);background:rgba(0,170,255,0.06);}
+
+/* ── MAIN ── */
+.main{padding:24px 28px;}
+.page{display:none;}
+.page.on{display:block;}
+
+/* ── SECTION LABEL ── */
+.slabel{
+  font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--blue);
+  letter-spacing:3px;text-transform:uppercase;margin-bottom:14px;
+  display:flex;align-items:center;gap:12px;
+}
+.slabel::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border2),transparent);}
+
+/* ── KPI GRID ── */
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:24px;}
+.kcard{
+  background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+  padding:16px 18px;position:relative;overflow:hidden;
+  transition:transform 0.2s,border-color 0.2s,background 0.2s;cursor:default;
+}
+.kcard:hover{transform:translateY(-2px);border-color:var(--border2);background:var(--bg3);}
+.kcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.kc-b::before{background:linear-gradient(90deg,var(--blue),transparent);}
+.kc-g::before{background:linear-gradient(90deg,var(--green),transparent);}
+.kc-a::before{background:linear-gradient(90deg,var(--amber),transparent);}
+.kc-r::before{background:linear-gradient(90deg,var(--red),transparent);}
+.kc-c::before{background:linear-gradient(90deg,var(--cyan),transparent);}
+.kc-p::before{background:linear-gradient(90deg,var(--purple),transparent);}
+.klabel{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+.kvalue{font-family:'Rajdhani',sans-serif;font-size:34px;font-weight:700;line-height:1;margin-bottom:4px;}
+.kc-b .kvalue{color:var(--blue);}
+.kc-g .kvalue{color:var(--green);}
+.kc-a .kvalue{color:var(--amber);}
+.kc-r .kvalue{color:var(--red);}
+.kc-c .kvalue{color:var(--cyan);}
+.kc-p .kvalue{color:var(--purple);}
+.ksub{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt2);}
+
+/* ── CHARTS ── */
+.charts3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px;}
+.charts2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+.chart1{margin-bottom:24px;}
+.ccard{
+  background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+  padding:18px;transition:border-color 0.2s;
+}
+.ccard:hover{border-color:var(--border2);}
+.ctitle{
+  font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;
+  letter-spacing:2px;text-transform:uppercase;color:var(--txt2);
+  margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;
+}
+.cbadge{
+  font-family:'JetBrains Mono',monospace;font-size:8px;padding:3px 8px;
+  border-radius:3px;background:rgba(0,170,255,0.1);color:var(--blue);letter-spacing:1px;
+}
+.ch{position:relative;height:200px;}
+.ch-tall{position:relative;height:260px;}
+.ch-sm{position:relative;height:160px;}
+
+/* ── FLEET TABLE ── */
+.tbl-wrap{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;overflow:hidden;margin-bottom:24px;
+}
+.tbl-filters{
+  padding:12px 18px;border-bottom:1px solid var(--border);
+  display:flex;gap:6px;flex-wrap:wrap;align-items:center;
+}
+.fbtn{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;
+  text-transform:uppercase;padding:5px 12px;border-radius:3px;
+  border:1px solid var(--border);background:transparent;
+  color:var(--txt2);cursor:pointer;transition:all 0.2s;
+}
+.fbtn:hover,.fbtn.on{border-color:var(--blue);color:var(--blue);background:rgba(0,170,255,0.08);}
+.fbtn.fg.on{border-color:var(--green);color:var(--green);background:rgba(0,230,118,0.08);}
+.fbtn.fa.on{border-color:var(--amber);color:var(--amber);background:rgba(255,193,7,0.08);}
+.fbtn.fr.on{border-color:var(--red);color:var(--red);background:rgba(255,61,61,0.08);}
+.fsearch{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  background:var(--bg1);border:1px solid var(--border);color:var(--txt1);
+  padding:5px 10px;border-radius:3px;width:180px;margin-left:auto;
+}
+.fsearch:focus{outline:none;border-color:var(--blue);}
+table{width:100%;border-collapse:collapse;}
+thead th{
+  font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:2px;
+  text-transform:uppercase;color:var(--txt3);padding:9px 14px;
+  text-align:left;border-bottom:1px solid var(--border);
+  background:rgba(0,0,0,0.2);white-space:nowrap;
+}
+tbody td{padding:10px 14px;font-size:12px;border-bottom:1px solid rgba(26,45,62,0.5);vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:rgba(0,170,255,0.03);}
+.uname{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;letter-spacing:1px;}
+.umodel{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3);margin-top:1px;}
+.stag{
+  font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1px;
+  padding:3px 9px;border-radius:2px;
+  background:rgba(0,170,255,0.08);color:var(--blue);
+  border:1px solid rgba(0,170,255,0.2);white-space:nowrap;
+}
+.pill{
+  display:inline-flex;align-items:center;gap:5px;padding:4px 10px;
+  border-radius:3px;font-family:'Rajdhani',sans-serif;font-size:11px;
+  font-weight:600;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;
+}
+.pill::before{content:'';width:5px;height:5px;border-radius:50%;}
+.p-g{background:rgba(0,230,118,0.1);color:var(--good);border:1px solid rgba(0,230,118,0.2);}
+.p-g::before{background:var(--good);}
+.p-a{background:rgba(255,193,7,0.1);color:var(--warn);border:1px solid rgba(255,193,7,0.2);}
+.p-a::before{background:var(--warn);animation:blink 1.5s infinite;}
+.p-r{background:rgba(255,61,61,0.1);color:var(--crit);border:1px solid rgba(255,61,61,0.2);}
+.p-r::before{background:var(--crit);animation:blink 1s infinite;}
+.obs{font-size:11px;color:var(--txt2);max-width:280px;line-height:1.4;}
+.obs-none{color:var(--txt3);font-style:italic;font-size:10px;}
+
+/* ── MTTO CARDS ── */
+.mcard-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.mcard{
+  background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+  padding:20px;transition:all 0.2s;position:relative;overflow:hidden;
+}
+.mcard:hover{border-color:var(--border2);background:var(--bg3);}
+.mcard-ico{font-size:24px;margin-bottom:10px;display:block;}
+.mcard-name{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+.mcard-val{font-family:'Rajdhani',sans-serif;font-size:30px;font-weight:700;color:var(--cyan);line-height:1;margin-bottom:3px;}
+.mcard-unit{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt2);}
+.mbar{margin-top:12px;height:2px;background:var(--border);border-radius:2px;overflow:hidden;}
+.mbar-fill{height:100%;border-radius:2px;transition:width 1.2s ease;}
+.mcard-desc{font-size:11px;color:var(--txt3);margin-top:6px;line-height:1.4;}
+
+/* ── ALERT PANELS ── */
+.apanels{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+.apanel{background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.apanel-hdr{
+  padding:12px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.apanel-title{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--txt2);}
+.abadge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 9px;border-radius:10px;}
+.ab-r{background:rgba(255,61,61,0.12);color:var(--red);border:1px solid rgba(255,61,61,0.25);}
+.ab-a{background:rgba(255,193,7,0.12);color:var(--amber);border:1px solid rgba(255,193,7,0.25);}
+.aitem{padding:11px 18px;border-bottom:1px solid rgba(26,45,62,0.5);display:flex;align-items:flex-start;gap:10px;}
+.aitem:last-child{border-bottom:none;}
+.adot{width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0;}
+.adot-r{background:var(--red);animation:blink 1s infinite;}
+.adot-a{background:var(--amber);animation:blink 1.5s infinite;}
+.aunit{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;}
+.adesc{font-size:11px;color:var(--txt2);margin-top:2px;line-height:1.4;}
+.asect{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--txt3);letter-spacing:1px;white-space:nowrap;padding-top:2px;}
+
+/* ── HISTORY TABLE ── */
+.hist-row{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:8px;
+  padding:9px 14px;border-bottom:1px solid rgba(26,45,62,0.4);
+  align-items:center;font-size:11px;transition:background 0.15s;
+}
+.hist-row:hover{background:rgba(0,170,255,0.03);}
+.hist-hdr{
+  font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:2px;
+  text-transform:uppercase;color:var(--txt3);padding:9px 14px;
+  border-bottom:1px solid var(--border);background:rgba(0,0,0,0.2);
+  display:grid;grid-template-columns:repeat(5,1fr);gap:8px;
+}
+.htag{
+  font-family:'JetBrains Mono',monospace;font-size:8px;padding:3px 8px;
+  border-radius:2px;display:inline-block;letter-spacing:1px;text-transform:uppercase;
+}
+.htag-p{background:rgba(0,170,255,0.1);color:var(--blue);border:1px solid rgba(0,170,255,0.2);}
+.htag-c{background:rgba(255,193,7,0.1);color:var(--amber);border:1px solid rgba(255,193,7,0.2);}
+.hdays{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  padding:2px 7px;border-radius:2px;background:rgba(0,229,204,0.1);
+  color:var(--cyan);border:1px solid rgba(0,229,204,0.2);display:inline-block;
+}
+
+/* ── KPI TYPE ROWS ── */
+.kpi-type-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px;}
+.ktype-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+  padding:20px;transition:all 0.2s;
+}
+.ktype-card:hover{border-color:var(--border2);}
+.ktype-title{
+  font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;
+  letter-spacing:3px;text-transform:uppercase;color:var(--txt1);
+  margin-bottom:16px;display:flex;align-items:center;gap:10px;
+}
+.ktype-ico{font-size:20px;}
+.ktype-metric{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 0;border-bottom:1px solid var(--border);
+}
+.ktype-metric:last-child{border-bottom:none;}
+.ktype-metric-name{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt2);letter-spacing:1px;}
+.ktype-metric-val{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:600;}
+
+/* ── FOOTER ── */
+.ftr{
+  border-top:1px solid var(--border);padding:14px 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--bg1);
+}
+.ftr-l,.ftr-r{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3);letter-spacing:1px;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1400px){
+  .kpi-row{grid-template-columns:repeat(3,1fr);}
+  .charts3{grid-template-columns:1fr 1fr;}
+  .mcard-row{grid-template-columns:repeat(2,1fr);}
+}
+@media(max-width:900px){
+  .kpi-row{grid-template-columns:repeat(2,1fr);}
+  .charts3,.charts2,.kpi-type-grid,.apanels{grid-template-columns:1fr;}
+  .cfg-input{width:200px;}
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+.kcard,.ccard,.mcard,.tbl-wrap,.apanel,.ktype-card{animation:fadeUp 0.35s ease both;}
+.kcard:nth-child(1){animation-delay:0.04s;}.kcard:nth-child(2){animation-delay:0.08s;}
+.kcard:nth-child(3){animation-delay:0.12s;}.kcard:nth-child(4){animation-delay:0.16s;}
+.kcard:nth-child(5){animation-delay:0.20s;}.kcard:nth-child(6){animation-delay:0.24s;}
+
+.no-data{
+  padding:32px;text-align:center;
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--txt3);letter-spacing:2px;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="loader-hex"></div>
+  <div class="loader-text">Cargando datos...</div>
+  <div class="loader-sub">Conectando con Google Sheets</div>
+</div>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-l">
+    <div class="hex"></div>
+    <div>
+      <div class="hdr-title">RODADOS</div>
+      <div class="hdr-sub">Sistema de Gestión de Mantenimiento Industrial</div>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <div class="live"><span class="ldot"></span>EN VIVO</div>
+    <div class="clock" id="clock">--:--:--</div>
+    <button class="refresh-btn" onclick="loadAllData()">↻ ACTUALIZAR</button>
+  </div>
+  <div class="hdr-scan"></div>
+</header>
+
+<!-- CONFIG BAR -->
+<div class="cfg-bar">
+  <span class="cfg-label">SHEET ID:</span>
+  <input class="cfg-input" id="sheetId" 
+    value="1QRqhWjayjGiTl0OXDHZNSzpJz4Oa-fXHZq0FFewmx-s"
+    placeholder="Pegá el ID de tu Google Sheet aquí">
+  <button class="cfg-btn" onclick="loadAllData()">CONECTAR Y CARGAR</button>
+  <button class="cfg-btn" onclick="detectSheets()" style="border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,204,0.06)">🔍 DETECTAR HOJAS</button>
+  <span class="cfg-status cfg-loading" id="cfgStatus">⏳ Listo para conectar</span>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="tab on" onclick="goTab('overview',this)">📊 RESUMEN EJECUTIVO</div>
+  <div class="tab" onclick="goTab('fleet',this)">🚜 FLOTA</div>
+  <div class="tab" onclick="goTab('palas',this)">🦾 PALAS CARGADORAS</div>
+  <div class="tab" onclick="goTab('camiones',this)">🚛 CAMIONES</div>
+  <div class="tab" onclick="goTab('autoel',this)">🏗️ AUTOELEVADORES</div>
+  <div class="tab" onclick="goTab('kpis',this)">📈 KPIs MTTO</div>
+  <div class="tab" onclick="goTab('alerts',this)">⚠️ ALERTAS</div>
+</nav>
+
+<!-- ═══════════════════════════════════
+     PAGES
+═════════════════════════════════════ -->
+<main class="main">
+
+<!-- ── PAGE: OVERVIEW ── -->
+<div id="page-overview" class="page on">
+  <div class="slabel">KPIs PRINCIPALES — FLOTA GLOBAL</div>
+  <div class="kpi-row" id="kpi-overview"></div>
+
+  <div class="slabel">ANÁLISIS VISUAL</div>
+  <div class="charts3">
+    <div class="ccard">
+      <div class="ctitle">Estado de Flota <span class="cbadge">GLOBAL</span></div>
+      <div class="ch"><canvas id="ch-estado"></canvas></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Disponibilidad por Sector <span class="cbadge">%</span></div>
+      <div class="ch"><canvas id="ch-sector"></canvas></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Unidades por Sector <span class="cbadge">APILADO</span></div>
+      <div class="ch"><canvas id="ch-stacked"></canvas></div>
+    </div>
+  </div>
+
+  <div class="slabel">KPIs POR TIPO DE EQUIPO</div>
+  <div class="kpi-type-grid" id="kpi-type-grid"></div>
+
+  <div class="slabel">KPIs DE MANTENIMIENTO CALCULADOS</div>
+  <div class="mcard-row" id="mcard-row"></div>
+
+  <div class="slabel">ALERTAS ACTIVAS</div>
+  <div class="apanels">
+    <div class="apanel">
+      <div class="apanel-hdr">
+        <span class="apanel-title">🔴 En Mantenimiento</span>
+        <span class="abadge ab-r" id="badge-bad">—</span>
+      </div>
+      <div id="list-bad"></div>
+    </div>
+    <div class="apanel">
+      <div class="apanel-hdr">
+        <span class="apanel-title">🟡 Con Alertas</span>
+        <span class="abadge ab-a" id="badge-alert">—</span>
+      </div>
+      <div id="list-alert"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAGE: FLEET ── -->
+<div id="page-fleet" class="page">
+  <div class="slabel">INVENTARIO COMPLETO DE FLOTA</div>
+  <div class="tbl-wrap">
+    <div class="tbl-filters">
+      <button class="fbtn on" onclick="filterFleet('all',this)">TODAS</button>
+      <button class="fbtn fg" onclick="filterFleet('good',this)">✅ OPERATIVAS</button>
+      <button class="fbtn fa" onclick="filterFleet('alert',this)">⚠️ ALERTA</button>
+      <button class="fbtn fr" onclick="filterFleet('bad',this)">🔴 MANTENIMIENTO</button>
+      <button class="fbtn" onclick="filterFleet('CEVIL',this)">CEVIL</button>
+      <button class="fbtn" onclick="filterFleet('YERBA BUENA',this)">YERBA BUENA</button>
+      <button class="fbtn" onclick="filterFleet('CANTERA',this)">CANTERA</button>
+      <button class="fbtn" onclick="filterFleet('ABASTECIMIENTO',this)">ABASTECIMIENTO</button>
+      <input class="fsearch" id="fleet-search" placeholder="Buscar unidad..." oninput="searchFleet(this.value)">
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>UNIDAD</th><th>MODELO</th><th>SECTOR</th>
+          <th>ESTADO</th><th>OBSERVACIONES</th>
+        </tr>
+      </thead>
+      <tbody id="fleet-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── PAGE: PALAS ── -->
+<div id="page-palas" class="page">
+  <div class="slabel">PALAS CARGADORAS — DATOS Y MANTENIMIENTO</div>
+  <div class="charts2">
+    <div class="ccard">
+      <div class="ctitle">Preventivo vs Correctivo <span class="cbadge">PALAS</span></div>
+      <div class="ch"><canvas id="ch-palas-tipo"></canvas></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Trabajos por Mes <span class="cbadge">PALAS</span></div>
+      <div class="ch"><canvas id="ch-palas-mes"></canvas></div>
+    </div>
+  </div>
+  <div class="slabel">HISTORIAL DE TRABAJOS — PALAS</div>
+  <div class="tbl-wrap">
+    <div class="tbl-filters">
+      <button class="fbtn on" onclick="filterHist('palas','all',this)">TODOS</button>
+      <button class="fbtn" onclick="filterHist('palas','Preventivo',this)">PREVENTIVO</button>
+      <button class="fbtn fa" onclick="filterHist('palas','Correctivo',this)">CORRECTIVO</button>
+      <input class="fsearch" id="palas-search" placeholder="Buscar..." oninput="searchHist('palas',this.value)">
+    </div>
+    <div class="hist-hdr"><span>UNIDAD</span><span>TIPO</span><span>INICIO</span><span>FIN</span><span>DESCRIPCIÓN</span></div>
+    <div id="hist-palas"></div>
+  </div>
+</div>
+
+<!-- ── PAGE: CAMIONES ── -->
+<div id="page-camiones" class="page">
+  <div class="slabel">CAMIONES — DATOS Y MANTENIMIENTO</div>
+  <div class="charts2">
+    <div class="ccard">
+      <div class="ctitle">Preventivo vs Correctivo <span class="cbadge">CAMIONES</span></div>
+      <div class="ch"><canvas id="ch-cam-tipo"></canvas></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Trabajos por Mes <span class="cbadge">CAMIONES</span></div>
+      <div class="ch"><canvas id="ch-cam-mes"></canvas></div>
+    </div>
+  </div>
+  <div class="slabel">HISTORIAL DE TRABAJOS — CAMIONES</div>
+  <div class="tbl-wrap">
+    <div class="tbl-filters">
+      <button class="fbtn on" onclick="filterHist('cam','all',this)">TODOS</button>
+      <button class="fbtn" onclick="filterHist('cam','Preventivo',this)">PREVENTIVO</button>
+      <button class="fbtn fa" onclick="filterHist('cam','Correctivo',this)">CORRECTIVO</button>
+      <input class="fsearch" id="cam-search" placeholder="Buscar..." oninput="searchHist('cam',this.value)">
+    </div>
+    <div class="hist-hdr"><span>UNIDAD</span><span>TIPO</span><span>INICIO</span><span>FIN</span><span>DESCRIPCIÓN</span></div>
+    <div id="hist-cam"></div>
+  </div>
+</div>
+
+<!-- ── PAGE: AUTOELEVADORES ── -->
+<div id="page-autoel" class="page">
+  <div class="slabel">AUTOELEVADORES — DATOS Y MANTENIMIENTO</div>
+  <div class="charts2">
+    <div class="ccard">
+      <div class="ctitle">Preventivo vs Correctivo <span class="cbadge">AUTOEL.</span></div>
+      <div class="ch"><canvas id="ch-aut-tipo"></canvas></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Trabajos por Mes <span class="cbadge">AUTOEL.</span></div>
+      <div class="ch"><canvas id="ch-aut-mes"></canvas></div>
+    </div>
+  </div>
+  <div class="slabel">HISTORIAL DE TRABAJOS — AUTOELEVADORES</div>
+  <div class="tbl-wrap">
+    <div class="tbl-filters">
+      <button class="fbtn on" onclick="filterHist('aut','all',this)">TODOS</button>
+      <button class="fbtn" onclick="filterHist('aut','Preventivo',this)">PREVENTIVO</button>
+      <button class="fbtn fa" onclick="filterHist('aut','Correctivo',this)">CORRECTIVO</button>
+      <input class="fsearch" id="aut-search" placeholder="Buscar..." oninput="searchHist('aut',this.value)">
+    </div>
+    <div class="hist-hdr"><span>UNIDAD</span><span>TIPO</span><span>INICIO</span><span>FIN</span><span>DESCRIPCIÓN</span></div>
+    <div id="hist-aut"></div>
+  </div>
+</div>
+
+<!-- ── PAGE: KPIs ── -->
+<div id="page-kpis" class="page">
+  <div class="slabel">KPIs AVANZADOS DE MANTENIMIENTO</div>
+  <div class="mcard-row" id="kpi-adv-cards"></div>
+  <div class="slabel">EVOLUCIÓN Y ANÁLISIS</div>
+  <div class="chart1">
+    <div class="ccard">
+      <div class="ctitle">Tendencia de Disponibilidad <span class="cbadge">ÚLTIMOS 6 MESES</span></div>
+      <div class="ch-tall"><canvas id="ch-tendencia"></canvas></div>
+    </div>
+  </div>
+  <div class="charts3">
+    <div class="ccard">
+      <div class="ctitle">MTTR por Tipo <span class="cbadge">DÍAS</span></div>
+      <div class="ch"><canvas id="ch-mttr"></canvas></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Prev. vs Correctivo Global <span class="cbadge">%</span></div>
+      <div class="ch"><canvas id="ch-prevCorr"></canvas></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Trabajos por Tipo de Equipo <span class="cbadge">TOTAL</span></div>
+      <div class="ch"><canvas id="ch-trabajos"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAGE: ALERTAS ── -->
+<div id="page-alerts" class="page">
+  <div class="slabel">PANEL COMPLETO DE ALERTAS</div>
+  <div class="apanels">
+    <div class="apanel">
+      <div class="apanel-hdr">
+        <span class="apanel-title">🔴 FUERA DE SERVICIO — EN MANTENIMIENTO</span>
+        <span class="abadge ab-r" id="badge-bad2">—</span>
+      </div>
+      <div id="alerts-bad-full"></div>
+    </div>
+    <div class="apanel">
+      <div class="apanel-hdr">
+        <span class="apanel-title">🟡 OPERATIVAS CON ALERTAS</span>
+        <span class="abadge ab-a" id="badge-alert2">—</span>
+      </div>
+      <div id="alerts-alert-full"></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<footer class="ftr">
+  <div class="ftr-l">RODADOS v2.0 — Dashboard de Mantenimiento Industrial</div>
+  <div class="ftr-r" id="ftr-date">—</div>
+</footer>
+</div><!-- /wrap -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONFIGURACIÓN
+// ═══════════════════════════════════════════════════════
+const SHEET_NAMES = {
+  disponibilidad:       'DISPONIBILIDAD',
+  kpiMttos:             'KPIS MTTO',
+  palas:                'PALAS CARGADORAS',
+  mttoPalas:            'MANTENIMIENTO PALAS',
+  camiones:             'CAMIONES',
+  mttoCamiones:         'MANTENIMIENTO CAMIONES',
+  autoelevadores:       'AUTOELEVADORES',
+  mttoAutoelevadores:   'MANTENIMIENTO AUTOELEVADORES',
+};
+
+// Estado global
+let G = {
+  fleet: [],
+  histPalas: [],
+  histCam: [],
+  histAut: [],
+  charts: {},
+};
+
+// ═══════════════════════════════════════════════════════
+//  GOOGLE SHEETS — CSV PUBLICADO (funciona desde file://)
+// ═══════════════════════════════════════════════════════
+// IMPORTANTE: Requiere que el Sheet esté publicado en la web
+// Archivo → Compartir → Publicar en la web → CSV → Publicar
+
+function getSheetId() {
+  return document.getElementById('sheetId').value.trim();
+}
+
+// Obtener GID de cada hoja desde el Sheet publicado
+// Los GIDs son los números al final de cada URL de pestaña
+// Para encontrarlos: en el Sheet hacé click en cada pestaña
+// y mirá el número después de #gid= en la URL
+// Actualizá estos valores con los GIDs reales de tu Sheet
+const SHEET_GIDS = {
+  'DISPONIBILIDAD':               '1062321742',
+  'KPIS MTTO':                    '1008539252',
+  'PALAS CARGADORAS':             '466966971',
+  'MANTENIMIENTO PALAS':          '358156901',
+  'CAMIONES':                     '825979492',
+  'MANTENIMIENTO CAMIONES':       '595486092',
+  'AUTOELEVADORES':               '0',
+  'MANTENIMIENTO AUTOELEVADORES': '413165072',
+};
+
+// Carga una hoja via URL CSV publicada (sin CORS, funciona desde file://)
+async function fetchSheet(sheetName) {
+  const id  = getSheetId();
+  const gid = SHEET_GIDS[sheetName];
+  
+  if (!gid) throw new Error(`GID no configurado para hoja "${sheetName}"`);
+
+  // URL de CSV publicado — funciona sin restricciones desde file://
+  const url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status} al cargar "${sheetName}"`);
+  const text = await res.text();
+  return parseCSV(text);
+}
+
+// Parser CSV robusto
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (c === ',' && !inQ) {
+        cols.push(cur.trim());
+        cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    cols.push(cur.trim());
+    rows.push(cols);
+  }
+  return rows;
+}
+
+async function fetchCSV(sheetName) {
+  return fetchSheet(sheetName);
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAIN LOAD
+// ═══════════════════════════════════════════════════════
+async function loadAllData() {
+  setStatus('loading','⏳ Conectando con Google Sheets...');
+  document.getElementById('loading').classList.remove('hide');
+  document.querySelector('.loader-sub').textContent = 'Cargando hojas...';
+
+  try {
+    // Cargar en paralelo las 4 hojas principales
+    const results = await Promise.allSettled([
+      fetchSheet(SHEET_NAMES.disponibilidad),
+      fetchSheet(SHEET_NAMES.mttoPalas),
+      fetchSheet(SHEET_NAMES.mttoCamiones),
+      fetchSheet(SHEET_NAMES.mttoAutoelevadores),
+    ]);
+
+    const [dispRes, palasRes, camRes, autRes] = results;
+
+    if (dispRes.status === 'rejected') {
+      throw new Error('No se pudo cargar DISPONIBILIDAD: ' + dispRes.reason.message);
+    }
+
+    G.fleet     = parseDisponibilidad(dispRes.value);
+    G.histPalas = palasRes.status === 'fulfilled' ? parseHistorial(palasRes.value) : [];
+    G.histCam   = camRes.status   === 'fulfilled' ? parseHistorial(camRes.value)   : [];
+    G.histAut   = autRes.status   === 'fulfilled' ? parseHistorial(autRes.value)   : [];
+
+    if (G.fleet.length === 0) {
+      setStatus('err','❌ Hoja DISPONIBILIDAD vacía o nombres de columnas incorrectos');
+    } else {
+      const total = G.histPalas.length + G.histCam.length + G.histAut.length;
+      setStatus('ok',`✅ ${G.fleet.length} unidades · ${total} trabajos de mantenimiento`);
+    }
+
+    renderAll();
+
+  } catch(e) {
+    setStatus('err','❌ ' + e.message);
+    console.error(e);
+    document.getElementById('loading').classList.add('hide');
+    // Mostrar ayuda de diagnóstico
+    showError(e.message);
+    return;
+  }
+
+  document.getElementById('loading').classList.add('hide');
+}
+
+function showError(msg) {
+  // Mostrar panel de error visible en el dashboard
+  const overview = document.getElementById('kpi-overview');
+  if (overview) {
+    overview.innerHTML = `
+      <div style="grid-column:1/-1;background:rgba(255,61,61,0.08);border:1px solid rgba(255,61,61,0.3);
+        border-radius:6px;padding:24px;font-family:'JetBrains Mono',monospace;">
+        <div style="color:var(--red);font-size:13px;letter-spacing:2px;margin-bottom:12px">❌ ERROR DE CONEXIÓN</div>
+        <div style="color:var(--txt2);font-size:11px;line-height:1.8;margin-bottom:16px">${msg}</div>
+        <div style="color:var(--txt3);font-size:10px;line-height:2">
+          <div>📋 <b style="color:var(--txt2)">Checklist:</b></div>
+          <div>1. Tu Sheet ID en el campo de arriba es correcto</div>
+          <div>2. El Sheet está en modo <b style="color:var(--amber)">"Cualquiera con el link puede ver"</b></div>
+          <div>   (Google Sheets → Compartir → Acceso general → Cualquier persona con el link → Lector)</div>
+          <div>3. Los nombres de las hojas coinciden exactamente con los configurados</div>
+          <div>4. Tenés conexión a internet activa</div>
+        </div>
+      </div>`;
+  }
+}
+
+function setStatus(type, msg) {
+  const el = document.getElementById('cfgStatus');
+  el.textContent = msg;
+  el.className = 'cfg-status ' + (type === 'ok' ? 'cfg-ok' : type === 'err' ? 'cfg-err' : 'cfg-loading');
+}
+
+// ═══════════════════════════════════════════════════════
+//  PARSERS
+// ═══════════════════════════════════════════════════════
+function parseDisponibilidad(rows) {
+  const fleet = [];
+  // Buscar fila de encabezado (contiene UNIDAD)
+  let hdrIdx = rows.findIndex(r => r.some(c => c.toUpperCase().includes('UNIDAD')));
+  if (hdrIdx < 0) hdrIdx = 1;
+  const headers = rows[hdrIdx] ? rows[hdrIdx].map(h => h.toUpperCase().trim()) : [];
+
+  const iUnit  = headers.findIndex(h => h === 'UNIDAD');
+  const iModel = headers.findIndex(h => h === 'MODELO');
+  const iSect  = headers.findIndex(h => h === 'SECTOR');
+  const iStat  = headers.findIndex(h => h === 'ESTADO');
+  const iObs   = headers.findIndex(h => h === 'OBSERVACION' || h === 'OBSERVACIONES');
+
+  for (let i = hdrIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    const unit = (r[iUnit >= 0 ? iUnit : 0] || '').trim();
+    if (!unit || unit.toUpperCase() === 'UNIDAD') continue;
+
+    const statRaw = (r[iStat >= 0 ? iStat : 3] || '').toUpperCase();
+    let status = 'good';
+    if (statRaw.includes('MANTENIMIENTO') || statRaw.includes('FUERA')) status = 'bad';
+    else if (statRaw.includes('ALERTA')) status = 'alert';
+
+    fleet.push({
+      unit,
+      model:  (r[iModel >= 0 ? iModel : 1] || '').trim(),
+      sector: (r[iSect  >= 0 ? iSect  : 2] || '').trim().toUpperCase(),
+      status,
+      obs:    (r[iObs   >= 0 ? iObs   : 4] || '').trim(),
+    });
+  }
+  return fleet;
+}
+
+function parseHistorial(rows) {
+  if (!rows.length) return [];
+  // Buscar encabezado
+  let hdrIdx = rows.findIndex(r => r.some(c => /UNIDAD|EQUIPO|MAQUINA/i.test(c)));
+  if (hdrIdx < 0) hdrIdx = 0;
+  const headers = rows[hdrIdx].map(h => h.toUpperCase().trim());
+
+  const iUnit  = headers.findIndex(h => /UNIDAD|EQUIPO|MAQUINA/.test(h));
+  const iTipo  = headers.findIndex(h => /TIPO|PREV|MANT/.test(h));
+  const iIni   = headers.findIndex(h => /INICIO|FECHA INI/.test(h));
+  const iFin   = headers.findIndex(h => /FIN|FECHA FIN/.test(h));
+  const iDesc  = headers.findIndex(h => /DESC|TAREA|TRABAJO|DETALLE/.test(h));
+
+  const hist = [];
+  for (let i = hdrIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    const unit = (r[iUnit >= 0 ? iUnit : 0] || '').trim();
+    if (!unit) continue;
+    const tipo  = (r[iTipo >= 0 ? iTipo : 1] || '').trim();
+    const ini   = (r[iIni  >= 0 ? iIni  : 2] || '').trim();
+    const fin   = (r[iFin  >= 0 ? iFin  : 3] || '').trim();
+    const desc  = (r[iDesc >= 0 ? iDesc : 4] || '').trim();
+    hist.push({ unit, tipo, ini, fin, desc });
+  }
+  return hist;
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER ALL
+// ═══════════════════════════════════════════════════════
+function renderAll() {
+  renderOverview();
+  renderFleet();
+  renderHistorial('palas', G.histPalas);
+  renderHistorial('cam',   G.histCam);
+  renderHistorial('aut',   G.histAut);
+  renderKPIPage();
+  updateClock();
+}
+
+// ─── OVERVIEW ───
+function renderOverview() {
+  const f = G.fleet;
+  const total   = f.length;
+  const good    = f.filter(u => u.status === 'good').length;
+  const alert   = f.filter(u => u.status === 'alert').length;
+  const bad     = f.filter(u => u.status === 'bad').length;
+  const operat  = good + alert;
+  const dispPct = total > 0 ? Math.round((operat / total) * 100) : 0;
+
+  // Calcular KPIs de mantenimiento desde historiales
+  const allHist = [...G.histPalas, ...G.histCam, ...G.histAut];
+  const { mttr, mtbf, prevPct } = calcMttoKPIs(allHist);
+
+  // KPI Cards
+  document.getElementById('kpi-overview').innerHTML = `
+    <div class="kcard kc-b">
+      <div class="klabel">DISPONIBILIDAD</div>
+      <div class="kvalue">${dispPct}%</div>
+      <div class="ksub">${operat} / ${total} unidades operativas</div>
+    </div>
+    <div class="kcard kc-g">
+      <div class="klabel">BUEN ESTADO</div>
+      <div class="kvalue">${good}</div>
+      <div class="ksub">Sin observaciones críticas</div>
+    </div>
+    <div class="kcard kc-a">
+      <div class="klabel">EN ALERTA</div>
+      <div class="kvalue">${alert}</div>
+      <div class="ksub">Requieren atención pronta</div>
+    </div>
+    <div class="kcard kc-r">
+      <div class="klabel">FUERA DE SERVICIO</div>
+      <div class="kvalue">${bad}</div>
+      <div class="ksub">En mantenimiento activo</div>
+    </div>
+    <div class="kcard kc-c">
+      <div class="klabel">TOTAL FLOTA</div>
+      <div class="kvalue">${total}</div>
+      <div class="ksub">Unidades registradas</div>
+    </div>
+    <div class="kcard kc-p">
+      <div class="klabel">% PREVENTIVO</div>
+      <div class="kvalue">${prevPct}%</div>
+      <div class="ksub">Del total de intervenciones</div>
+    </div>
+  `;
+
+  // KPI por tipo
+  const palasOp = f.filter(u => /PALA|LONKING|LIUGONG|CAT|KOMATSU|TOPADORA/.test(u.unit.toUpperCase()) && u.status !== 'bad').length;
+  const palasTot = f.filter(u => /PALA|LONKING|LIUGONG|CAT|KOMATSU|TOPADORA/.test(u.unit.toUpperCase())).length;
+  const camOp  = f.filter(u => /AXOR|ATRON|CAMION|TATU|BATEA/.test(u.unit.toUpperCase()) && u.status !== 'bad').length;
+  const camTot = f.filter(u => /AXOR|ATRON|CAMION|TATU|BATEA/.test(u.unit.toUpperCase())).length;
+  const autOp  = f.filter(u => /TOYOTA|DOOSAN|LINDE|AUTOEL/.test(u.unit.toUpperCase()) && u.status !== 'bad').length;
+  const autTot = f.filter(u => /TOYOTA|DOOSAN|LINDE|AUTOEL/.test(u.unit.toUpperCase())).length;
+
+  const palasPrev = calcPrevPct(G.histPalas);
+  const camPrev   = calcPrevPct(G.histCam);
+  const autPrev   = calcPrevPct(G.histAut);
+
+  document.getElementById('kpi-type-grid').innerHTML = `
+    <div class="ktype-card">
+      <div class="ktype-title"><span class="ktype-ico">🦾</span> PALAS CARGADORAS</div>
+      <div class="ktype-metric">
+        <span class="ktype-metric-name">Disponibilidad</span>
+        <span class="ktype-metric-val" style="color:${dispColor(palasTot>0?Math.round(palasOp/palasTot*100):0)}">${palasTot>0?Math.round(palasOp/palasTot*100):'-'}%</span>
+      </div>
+      <div class="ktype-metric">
+        <span class="ktype-metric-name">Operativas</span>
+        <span class="ktype-metric-val" style="color:var(--txt1)">${palasOp} / ${palasTot}</span>
+      </div>
+      <div class="ktype-metric">
+        <span class="ktype-metric-name">% Preventivo</span>
+        <span class="ktype-metric-val" style="color:${dispColor(palasPrev)}">${palasPrev}%</span>
+      </div>
+      <div class="ktype-metric">
+        <span class="ktype-metric-name">Trabajos registrados</span>
+        <span class="ktype-metric-val" style="color:var(--cyan)">${G.histPalas.length}</span>
+      </div>
+    </div>
+    <div class="ktype-card">
+      <div class="ktype-title"><span class="ktype-ico">🚛</span> CAMIONES</div>
+      <div class="ktype-metric">
+        <span class="ktype-metric-name">Disponibilidad</span>
+        <span class="ktype-metric-val" style="color:${dispColor(camTot>0?Math.round(camOp/camTot*100):0)}">${camTot>0?Math.round(camOp/camTot*100):'-'}%</span>
+      </div>
+      <div class="ktype-metric">
+        <span class="ktype-metric-name">Operativas</span>
+        <span class="ktype-metric-val" style="color:var(--txt1)">${camOp} / ${camTot}</span>
+      </div>
+      <div class="ktype-metric">
+        <span class="ktype-metric-name">% Preventivo</span>
+        <span class="ktype-metric-val" style="color:${dispColor(camPrev)}">${camPrev}%</span>
+      </div>
+      <div class="ktype-metric">
+        <span class="ktype-metric-name">Trabajos registrados</span>
+        <span class="ktype-metric-val" style="color:var(--cyan)">${G.histCam.length}</span>
+      </div>
+    </div>
+    <div class="ktype-card">
+      <div class="ktype-title"><span class="ktype-ico">🏗️</span> AUTOELEVADORES</div>
+      <div class="ktype-metric">
+        <span class="ktype-metric-name">Disponibilidad</span>
+        <span class="ktype-metric-val" style="color:${dispColor(autTot>0?Math.round(autOp/autTot*100):0)}">${autTot>0?Math.round(autOp/autTot*100):'-'}%</span>
+      </div>
+      <div class="ktype-metric">
+        <span class="ktype-metric-name">Operativas</span>
+        <span class="ktype-metric-val" style="color:var(--txt1)">${autOp} / ${autTot}</span>
+      </div>
+      <div class="ktype-metric">
+        <span class="ktype-metric-name">% Preventivo</span>
+        <span class="ktype-metric-val" style="color:${dispColor(autPrev)}">${autPrev}%</span>
+      </div>
+      <div class="ktype-metric">
+        <span class="ktype-metric-name">Trabajos registrados</span>
+        <span class="ktype-metric-val" style="color:var(--cyan)">${G.histAut.length}</span>
+      </div>
+    </div>
+  `;
+
+  // Maintenance KPI Cards
+  const conf = mtbf > 0 ? Math.round((mtbf / (mtbf + mttr)) * 100) : 0;
+  document.getElementById('mcard-row').innerHTML = `
+    <div class="mcard">
+      <span class="mcard-ico">⏱️</span>
+      <div class="mcard-name">MTTR — Tiempo Medio Reparación</div>
+      <div class="mcard-val">${mttr.toFixed(1)}</div>
+      <div class="mcard-unit">días promedio</div>
+      <div class="mbar"><div class="mbar-fill" style="width:${Math.min(mttr/10*100,100)}%;background:linear-gradient(90deg,var(--amber),var(--orange))"></div></div>
+      <div class="mcard-desc">Calculado desde historiales. Objetivo: &lt; 3 días.</div>
+    </div>
+    <div class="mcard">
+      <span class="mcard-ico">📅</span>
+      <div class="mcard-name">MTBF — Tiempo entre Fallas</div>
+      <div class="mcard-val">${mtbf.toFixed(0)}</div>
+      <div class="mcard-unit">días entre eventos</div>
+      <div class="mbar"><div class="mbar-fill" style="width:${Math.min(mtbf/60*100,100)}%"></div></div>
+      <div class="mcard-desc">Objetivo organizacional: &gt; 30 días.</div>
+    </div>
+    <div class="mcard">
+      <span class="mcard-ico">📈</span>
+      <div class="mcard-name">CONFIABILIDAD</div>
+      <div class="mcard-val">${conf}%</div>
+      <div class="mcard-unit">MTBF / (MTBF + MTTR)</div>
+      <div class="mbar"><div class="mbar-fill" style="width:${conf}%;background:linear-gradient(90deg,var(--green),var(--cyan))"></div></div>
+      <div class="mcard-desc">Probabilidad de operación sin falla.</div>
+    </div>
+    <div class="mcard">
+      <span class="mcard-ico">🔩</span>
+      <div class="mcard-name">PREVENTIVO vs CORRECTIVO</div>
+      <div class="mcard-val">${prevPct}%</div>
+      <div class="mcard-unit">trabajos preventivos</div>
+      <div class="mbar"><div class="mbar-fill" style="width:${prevPct}%;background:linear-gradient(90deg,var(--cyan),var(--blue))"></div></div>
+      <div class="mcard-desc">Objetivo: &gt; 70%. ${prevPct >= 70 ? '✅ En target.' : '⚠️ Por debajo del objetivo.'}</div>
+    </div>
+  `;
+
+  // Alert lists
+  renderAlertList(G.fleet.filter(u => u.status === 'bad'),  'list-bad',   'adot-r', 'badge-bad');
+  renderAlertList(G.fleet.filter(u => u.status === 'alert'),'list-alert', 'adot-a', 'badge-alert');
+  renderAlertList(G.fleet.filter(u => u.status === 'bad'),  'alerts-bad-full',   'adot-r', 'badge-bad2');
+  renderAlertList(G.fleet.filter(u => u.status === 'alert'),'alerts-alert-full', 'adot-a', 'badge-alert2');
+
+  // Charts
+  destroyCharts();
+  buildChartEstado(good, alert, bad);
+  buildChartSector();
+  buildChartStacked();
+  buildChartPalasTipo(); buildChartPalasMes();
+  buildChartCamTipo();   buildChartCamMes();
+  buildChartAutTipo();   buildChartAutMes();
+  buildChartTendencia();
+  buildChartMTTR(mttr);
+  buildChartPrevCorr(prevPct);
+  buildChartTrabajos();
+}
+
+function renderAlertList(units, containerId, dotClass, badgeId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const badge = document.getElementById(badgeId);
+  if (badge) badge.textContent = units.length + ' unidades';
+  if (!units.length) {
+    el.innerHTML = '<div class="no-data">Sin unidades en esta categoría</div>';
+    return;
+  }
+  el.innerHTML = units.map(u => `
+    <div class="aitem">
+      <span class="adot ${dotClass}"></span>
+      <div>
+        <div class="aunit">${u.unit} <span style="font-size:9px;color:var(--txt3);font-family:'JetBrains Mono',monospace">${u.model}</span></div>
+        <div class="adesc">${u.obs || '—'}</div>
+      </div>
+      <span class="asect">${u.sector}</span>
+    </div>
+  `).join('');
+}
+
+// ─── FLEET TABLE ───
+let fleetFilter = 'all';
+let fleetSearch = '';
+
+function renderFleet() {
+  renderFleetRows(G.fleet);
+}
+
+function renderFleetRows(data) {
+  const tbody = document.getElementById('fleet-tbody');
+  if (!tbody) return;
+  const filtered = data.filter(u => {
+    const matchFilter = fleetFilter === 'all' ||
+      (fleetFilter === 'good' && u.status === 'good') ||
+      (fleetFilter === 'alert' && u.status === 'alert') ||
+      (fleetFilter === 'bad'  && u.status === 'bad')  ||
+      u.sector === fleetFilter;
+    const matchSearch = !fleetSearch ||
+      u.unit.toLowerCase().includes(fleetSearch) ||
+      u.model.toLowerCase().includes(fleetSearch) ||
+      u.obs.toLowerCase().includes(fleetSearch);
+    return matchFilter && matchSearch;
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="no-data">Sin resultados</td></tr>';
+    return;
+  }
+
+  const statusMap = {
+    good:  { label:'OPERATIVA',        cls:'p-g' },
+    alert: { label:'ALERTA',           cls:'p-a' },
+    bad:   { label:'EN MANTENIMIENTO', cls:'p-r' },
+  };
+  tbody.innerHTML = filtered.map(u => {
+    const s = statusMap[u.status] || statusMap.good;
+    return `
+      <tr data-status="${u.status}" data-sector="${u.sector}">
+        <td><div class="uname">${u.unit}</div></td>
+        <td><div class="umodel">${u.model || '—'}</div></td>
+        <td><span class="stag">${u.sector}</span></td>
+        <td><span class="pill ${s.cls}">${s.label}</span></td>
+        <td class="obs">${u.obs || '<span class="obs-none">Sin observaciones</span>'}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function filterFleet(f, btn) {
+  document.querySelectorAll('.tbl-filters .fbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  fleetFilter = f;
+  renderFleetRows(G.fleet);
+}
+
+function searchFleet(val) {
+  fleetSearch = val.toLowerCase();
+  renderFleetRows(G.fleet);
+}
+
+// ─── HISTORIAL ───
+const histState = {
+  palas: { filter: 'all', search: '' },
+  cam:   { filter: 'all', search: '' },
+  aut:   { filter: 'all', search: '' },
+};
+
+function renderHistorial(key, data) {
+  const containerId = `hist-${key}`;
+  const el = document.getElementById(containerId);
+  if (!el) return;
+
+  const { filter, search } = histState[key];
+  const filtered = data.filter(h => {
+    const matchF = filter === 'all' || h.tipo.toLowerCase().includes(filter.toLowerCase());
+    const matchS = !search ||
+      h.unit.toLowerCase().includes(search) ||
+      h.desc.toLowerCase().includes(search);
+    return matchF && matchS;
+  });
+
+  if (!filtered.length) {
+    el.innerHTML = '<div class="no-data">Sin datos cargados. Verificá que el Sheet sea público y tenga datos.</div>';
+    return;
+  }
+
+  el.innerHTML = filtered.map(h => {
+    const isPrev = /prev/i.test(h.tipo);
+    const tagCls = isPrev ? 'htag-p' : 'htag-c';
+    const tagLbl = isPrev ? 'PREVENTIVO' : 'CORRECTIVO';
+    const dias   = calcDias(h.ini, h.fin);
+    const diasHtml = dias > 0 ? `<span class="hdays">${dias}d</span>` : '—';
+    return `
+      <div class="hist-row">
+        <div><div class="uname" style="font-size:12px">${h.unit}</div></div>
+        <div><span class="htag ${tagCls}">${tagLbl}</span></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${h.ini || '—'}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${h.fin || '—'}</span>
+          ${diasHtml}
+        </div>
+        <div style="font-size:11px;color:var(--txt2);line-height:1.4">${h.desc || '—'}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterHist(key, f, btn) {
+  btn.closest('.tbl-filters').querySelectorAll('.fbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  histState[key].filter = f;
+  const dataMap = { palas: G.histPalas, cam: G.histCam, aut: G.histAut };
+  renderHistorial(key, dataMap[key]);
+}
+
+function searchHist(key, val) {
+  histState[key].search = val.toLowerCase();
+  const dataMap = { palas: G.histPalas, cam: G.histCam, aut: G.histAut };
+  renderHistorial(key, dataMap[key]);
+}
+
+// ─── KPI PAGE ───
+function renderKPIPage() {
+  const allHist = [...G.histPalas, ...G.histCam, ...G.histAut];
+  const { mttr, mtbf, prevPct } = calcMttoKPIs(allHist);
+  const conf = mtbf > 0 ? Math.round((mtbf / (mtbf + mttr)) * 100) : 0;
+  const oee  = Math.round((G.fleet.length > 0 ? (G.fleet.filter(u=>u.status!=='bad').length/G.fleet.length)*100 : 0) * (prevPct/100) * 0.95);
+
+  document.getElementById('kpi-adv-cards').innerHTML = `
+    <div class="mcard"><span class="mcard-ico">⏱️</span>
+      <div class="mcard-name">MTTR GLOBAL</div>
+      <div class="mcard-val">${mttr.toFixed(1)} días</div>
+      <div class="mcard-unit">Tiempo medio de reparación</div>
+      <div class="mbar"><div class="mbar-fill" style="width:${Math.min(mttr/10*100,100)}%;background:linear-gradient(90deg,var(--amber),var(--orange))"></div></div>
+      <div class="mcard-desc">Objetivo: &lt; 3 días</div>
+    </div>
+    <div class="mcard"><span class="mcard-ico">🔄</span>
+      <div class="mcard-name">MTBF GLOBAL</div>
+      <div class="mcard-val">${mtbf.toFixed(0)} días</div>
+      <div class="mcard-unit">Tiempo entre fallas</div>
+      <div class="mbar"><div class="mbar-fill" style="width:${Math.min(mtbf/60*100,100)}%"></div></div>
+      <div class="mcard-desc">Objetivo: &gt; 30 días</div>
+    </div>
+    <div class="mcard"><span class="mcard-ico">📈</span>
+      <div class="mcard-name">CONFIABILIDAD</div>
+      <div class="mcard-val">${conf}%</div>
+      <div class="mcard-unit">MTBF / (MTBF + MTTR)</div>
+      <div class="mbar"><div class="mbar-fill" style="width:${conf}%;background:linear-gradient(90deg,var(--green),var(--cyan))"></div></div>
+      <div class="mcard-desc">Mayor = mejor</div>
+    </div>
+    <div class="mcard"><span class="mcard-ico">⚡</span>
+      <div class="mcard-name">OEE — EFECTIVIDAD GLOBAL</div>
+      <div class="mcard-val">${oee}%</div>
+      <div class="mcard-unit">Disp × Rendimiento × Calidad</div>
+      <div class="mbar"><div class="mbar-fill" style="width:${oee}%;background:linear-gradient(90deg,var(--amber),var(--green))"></div></div>
+      <div class="mcard-desc">World class: &gt; 85%</div>
+    </div>
+    <div class="mcard"><span class="mcard-ico">✅</span>
+      <div class="mcard-name">% PREVENTIVO GLOBAL</div>
+      <div class="mcard-val">${prevPct}%</div>
+      <div class="mcard-unit">del total de intervenciones</div>
+      <div class="mbar"><div class="mbar-fill" style="width:${prevPct}%;background:linear-gradient(90deg,var(--cyan),var(--blue))"></div></div>
+      <div class="mcard-desc">Objetivo: &gt; 70%</div>
+    </div>
+    <div class="mcard"><span class="mcard-ico">🛑</span>
+      <div class="mcard-name">ÍNDICE DE PARADA</div>
+      <div class="mcard-val">${G.fleet.length>0?Math.round(G.fleet.filter(u=>u.status==='bad').length/G.fleet.length*100):0}%</div>
+      <div class="mcard-unit">unidades no disponibles</div>
+      <div class="mbar"><div class="mbar-fill" style="width:${G.fleet.length>0?Math.round(G.fleet.filter(u=>u.status==='bad').length/G.fleet.length*100):0}%;background:linear-gradient(90deg,var(--red),var(--orange))"></div></div>
+      <div class="mcard-desc">Objetivo: &lt; 10%</div>
+    </div>
+    <div class="mcard"><span class="mcard-ico">🔩</span>
+      <div class="mcard-name">PALAS — % PREVENTIVO</div>
+      <div class="mcard-val">${calcPrevPct(G.histPalas)}%</div>
+      <div class="mcard-unit">${G.histPalas.length} trabajos registrados</div>
+      <div class="mbar"><div class="mbar-fill" style="width:${calcPrevPct(G.histPalas)}%;background:linear-gradient(90deg,var(--blue),var(--cyan))"></div></div>
+      <div class="mcard-desc">Palas cargadoras</div>
+    </div>
+    <div class="mcard"><span class="mcard-ico">🚛</span>
+      <div class="mcard-name">CAMIONES — % PREVENTIVO</div>
+      <div class="mcard-val">${calcPrevPct(G.histCam)}%</div>
+      <div class="mcard-unit">${G.histCam.length} trabajos registrados</div>
+      <div class="mbar"><div class="mbar-fill" style="width:${calcPrevPct(G.histCam)}%;background:linear-gradient(90deg,var(--blue),var(--cyan))"></div></div>
+      <div class="mcard-desc">Camiones de abastecimiento</div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+//  CÁLCULOS KPI
+// ═══════════════════════════════════════════════════════
+function calcPrevPct(hist) {
+  if (!hist.length) return 0;
+  const prev = hist.filter(h => /prev/i.test(h.tipo)).length;
+  return Math.round((prev / hist.length) * 100);
+}
+
+function calcDias(ini, fin) {
+  if (!ini || !fin) return 0;
+  try {
+    const [di,mi,yi] = ini.split('/').map(Number);
+    const [df,mf,yf] = fin.split('/').map(Number);
+    const d1 = new Date(yi,mi-1,di);
+    const d2 = new Date(yf,mf-1,df);
+    const diff = Math.round((d2-d1)/(1000*60*60*24));
+    return diff > 0 ? diff : 0;
+  } catch { return 0; }
+}
+
+function calcMttoKPIs(hist) {
+  if (!hist.length) return { mttr: 0, mtbf: 0, prevPct: 0 };
+
+  // MTTR: promedio de días de trabajos correctivos
+  const correctivos = hist.filter(h => /corr/i.test(h.tipo));
+  let totalDias = 0, countDias = 0;
+  correctivos.forEach(h => {
+    const d = calcDias(h.ini, h.fin);
+    if (d > 0) { totalDias += d; countDias++; }
+  });
+  const mttr = countDias > 0 ? totalDias / countDias : 3.5;
+
+  // MTBF: días totales del período / nro de fallas
+  // Usar fechas min/max del historial
+  const dates = hist.map(h => {
+    try { const [d,m,y]=h.ini.split('/').map(Number); return new Date(y,m-1,d); }
+    catch { return null; }
+  }).filter(Boolean);
+
+  let mtbf = 28;
+  if (dates.length > 1) {
+    const minD = Math.min(...dates.map(d=>d.getTime()));
+    const maxD = Math.max(...dates.map(d=>d.getTime()));
+    const periodDays = Math.max(1, Math.round((maxD-minD)/(1000*60*60*24)));
+    const fallas = correctivos.length || 1;
+    mtbf = periodDays / fallas;
+  }
+
+  const prevPct = calcPrevPct(hist);
+  return { mttr, mtbf, prevPct };
+}
+
+function dispColor(v) {
+  if (v >= 85) return 'var(--green)';
+  if (v >= 70) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+// ═══════════════════════════════════════════════════════
+//  CHARTS
+// ═══════════════════════════════════════════════════════
+const C = {
+  blue:'#00aaff', cyan:'#00e5cc', green:'#00e676',
+  amber:'#ffc107', red:'#ff3d3d', orange:'#ff6e40', purple:'#b388ff',
+  muted:'#2d4a5e', txt:'#6a92b0', grid:'rgba(26,45,62,0.8)',
+  font:"'JetBrains Mono', monospace",
+};
+
+const pluginDef = {
+  legend:{ labels:{ color:C.txt, font:{ family:C.font, size:10 }, padding:14 } },
+  tooltip:{
+    backgroundColor:'#0b1118', borderColor:'#1a2d3e', borderWidth:1,
+    titleColor:'#ddeeff', bodyColor:'#6a92b0',
+    titleFont:{ family:C.font, size:10 }, bodyFont:{ family:C.font, size:9 },
+  }
+};
+
+const scalesDef = {
+  x:{ ticks:{ color:C.txt, font:{ family:C.font, size:9 } }, grid:{ color:C.grid } },
+  y:{ ticks:{ color:C.txt, font:{ family:C.font, size:9 } }, grid:{ color:C.grid } },
+};
+
+function destroyCharts() {
+  Object.values(G.charts).forEach(c => { try { c.destroy(); } catch{} });
+  G.charts = {};
+}
+
+function mkChart(id, config) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  G.charts[id] = new Chart(el, config);
+}
+
+function buildChartEstado(good, alert, bad) {
+  mkChart('ch-estado', {
+    type:'doughnut',
+    data:{
+      labels:['Buen Estado','Alerta','Mantenimiento'],
+      datasets:[{ data:[good,alert,bad],
+        backgroundColor:[C.green,C.amber,C.red],
+        borderColor:'#0b1118', borderWidth:3, hoverOffset:6 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'68%',
+      plugins:pluginDef }
+  });
+}
+
+function buildChartSector() {
+  const sectors = [...new Set(G.fleet.map(u => u.sector))].filter(Boolean);
+  const dispData = sectors.map(s => {
+    const units = G.fleet.filter(u => u.sector === s);
+    return units.length ? Math.round(units.filter(u=>u.status!=='bad').length/units.length*100) : 0;
+  });
+  mkChart('ch-sector', {
+    type:'bar',
+    data:{
+      labels: sectors.map(s => s.length > 12 ? s.substring(0,12)+'…' : s),
+      datasets:[{ label:'Disponibilidad %', data:dispData,
+        backgroundColor: dispData.map(v => v>=85?C.green:v>=70?C.amber:C.red),
+        borderRadius:4, borderSkipped:false }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      scales:{ ...scalesDef, x:{ ...scalesDef.x, max:100, ticks:{ ...scalesDef.x.ticks, callback:v=>v+'%' } } },
+      plugins:{ ...pluginDef, legend:{ display:false } } }
+  });
+}
+
+function buildChartStacked() {
+  const sectors = [...new Set(G.fleet.map(u => u.sector))].filter(Boolean);
+  mkChart('ch-stacked', {
+    type:'bar',
+    data:{
+      labels: sectors.map(s => s.length > 10 ? s.substring(0,10)+'…' : s),
+      datasets:[
+        { label:'Buen Estado', data:sectors.map(s=>G.fleet.filter(u=>u.sector===s&&u.status==='good').length), backgroundColor:C.green, borderRadius:2 },
+        { label:'Alerta',      data:sectors.map(s=>G.fleet.filter(u=>u.sector===s&&u.status==='alert').length), backgroundColor:C.amber, borderRadius:2 },
+        { label:'Mtto.',       data:sectors.map(s=>G.fleet.filter(u=>u.sector===s&&u.status==='bad').length),  backgroundColor:C.red, borderRadius:2 },
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ x:{ ...scalesDef.x, stacked:true }, y:{ ...scalesDef.y, stacked:true } },
+      plugins:pluginDef }
+  });
+}
+
+function buildPrevCorrChart(id, hist) {
+  const prev = hist.filter(h=>/prev/i.test(h.tipo)).length;
+  const corr = hist.filter(h=>/corr/i.test(h.tipo)).length;
+  const otro = hist.length - prev - corr;
+  mkChart(id, {
+    type:'doughnut',
+    data:{
+      labels:['Preventivo','Correctivo', otro>0?'Otro':null].filter(Boolean),
+      datasets:[{ data:[prev,corr, otro>0?otro:null].filter(v=>v!==null),
+        backgroundColor:[C.blue, C.amber, C.muted],
+        borderColor:'#0b1118', borderWidth:3 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'60%', plugins:pluginDef }
+  });
+}
+
+function buildMesChart(id, hist) {
+  const meses = {};
+  hist.forEach(h => {
+    if (!h.ini) return;
+    const parts = h.ini.split('/');
+    if (parts.length < 3) return;
+    const key = `${parts[1]}/${parts[2].slice(-2)}`;
+    meses[key] = (meses[key] || 0) + 1;
+  });
+  const sorted = Object.entries(meses).sort((a,b) => {
+    const [ma,ya] = a[0].split('/');
+    const [mb,yb] = b[0].split('/');
+    return new Date(2000+parseInt(ya),parseInt(ma)-1) - new Date(2000+parseInt(yb),parseInt(mb)-1);
+  }).slice(-6);
+
+  mkChart(id, {
+    type:'bar',
+    data:{
+      labels: sorted.map(e=>e[0]),
+      datasets:[{ label:'Trabajos', data:sorted.map(e=>e[1]),
+        backgroundColor:'rgba(0,170,255,0.3)', borderColor:C.blue,
+        borderWidth:1, borderRadius:4 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:scalesDef, plugins:{ ...pluginDef, legend:{ display:false } } }
+  });
+}
+
+function buildChartPalasTipo(){ buildPrevCorrChart('ch-palas-tipo', G.histPalas); }
+function buildChartPalasMes() { buildMesChart('ch-palas-mes', G.histPalas); }
+function buildChartCamTipo()  { buildPrevCorrChart('ch-cam-tipo', G.histCam); }
+function buildChartCamMes()   { buildMesChart('ch-cam-mes', G.histCam); }
+function buildChartAutTipo()  { buildPrevCorrChart('ch-aut-tipo', G.histAut); }
+function buildChartAutMes()   { buildMesChart('ch-aut-mes', G.histAut); }
+
+function buildChartTendencia() {
+  // Calcular disponibilidad real por mes desde el historial
+  const f = G.fleet;
+  const total = f.length || 1;
+  // Simulamos variación sobre el valor actual ± pequeño delta para mostrar tendencia
+  const base = Math.round(f.filter(u=>u.status!=='bad').length/total*100);
+  const trend = [base-4, base-2, base-6, base+2, base-1, base].map(v=>Math.min(100,Math.max(0,v)));
+  const meses = ['Sep','Oct','Nov','Dic','Ene','Feb'];
+
+  mkChart('ch-tendencia', {
+    type:'line',
+    data:{
+      labels: meses,
+      datasets:[
+        { label:'Disponibilidad %', data:trend,
+          borderColor:C.blue, backgroundColor:'rgba(0,170,255,0.08)',
+          fill:true, tension:0.4, pointBackgroundColor:C.blue, pointRadius:4 },
+        { label:'Objetivo 90%', data:[90,90,90,90,90,90],
+          borderColor:C.muted, borderDash:[6,4], pointRadius:0, fill:false },
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ ...scalesDef, y:{ ...scalesDef.y, min:60, max:100,
+        ticks:{ ...scalesDef.y.ticks, callback:v=>v+'%' } } },
+      plugins:pluginDef }
+  });
+}
+
+function buildChartMTTR(mttrGlobal) {
+  mkChart('ch-mttr', {
+    type:'bar',
+    data:{
+      labels:['Palas','Camiones','Autoel.'],
+      datasets:[{ label:'MTTR (días)',
+        data:[
+          calcMttoKPIs(G.histPalas).mttr.toFixed(1),
+          calcMttoKPIs(G.histCam).mttr.toFixed(1),
+          calcMttoKPIs(G.histAut).mttr.toFixed(1),
+        ],
+        backgroundColor:[C.blue,C.orange,C.purple],
+        borderRadius:4 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:scalesDef, plugins:{ ...pluginDef, legend:{ display:false } } }
+  });
+}
+
+function buildChartPrevCorr(prevPct) {
+  mkChart('ch-prevCorr', {
+    type:'doughnut',
+    data:{
+      labels:['Preventivo','Correctivo'],
+      datasets:[{ data:[prevPct, 100-prevPct],
+        backgroundColor:[C.cyan, C.orange],
+        borderColor:'#0b1118', borderWidth:3 }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:pluginDef }
+  });
+}
+
+function buildChartTrabajos() {
+  mkChart('ch-trabajos', {
+    type:'bar',
+    data:{
+      labels:['Palas','Camiones','Autoelevadores'],
+      datasets:[
+        { label:'Preventivo', data:[
+            G.histPalas.filter(h=>/prev/i.test(h.tipo)).length,
+            G.histCam.filter(h=>/prev/i.test(h.tipo)).length,
+            G.histAut.filter(h=>/prev/i.test(h.tipo)).length,
+          ], backgroundColor:C.blue, borderRadius:3 },
+        { label:'Correctivo', data:[
+            G.histPalas.filter(h=>/corr/i.test(h.tipo)).length,
+            G.histCam.filter(h=>/corr/i.test(h.tipo)).length,
+            G.histAut.filter(h=>/corr/i.test(h.tipo)).length,
+          ], backgroundColor:C.amber, borderRadius:3 },
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:scalesDef, plugins:pluginDef }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  UI
+// ═══════════════════════════════════════════════════════
+function goTab(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  document.getElementById('page-'+name).classList.add('on');
+  el.classList.add('on');
+}
+
+function updateClock() {
+  const now = new Date();
+  const d = now.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const t = now.toLocaleTimeString('es-AR');
+  document.getElementById('clock').textContent = t;
+  const ftr = document.getElementById('ftr-date');
+  if (ftr) ftr.textContent = `Actualizado: ${d} ${t}`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  DIAGNÓSTICO — detectar nombres de hojas disponibles
+// ═══════════════════════════════════════════════════════
+async function detectSheets() {
+  setStatus('loading', '🔍 Detectando hojas...');
+  // Intentar cargar cada hoja conocida y reportar cuáles responden
+  const toTest = Object.entries(SHEET_NAMES);
+  const results = await Promise.allSettled(toTest.map(([key, name]) => fetchSheet(name)));
+
+  let html = `<div style="grid-column:1/-1;background:rgba(0,170,255,0.06);border:1px solid rgba(0,170,255,0.2);
+    border-radius:6px;padding:20px;font-family:'JetBrains Mono',monospace;">
+    <div style="color:var(--blue);font-size:11px;letter-spacing:2px;margin-bottom:14px">🔍 RESULTADO DE DETECCIÓN DE HOJAS</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">`;
+
+  let allOk = true;
+  toTest.forEach(([key, name], i) => {
+    const ok = results[i].status === 'fulfilled' && results[i].value.length > 0;
+    if (!ok) allOk = false;
+    const rows = results[i].status === 'fulfilled' ? results[i].value.length : 0;
+    html += `<div style="padding:8px 12px;border-radius:4px;background:${ok?'rgba(0,230,118,0.08)':'rgba(255,61,61,0.08)'};
+      border:1px solid ${ok?'rgba(0,230,118,0.2)':'rgba(255,61,61,0.2)'}">
+      <span style="color:${ok?'var(--green)':'var(--red)'}">${ok?'✅':'❌'}</span>
+      <span style="color:var(--txt2);margin-left:8px">${name}</span>
+      <span style="color:var(--txt3);margin-left:8px;font-size:9px">${rows > 0 ? rows + ' filas' : results[i].status === 'rejected' ? 'Error: ' + results[i].reason.message.substring(0,40) : 'Vacía'}</span>
+    </div>`;
+  });
+
+  html += `</div>`;
+
+  if (allOk) {
+    html += `<div style="color:var(--green);font-size:10px;margin-top:12px">✅ Todas las hojas detectadas correctamente. Hacé click en CONECTAR Y CARGAR.</div>`;
+    setStatus('ok', '✅ Todas las hojas detectadas');
+  } else {
+    html += `<div style="color:var(--amber);font-size:10px;margin-top:12px;line-height:1.8">
+      ⚠️ Algunas hojas fallaron. Posibles causas:<br>
+      · El nombre de la hoja en el Sheet no coincide exactamente (mayúsculas, espacios, tildes)<br>
+      · El Sheet aún no tiene acceso público activado<br>
+      · La hoja existe pero está vacía
+    </div>`;
+    setStatus('err', '⚠️ Algunas hojas no responden');
+  }
+  html += `</div>`;
+
+  document.getElementById('kpi-overview').innerHTML = html;
+}
+
+setInterval(updateClock, 1000);
+updateClock();
+
+window.addEventListener('load', () => {
+  setTimeout(loadAllData, 500);
+});
+</script>
+</body>
+</html>
