@@ -249,10 +249,11 @@ body::after{
 table{width:100%;border-collapse:collapse;}
 thead th{
 thead th{
-  font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:2px;
   text-transform:uppercase;color:#ffffff;font-weight:600;padding:10px 14px;
   text-align:left;border-bottom:2px solid var(--border2);
   background:rgba(0,170,255,0.06);white-space:nowrap;
+  border-right:1px solid var(--border2);
+thead tr th:last-child{border-right:none;}
   border-right:1px solid var(--border2);
 }
 thead tr th:last-child{border-right:none;}
@@ -337,42 +338,6 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   display:flex;align-items:center;font-weight:600;
 }
 .hist-hdr span:last-child{border-right:none;}
-.hist-hdr span{
-  padding:10px 14px;
-  border-right:1px solid var(--border2);
-  display:flex;align-items:center;font-weight:600;
-}
-.hist-hdr span:last-child{border-right:none;}
-.hist-hdr span{
-  padding:10px 14px;
-  border-right:1px solid var(--border2);
-  display:flex;align-items:center;font-weight:600;
-}
-.hist-hdr span:last-child{border-right:none;}
-.hist-hdr span{
-  padding:10px 14px;
-  border-right:1px solid var(--border2);
-  display:flex;align-items:center;font-weight:600;
-}
-.hist-hdr span:last-child{border-right:none;}
-.htag{
-  font-family:'JetBrains Mono',monospace;font-size:8px;padding:3px 8px;
-  border-radius:2px;display:inline-block;letter-spacing:1px;text-transform:uppercase;
-}
-.htag-p{background:rgba(0,170,255,0.1);color:var(--blue);border:1px solid rgba(0,170,255,0.2);}
-.htag-c{background:rgba(255,193,7,0.1);color:var(--amber);border:1px solid rgba(255,193,7,0.2);}
-.hdays{
-  font-family:'JetBrains Mono',monospace;font-size:9px;
-  padding:2px 7px;border-radius:2px;background:rgba(0,229,204,0.1);
-  color:var(--cyan);border:1px solid rgba(0,229,204,0.2);display:inline-block;
-}
-
-/* ── KPI TYPE ROWS ── */
-.kpi-type-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px;}
-.ktype-card{
-  background:var(--bg2);border:1px solid var(--border);border-radius:6px;
-  padding:20px;transition:all 0.2s;
-}
 .ktype-card:hover{border-color:var(--border2);}
 .ktype-title{
   font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;
