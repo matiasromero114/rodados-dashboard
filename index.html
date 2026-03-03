@@ -853,12 +853,12 @@ async function loadAllData() {
     setStatus('err','❌ ' + e.message);
     console.error(e);
     document.getElementById('loading').classList.add('hide');
+    // Mostrar ayuda de diagnóstico
     showError(e.message);
     return;
-  } finally {
-    // Garantizar que el loading siempre se oculte
-    document.getElementById('loading').classList.add('hide');
   }
+
+  document.getElementById('loading').classList.add('hide');
 }
 
 function showError(msg) {
@@ -976,8 +976,8 @@ function parseHistorial(rows) {
 
     const tipo = (r[iTipo] || '').trim();
     // Eliminar caracteres invisibles y normalizar
-    const tipoClean = tipo.replace(/\s/g, ' ').trim().toUpperCase()
-]/g, '').trim().toUpperCase();
+    const tipoClean = tipo.trim().toUpperCase();
+
     const tipoNorm =
       tipoClean.includes('PREV') ? 'Preventivo' :
       tipoClean.includes('CORR') ? 'Correctivo' : '';
@@ -1978,18 +1978,7 @@ setInterval(updateClock, 1000);
 updateClock();
 
 window.addEventListener('load', () => {
-  // Timeout de seguridad: si en 20s no cargó, ocultar loading y mostrar error
-  const safetyTimeout = setTimeout(() => {
-    const ld = document.getElementById('loading');
-    if (ld && !ld.classList.contains('hide')) {
-      ld.classList.add('hide');
-      setStatus('err', '❌ Timeout — verificá conexión y Sheet ID');
-    }
-  }, 20000);
-
-  setTimeout(() => {
-    loadAllData().finally(() => clearTimeout(safetyTimeout));
-  }, 500);
+  setTimeout(loadAllData, 500);
 });
 </script>
 </body>
