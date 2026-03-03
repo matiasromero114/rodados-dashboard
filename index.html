@@ -248,15 +248,17 @@ body::after{
 .fsearch:focus{outline:none;border-color:var(--blue);}
 table{width:100%;border-collapse:collapse;}
 thead th{
+thead th{
   font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:2px;
   text-transform:uppercase;color:#ffffff;font-weight:600;padding:10px 14px;
   text-align:left;border-bottom:2px solid var(--border2);
   background:rgba(0,170,255,0.06);white-space:nowrap;
   border-right:1px solid var(--border2);
-thead tr th:last-child{border-right:none;}
+}
 thead tr th:last-child{border-right:none;}
 tbody td{padding:10px 14px;font-size:12px;border-bottom:1px solid rgba(26,45,62,0.5);vertical-align:middle;}
 tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:rgba(0,170,255,0.03);}
 tbody tr:hover td{background:rgba(0,170,255,0.03);}
 .uname{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;letter-spacing:1px;}
 .umodel{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3);margin-top:1px;}
