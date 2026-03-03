@@ -333,6 +333,12 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   display:flex;align-items:center;font-weight:600;
 }
 .hist-hdr span:last-child{border-right:none;}
+.hist-hdr span{
+  padding:10px 14px;
+  border-right:1px solid var(--border2);
+  display:flex;align-items:center;font-weight:600;
+}
+.hist-hdr span:last-child{border-right:none;}
 .htag{
   font-family:'JetBrains Mono',monospace;font-size:8px;padding:3px 8px;
   border-radius:2px;display:inline-block;letter-spacing:1px;text-transform:uppercase;
@@ -982,8 +988,7 @@ function parseHistorial(rows) {
 
     const tipo = (r[iTipo] || '').trim();
     // Eliminar caracteres invisibles y normalizar
-    const tipoClean = tipo.replace(/[​-‍﻿
-]/g, '').trim().toUpperCase();
+    const tipoClean = tipo.trim().toUpperCase();
     const tipoNorm =
       tipoClean.includes('PREV') ? 'Preventivo' :
       tipoClean.includes('CORR') ? 'Correctivo' : '';
