@@ -323,10 +323,16 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 .hist-row:hover{background:rgba(0,170,255,0.03);}
 .hist-hdr{
   font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:2px;
-  text-transform:uppercase;color:var(--txt3);padding:9px 14px;
-  border-bottom:1px solid var(--border);background:rgba(0,0,0,0.2);
-  display:grid;grid-template-columns:repeat(5,1fr);gap:8px;
+  text-transform:uppercase;color:#ffffff;padding:0;
+  border-bottom:2px solid var(--border2);background:rgba(0,170,255,0.06);
+  display:grid;grid-template-columns:repeat(5,1fr);gap:0;
 }
+.hist-hdr span{
+  padding:10px 14px;
+  border-right:1px solid var(--border2);
+  display:flex;align-items:center;font-weight:600;
+}
+.hist-hdr span:last-child{border-right:none;}
 .htag{
   font-family:'JetBrains Mono',monospace;font-size:8px;padding:3px 8px;
   border-radius:2px;display:inline-block;letter-spacing:1px;text-transform:uppercase;
@@ -976,8 +982,8 @@ function parseHistorial(rows) {
 
     const tipo = (r[iTipo] || '').trim();
     // Eliminar caracteres invisibles y normalizar
-    const tipoClean = tipo.trim().toUpperCase();
-
+    const tipoClean = tipo.replace(/[​-‍﻿
+]/g, '').trim().toUpperCase();
     const tipoNorm =
       tipoClean.includes('PREV') ? 'Preventivo' :
       tipoClean.includes('CORR') ? 'Correctivo' : '';
