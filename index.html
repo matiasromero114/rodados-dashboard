@@ -940,57 +940,55 @@ function parseDisponibilidad(rows) {
 function parseHistorial(rows) {
   if (!rows.length) return [];
 
-  // Buscar fila de encabezado
-  let hdrIdx = rows.findIndex(r => r.some(c => /MODELO|TIPO.*MANT|DOMINIO|FECHA.*INICIO/i.test((c||'').trim())));
+  // Buscar fila de encabezado buscando columnas clave
+  let hdrIdx = rows.findIndex(r => r.some(c => { const v = (c||'').trim().toUpperCase(); return v === 'MODELO' || v.includes('TIPO MANT') || v.includes('DOMINIO') || v.includes('FECHA INICIO'); }));
   if (hdrIdx < 0) hdrIdx = 0;
   const headers = (rows[hdrIdx] || []).map(h => (h||'').toUpperCase().trim());
 
-  // Detectar estructura automáticamente según encabezados reales:
-  // PALAS:    A=MODELO,       B=FALLAS, C=TIPO MANT, D=RESP, E=FECHA INI, F=FECHA FIN, I=DESC
-  // CAMIONES: A=TIPO/DOMINIO, B=TIPO MANT, C=FALLAS, D=CONDUCTOR, E=RESP, F=FECHA INI, G=FECHA FIN, J=DESC
-  // AUTOELEVADORES: similar a palas o camiones
+  // Detectar estructura por encabezados:
+  // PALAS/AUTOEL: A=MODELO, B=FALLAS, C=TIPO MANT, D=RESP, E=FECHA INI, F=FECHA FIN, G=ESTADO, H=INFORME, I=DESC
+  // CAMIONES:     A=TIPO/DOMINIO, B=TIPO MANT, C=FALLAS, D=CONDUCTOR, E=RESP, F=FECHA INI, G=FECHA FIN, H=ESTADO, I=INFORME, J=DESC
 
-  // Buscar índices por nombre de columna — funciona para ambas estructuras
-  const findCol = (patterns) => {
-    const idx = headers.findIndex(h => patterns.some(p => p.test(h)));
-    return idx >= 0 ? idx : -1;
+  // Buscar índice de columna por lista de strings (coincidencia parcial, sin regex)
+  const findIdx = (keywords, fallback) => {
+    const idx = headers.findIndex(h => keywords.some(k => h.includes(k)));
+    return idx >= 0 ? idx : fallback;
   };
 
-  const iUnit  = findCol([/^MODELO$/, /^TIPO.DOMINIO$/, /DOMINIO/, /^UNIDAD$/]);
-  const iTipo  = findCol([/TIPO.*MANT/, /^TIPO\s*MANT/]);
-  const iIni   = findCol([/FECHA.*INICIO/, /^INICIO$/]);
-  const iFin   = findCol([/FECHA.*FIN/, /^FIN$/]);
-  const iDesc  = findCol([/^DESCRIPCION$/, /^DESCRIP/, /DETALLE/]);
-
-  // Fallbacks por posición si no se encuentran por nombre
-  // Palas:    unit=0, tipo=2, ini=4, fin=5, desc=8
-  // Camiones: unit=0, tipo=1, ini=5, fin=6, desc=9
-  const uIdx = iUnit  >= 0 ? iUnit  : 0;
-  const tIdx = iTipo  >= 0 ? iTipo  : (headers[1] && /TIPO/i.test(headers[1]) ? 1 : 2);
-  const iIdx = iIni   >= 0 ? iIni   : (headers[5] && /FECHA/i.test(headers[5]) ? 5 : 4);
-  const fIdx = iFin   >= 0 ? iFin   : (headers[6] && /FECHA/i.test(headers[6]) ? 6 : 5);
-  const dIdx = iDesc  >= 0 ? iDesc  : (headers[9] ? 9 : 8);
+  const iUnit = findIdx(['MODELO', 'DOMINIO'], 0);
+  const iTipo = findIdx(['TIPO MANT', 'TIPOMANT', 'TIPO_MANT'], 2);
+  const iIni  = findIdx(['FECHA INICIO', 'FECHAINICIO'], iTipo === 1 ? 5 : 4);
+  const iFin  = findIdx(['FECHA FIN', 'FECHAFIN'], iTipo === 1 ? 6 : 5);
+  const iDesc = findIdx(['DESCRIPCION', 'DESCRIPCI'], iTipo === 1 ? 9 : 8);
 
   const hist = [];
   for (let i = hdrIdx + 1; i < rows.length; i++) {
     const r = rows[i];
-    const unit = (r[uIdx] || '').trim();
-    if (!unit || /^MODELO$/i.test(unit) || /^TIPO.DOMINIO$/i.test(unit)) continue;
+    if (!r || r.length < 3) continue;
 
-    const tipo = (r[tIdx] || '').trim();
-    // Limpiar y normalizar — eliminar caracteres invisibles y espacios extra
-    const tipoClean = tipo.replace(/[​-‍﻿]/g, '').trim().toUpperCase();
+    const unit = (r[iUnit] || '').trim();
+
+    // FILTRO ESTRICTO: la unidad debe tener contenido real
+    // y NO ser un texto largo (eso sería una descripción mal leída)
+    if (!unit) continue;
+    if (unit.length > 40) continue;  // las unidades son cortas, descripciones son largas
+    if (/^(MODELO|TIPO.DOMINIO|UNIDAD)$/i.test(unit)) continue; // saltar encabezados repetidos
+
+    const tipo = (r[iTipo] || '').trim();
+    // Eliminar caracteres invisibles y normalizar
+    const tipoClean = tipo.replace(/[​-‍﻿
+]/g, '').trim().toUpperCase();
     const tipoNorm =
-      (tipoClean.includes('PREV') || tipoClean === 'PM') ? 'Preventivo' :
-      (tipoClean.includes('CORR') || tipoClean === 'CM') ? 'Correctivo' :
-      tipoClean === '' ? '' : tipo;
+      tipoClean.includes('PREV') ? 'Preventivo' :
+      tipoClean.includes('CORR') ? 'Correctivo' : '';
 
-    // Solo incluir filas que tengan tipo reconocido o al menos una fecha
-    const ini  = (r[iIdx] || '').trim();
-    const fin  = (r[fIdx] || '').trim();
-    const desc = (r[dIdx] || '').trim();
+    // FILTRO ESTRICTO: solo incluir filas con tipo PREVENTIVO o CORRECTIVO reconocido
+    // Esto elimina filas vacías, subtítulos, notas y cualquier fila sin tipo válido
+    if (!tipoNorm) continue;
 
-    if (!tipoNorm && !ini) continue; // saltar filas vacías
+    const ini  = (r[iIni]  || '').trim();
+    const fin  = (r[iFin]  || '').trim();
+    const desc = (r[iDesc] || '').trim();
 
     hist.push({ unit, tipo: tipoNorm, ini, fin, desc });
   }
