@@ -1013,9 +1013,9 @@ function renderOverview() {
   const f = G.fleet;
   const total   = f.length;
   const good    = f.filter(u => u.status === 'good').length;
-  const alert   = f.filter(u => u.status === 'alert').length;
+  const alertCount = f.filter(u => u.status === 'alert').length;
   const bad     = f.filter(u => u.status === 'bad').length;
-  const operat  = good + alert;
+  const operat  = good + alertCount;
   const dispPct = total > 0 ? Math.round((operat / total) * 100) : 0;
 
   // Calcular KPIs de mantenimiento desde historiales
@@ -1036,7 +1036,7 @@ function renderOverview() {
     </div>
     <div class="kcard kc-a">
       <div class="klabel">EN ALERTA</div>
-      <div class="kvalue">${alert}</div>
+      <div class="kvalue">${alertCount}</div>
       <div class="ksub">Requieren atención pronta</div>
     </div>
     <div class="kcard kc-r">
@@ -1188,9 +1188,9 @@ function renderOverview() {
   const f = G.fleet;
   const total   = f.length;
   const good    = f.filter(u => u.status === 'good').length;
-  const alert   = f.filter(u => u.status === 'alert').length;
+  const alertCount = f.filter(u => u.status === 'alert').length;
   const bad     = f.filter(u => u.status === 'bad').length;
-  const operat  = good + alert;
+  const operat  = good + alertCount;
   const dispPct = total > 0 ? Math.round((operat / total) * 100) : 0;
 
   // Calcular KPIs de mantenimiento desde historiales
@@ -1211,7 +1211,7 @@ function renderOverview() {
     </div>
     <div class="kcard kc-a">
       <div class="klabel">EN ALERTA</div>
-      <div class="kvalue">${alert}</div>
+      <div class="kvalue">${alertCount}</div>
       <div class="ksub">Requieren atención pronta</div>
     </div>
     <div class="kcard kc-r">
@@ -2157,3 +2157,4 @@ window.addEventListener('load', () => {
 </script>
 </body>
 </html>
+
