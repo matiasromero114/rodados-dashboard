@@ -493,6 +493,9 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
       <div id="list-alert"></div>
     </div>
   </div>
+
+  <div class="slabel">SERVICES — PRÓXIMOS Y URGENTES</div>
+  <div id="overview-services"></div>
 </div>
 
 <!-- ── PAGE: FLEET ── -->
@@ -998,7 +1001,9 @@ function parseHistorial(rows) {
 //  RENDER ALL
 // ═══════════════════════════════════════════════════════
 function renderAll() {
+function renderAll() {
   renderOverview();
+  renderOverviewServices();
   renderFleet();
   renderHistorial('palas', G.histPalas);
   renderHistorial('cam',   G.histCam);
@@ -1008,7 +1013,58 @@ function renderAll() {
   updateClock();
 }
 
-// ─── OVERVIEW ───
+// ─── OVERVIEW SERVICES ───
+function renderOverviewServices() {
+  const el = document.getElementById('overview-services');
+  if (!el) return;
+
+  if (!G.services || !G.services.length) {
+    el.innerHTML = '<div class="no-data" style="padding:16px;color:var(--txt3);font-size:11px">Sin datos de services cargados.</div>';
+    return;
+  }
+
+  // Filtrar solo URGENTE, ALERTA y PLANIFICAR (excluir OK)
+  const alertas = G.services
+    .filter(s => s.alertLevel !== 'ok')
+    .sort((a,b) => {
+      const order = { urgente:0, alerta:1, planificar:2 };
+      return (order[a.alertLevel]??9) - (order[b.alertLevel]??9);
+    });
+
+  if (!alertas.length) {
+    el.innerHTML = '<div style="padding:16px;background:rgba(0,230,118,0.06);border:1px solid rgba(0,230,118,0.2);border-radius:6px;color:var(--green);font-family:JetBrains Mono,monospace;font-size:11px;letter-spacing:1px">✅ Todas las unidades tienen el service al día.</div>';
+    return;
+  }
+
+  const alertMap = {
+    urgente:    { color:'var(--red)',    bg:'rgba(255,61,61,0.08)',    border:'rgba(255,61,61,0.25)',    lbl:'🔴 URGENTE',    sub:'< 50 hs' },
+    alerta:     { color:'var(--orange)', bg:'rgba(255,110,64,0.08)',   border:'rgba(255,110,64,0.25)',   lbl:'🟠 ALERTA',     sub:'50–75 hs' },
+    planificar: { color:'var(--amber)',  bg:'rgba(255,193,7,0.08)',    border:'rgba(255,193,7,0.25)',    lbl:'🟡 PLANIFICAR', sub:'75–150 hs' },
+  };
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:4px">
+      ${alertas.map(s => {
+        const am = alertMap[s.alertLevel];
+        return `
+          <div style="background:${am.bg};border:1px solid ${am.border};border-radius:6px;padding:12px 16px;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;color:var(--txt1)">${s.maq}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:${am.color};letter-spacing:1px">${am.lbl}</span>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3)">${s.modelo || '—'} · ${s.sector || '—'}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">Hs restantes:</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${am.color}">${s.hRest} hs</span>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3)">Próx. service: ${s.hProx || '—'} hs · Fecha planif.: ${s.fecha || '—'}</div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
 function renderOverview() {
   const f = G.fleet;
   const total   = f.length;
