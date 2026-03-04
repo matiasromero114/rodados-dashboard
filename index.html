@@ -493,9 +493,6 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
       <div id="list-alert"></div>
     </div>
   </div>
-
-  <div class="slabel">SERVICES — PRÓXIMOS Y URGENTES</div>
-  <div id="overview-services"></div>
 </div>
 
 <!-- ── PAGE: FLEET ── -->
@@ -1002,7 +999,6 @@ function parseHistorial(rows) {
 // ═══════════════════════════════════════════════════════
 function renderAll() {
   renderOverview();
-  renderOverviewServices();
   renderFleet();
   renderHistorial('palas', G.histPalas);
   renderHistorial('cam',   G.histCam);
@@ -1013,20 +1009,6 @@ function renderAll() {
 }
 
 // ─── OVERVIEW SERVICES ───
-function renderOverviewServices() {
-  var el = document.getElementById("overview-services");
-  if (!el) return;
-  if (!G.services || !G.services.length) { el.innerHTML = ""; return; }
-  var alertas = G.services.filter(function(s){ return s.alertLevel !== "ok"; });
-  alertas.sort(function(a,b){
-    var o = {urgente:0,alerta:1,planificar:2};
-    return (o[a.alertLevel]||9)-(o[b.alertLevel]||9);
-  });
-  if (!alertas.length) {
-    el.innerHTML = "<div style='padding:14px;background:rgba(0,230,118,0.06);border:1px solid rgba(0,230,118,0.2);border-radius:6px;color:var(--green);font-size:11px'>&#10003; Todas las unidades tienen el service al dia.</div>";
-    return;
-  }
-
 function renderOverview() {
   const f = G.fleet;
   const total   = f.length;
