@@ -398,7 +398,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   .cfg-bar, .nav, .hdr-scan, .refresh-btn, .fbtn, .fsearch,
   .tbl-wrap, #page-fleet, #page-palas, #page-camiones,
   #page-autoel, #page-kpis, #page-alerts, #page-services { display: none !important; }
-  #page-overview { display: block !important; }
+  #page-overview, .print-target { display: block !important; }
   body, .main, .page, .ccard, .kpi-card {
     background: #fff !important; color: #111 !important; box-shadow: none !important;
   }
@@ -727,6 +727,9 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 
 <!-- ── PAGE: SERVICES ── -->
 <div id="page-services" class="page">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+    <button class="refresh-btn" onclick="exportPDFPage('page-services')" style="background:rgba(255,80,80,0.08);border-color:#ff5050;color:#ff5050;">&#11015; EXPORTAR SERVICES PDF</button>
+  </div>
   <div class="slabel">SERVICES — PLANIFICACIÓN Y ESTADO</div>
   <div class="kpi-row" id="kpi-services"></div>
   <div class="slabel">PRÓXIMOS SERVICES — ALERTA POR VENCIMIENTO</div>
@@ -2202,6 +2205,19 @@ function exportPDF() {
     hdrL.setAttribute("data-fecha", d + " " + t);
   }
   window.print();
+}
+
+function exportPDFPage(pageId) {
+  var now = new Date();
+  var d = now.toLocaleDateString("es-AR", {day:"2-digit", month:"2-digit", year:"numeric"});
+  var t = now.toLocaleTimeString("es-AR", {hour:"2-digit", minute:"2-digit"});
+  var hdrL = document.querySelector(".hdr-l");
+  if (hdrL) hdrL.setAttribute("data-fecha", d + " " + t);
+  var target = document.getElementById(pageId);
+  if (!target) { window.print(); return; }
+  target.classList.add("print-target");
+  window.print();
+  target.classList.remove("print-target");
 }
 </script>
 </body>
