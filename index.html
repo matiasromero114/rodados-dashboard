@@ -393,6 +393,43 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   font-family:'JetBrains Mono',monospace;font-size:10px;
   color:var(--txt3);letter-spacing:2px;
 }
+
+@media print {
+  .cfg-bar, .nav, .hdr-scan, .refresh-btn, .fbtn, .fsearch,
+  .tbl-wrap, #page-fleet, #page-palas, #page-camiones,
+  #page-autoel, #page-kpis, #page-alerts, #page-services { display: none !important; }
+  #page-overview { display: block !important; }
+  body, .main, .page, .ccard, .kpi-card {
+    background: #fff !important; color: #111 !important; box-shadow: none !important;
+  }
+  .hdr {
+    background: #fff !important; border-bottom: 2px solid #0af !important;
+    padding: 8px 16px !important; display: flex !important;
+    align-items: center !important; gap: 12px !important;
+  }
+  .hdr-title { color: #0af !important; font-size: 18px !important; }
+  .hdr-sub   { color: #444 !important; font-size: 11px !important; }
+  .hdr-r, .live, .clock { display: none !important; }
+  .hdr-l::after {
+    content: "Reporte generado: " attr(data-fecha);
+    font-size: 10px; color: #888; margin-left: auto;
+  }
+  .charts3, .charts2 {
+    display: grid !important; grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  .kpi-row { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 10px !important; }
+  .ccard {
+    border: 1px solid #ddd !important; border-radius: 6px !important;
+    padding: 10px !important; page-break-inside: avoid;
+  }
+  .ctitle { color: #0af !important; font-size: 11px !important; }
+  .kpi-val { color: #111 !important; }
+  .kpi-lbl { color: #555 !important; }
+  .slabel  { color: #0af !important; border-color: #0af !important; }
+  canvas { max-height: 200px !important; }
+  @page { size: A4 landscape; margin: 12mm 10mm; }
+}
 </style>
 </head>
 <body>
@@ -419,6 +456,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     <div class="clock" id="clock">--:--:--</div>
     <button class="refresh-btn" onclick="loadAllData()">↻ ACTUALIZAR</button>
   </div>
+    <button class="refresh-btn" onclick="exportPDF()" style="background:rgba(255,80,80,0.08);border-color:#ff5050;color:#ff5050;">⬇ EXPORTAR PDF</button>
   <div class="hdr-scan"></div>
 </header>
 
@@ -2154,6 +2192,17 @@ updateClock();
 window.addEventListener('load', () => {
   setTimeout(loadAllData, 500);
 });
+
+function exportPDF() {
+  var hdrL = document.querySelector(".hdr-l");
+  if (hdrL) {
+    var now = new Date();
+    var d = now.toLocaleDateString("es-AR", {day:"2-digit", month:"2-digit", year:"numeric"});
+    var t = now.toLocaleTimeString("es-AR", {hour:"2-digit", minute:"2-digit"});
+    hdrL.setAttribute("data-fecha", d + " " + t);
+  }
+  window.print();
+}
 </script>
 </body>
 </html>
