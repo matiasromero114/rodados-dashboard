@@ -535,6 +535,12 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
       <div class="ch"><canvas id="ch-palas-mes"></canvas></div>
     </div>
   </div>
+  <div class="charts2">
+    <div class="ccard">
+      <div class="ctitle">Fallas por Sistema <span class="cbadge">PALAS</span></div>
+      <div class="ch"><canvas id="ch-palas-fallas"></canvas></div>
+    </div>
+  </div>
   <div class="slabel">HISTORIAL DE TRABAJOS — PALAS</div>
   <div class="tbl-wrap">
     <div class="tbl-filters">
@@ -960,7 +966,7 @@ function parseHistorial(rows) {
   const iIni  = findIdx(['FECHA INICIO', 'FECHAINICIO'], iTipo === 1 ? 5 : 4);
   const iFin  = findIdx(['FECHA FIN', 'FECHAFIN'], iTipo === 1 ? 6 : 5);
   const iDesc = findIdx(['DESCRIPCION', 'DESCRIPCI'], iTipo === 1 ? 9 : 8);
-
+  const iFalla = findIdx(['FALLA', 'REQUER'], 1);
   const hist = [];
   for (let i = hdrIdx + 1; i < rows.length; i++) {
     const r = rows[i];
@@ -989,7 +995,8 @@ function parseHistorial(rows) {
     const fin  = (r[iFin]  || '').trim();
     const desc = (r[iDesc] || '').trim();
 
-    hist.push({ unit, tipo: tipoNorm, ini, fin, desc });
+    const falla = (r[iFalla] || '').trim();
+    hist.push({ unit, tipo: tipoNorm, ini, fin, desc, falla });
   }
   return hist;
 }
@@ -1176,7 +1183,7 @@ function renderOverview() {
   buildChartEstado(good, alertCount, bad);
   buildChartSector();
   buildChartStacked();
-  buildChartPalasTipo(); buildChartPalasMes();
+  buildChartPalasTipo(); buildChartPalasMes(); buildChartPalasFallas();
   buildChartCamTipo();   buildChartCamMes();
   buildChartAutTipo();   buildChartAutMes();
   buildChartTendencia();
@@ -1819,6 +1826,32 @@ function buildMesChart(id, hist) {
 
 function buildChartPalasTipo(){ buildPrevCorrChart('ch-palas-tipo', G.histPalas); }
 function buildChartPalasMes() { buildMesChart('ch-palas-mes', G.histPalas); }
+
+function buildChartPalasFallas() {
+  var counts = {};
+  G.histPalas.forEach(function(h) {
+    var f = (h.falla || '').trim();
+    if (!f) return;
+    var key = f.toLowerCase();
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  var labels = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
+  var values = labels.map(function(k){ return counts[k]; });
+  var colors = ['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(255,61,61,0.7)','rgba(0,230,118,0.7)','rgba(255,200,100,0.7)','rgba(100,180,255,0.7)','rgba(200,100,200,0.7)','rgba(100,200,150,0.7)'];
+  mkChart('ch-palas-fallas', {
+    type: 'bar',
+    data: {
+      labels: labels.map(function(l){ return l.charAt(0).toUpperCase()+l.slice(1); }),
+      datasets: [{ data: values, backgroundColor: colors.slice(0, values.length), borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c){ return ' '+c.raw+' trabajos'; } } } },
+      scales: { x: { ticks: { color: '#8899aa', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: '#ccd6e0', font: { size: 10 } }, grid: { display: false } } }
+    }
+  });
+}
 function buildChartCamTipo()  { buildPrevCorrChart('ch-cam-tipo', G.histCam); }
 function buildChartCamMes()   { buildMesChart('ch-cam-mes', G.histCam); }
 function buildChartAutTipo()  { buildPrevCorrChart('ch-aut-tipo', G.histAut); }
