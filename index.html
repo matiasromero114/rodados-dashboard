@@ -540,6 +540,10 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
       <div class="ctitle">Fallas por Sistema <span class="cbadge">PALAS</span></div>
       <div class="ch"><canvas id="ch-palas-fallas"></canvas></div>
     </div>
+    <div class="ccard">
+      <div class="ctitle">Trabajos por Responsable <span class="cbadge">PALAS</span></div>
+      <div class="ch"><canvas id="ch-palas-resp"></canvas></div>
+    </div>
   </div>
   <div class="slabel">HISTORIAL DE TRABAJOS — PALAS</div>
   <div class="tbl-wrap">
@@ -967,6 +971,7 @@ function parseHistorial(rows) {
   const iFin  = findIdx(['FECHA FIN', 'FECHAFIN'], iTipo === 1 ? 6 : 5);
   const iDesc = findIdx(['DESCRIPCION', 'DESCRIPCI'], iTipo === 1 ? 9 : 8);
   const iFalla = findIdx(['FALLA', 'REQUER'], 1);
+  const iResp  = findIdx(['RESPONSABLE', 'RESP'], 3);
   const hist = [];
   for (let i = hdrIdx + 1; i < rows.length; i++) {
     const r = rows[i];
@@ -996,7 +1001,8 @@ function parseHistorial(rows) {
     const desc = (r[iDesc] || '').trim();
 
     const falla = (r[iFalla] || '').trim();
-    hist.push({ unit, tipo: tipoNorm, ini, fin, desc, falla });
+    const resp  = (r[iResp]  || '').trim();
+    hist.push({ unit, tipo: tipoNorm, ini, fin, desc, falla, resp });
   }
   return hist;
 }
@@ -1183,7 +1189,7 @@ function renderOverview() {
   buildChartEstado(good, alertCount, bad);
   buildChartSector();
   buildChartStacked();
-  buildChartPalasTipo(); buildChartPalasMes(); buildChartPalasFallas();
+  buildChartPalasTipo(); buildChartPalasMes(); buildChartPalasFallas();; buildChartPalasResp();
   buildChartCamTipo();   buildChartCamMes();
   buildChartAutTipo();   buildChartAutMes();
   buildChartTendencia();
@@ -1842,6 +1848,32 @@ function buildChartPalasFallas() {
     type: 'bar',
     data: {
       labels: labels.map(function(l){ return l.charAt(0).toUpperCase()+l.slice(1); }),
+      datasets: [{ data: values, backgroundColor: colors.slice(0, values.length), borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c){ return ' '+c.raw+' trabajos'; } } } },
+      scales: { x: { ticks: { color: '#8899aa', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: '#ccd6e0', font: { size: 10 } }, grid: { display: false } } }
+    }
+  });
+}
+
+function buildChartPalasResp() {
+  var counts = {};
+  G.histPalas.forEach(function(h) {
+    var r = (h.resp || '').trim();
+    if (!r) return;
+    var key = r.toUpperCase();
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  var labels = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
+  var values = labels.map(function(k){ return counts[k]; });
+  var colors = ['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(0,230,118,0.7)'];
+  mkChart('ch-palas-resp', {
+    type: 'bar',
+    data: {
+      labels: labels,
       datasets: [{ data: values, backgroundColor: colors.slice(0, values.length), borderRadius: 4, borderSkipped: false }]
     },
     options: {
