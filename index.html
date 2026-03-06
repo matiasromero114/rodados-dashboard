@@ -540,6 +540,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     <div class="ccard">
       <div class="ctitle">Recuento de Fallas y Trabajos Totales <span class="cbadge">PALAS</span></div>
       <div id="palas-fallas-total" style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--cyan);letter-spacing:1px;margin-bottom:6px"></div>
+      <div id="total-palas-fallas" style="text-align:center;font-family:Rajdhani,sans-serif;font-size:13px;font-weight:700;color:var(--blue);letter-spacing:2px;padding:4px 0 2px">TOTAL: —</div>
       <div class="ch"><canvas id="ch-palas-fallas"></canvas></div>
     </div>
     <div class="ccard">
@@ -577,6 +578,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     <div class="ccard">
       <div class="ctitle">Recuento de Fallas y Trabajos Totales <span class="cbadge">CAMIONES</span></div>
       <div id="cam-fallas-total" style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--cyan);letter-spacing:1px;margin-bottom:6px"></div>
+      <div id="total-cam-fallas" style="text-align:center;font-family:Rajdhani,sans-serif;font-size:13px;font-weight:700;color:var(--blue);letter-spacing:2px;padding:4px 0 2px">TOTAL: —</div>
       <div class="ch"><canvas id="ch-cam-fallas"></canvas></div>
     </div>
     <div class="ccard">
@@ -1859,6 +1861,9 @@ function buildChartPalasFallas() {
   var labels = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
   var values = labels.map(function(k){ return counts[k]; });
   var colors = ['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(255,61,61,0.7)','rgba(0,230,118,0.7)','rgba(255,200,100,0.7)','rgba(100,180,255,0.7)','rgba(200,100,200,0.7)','rgba(100,200,150,0.7)'];
+  var totalPalas = values.reduce(function(a,b){ return a+b; }, 0);
+  var elP = document.getElementById('total-palas-fallas');
+  if (elP) elP.textContent = 'TOTAL: ' + totalPalas + ' trabajos';
   mkChart('ch-palas-fallas', {
     type: 'bar',
     data: {
@@ -1912,6 +1917,9 @@ function buildChartCamFallas() {
   var labels = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
   var values = labels.map(function(k){ return counts[k]; });
   var colors = ['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(255,61,61,0.7)','rgba(0,230,118,0.7)','rgba(255,200,100,0.7)','rgba(100,180,255,0.7)','rgba(200,100,200,0.7)','rgba(100,200,150,0.7)'];
+  var totalCam = values.reduce(function(a,b){ return a+b; }, 0);
+  var elC = document.getElementById('total-cam-fallas');
+  if (elC) elC.textContent = 'TOTAL: ' + totalCam + ' trabajos';
   mkChart('ch-cam-fallas', {
     type: 'bar',
     data: { labels: labels.map(function(l){ return l.charAt(0).toUpperCase()+l.slice(1); }), datasets: [{ data: values, backgroundColor: colors.slice(0,values.length), borderRadius: 4, borderSkipped: false }] },
