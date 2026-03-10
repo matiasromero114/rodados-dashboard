@@ -707,7 +707,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <div class="charts2">
     <div class="ccard">
       <div class="ctitle">Gasto por Mes <span class="cbadge">ARS</span></div>
-      <div class="ch" style="height:280px"><canvas id="ch-costos-mes"></canvas></div>
+      <div class="ch" style="height:320px"><canvas id="ch-costos-mes"></canvas></div>
     </div>
     <div class="ccard">
       <div class="ctitle">Gasto por Proveedor <span class="cbadge">ARS</span></div>
@@ -738,7 +738,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
       <button class="fbtn" onclick="filterCostos('AUTOELEVADOR',this)">🏗️ AUTOEL.</button>
       <input class="fsearch" id="costos-search" placeholder="Buscar unidad, proveedor..." oninput="searchCostos(this.value)">
     </div>
-    <div class="hist-hdr"><span>FECHA</span><span>UNIDAD</span><span>TRABAJO/REPUESTOS</span><span>PROVEEDOR</span><span style="text-align:right">MONTO ARS</span><span style="text-align:right">MONTO USD</span></div>
+    <div class="hist-hdr"><span>FECHA</span><span>UNIDAD</span><span>TRABAJO / REPUESTOS</span><span>PROVEEDOR</span><span style="text-align:right">MONTO ARS</span></div>
     <div id="tabla-costos"></div>
   </div>
 </div>
@@ -2419,7 +2419,7 @@ function renderCostosPage() {
   var kpiEl = document.getElementById("kpi-costos");
   if (kpiEl) kpiEl.innerHTML =
     kpiCard("GASTO TOTAL ARS", fmtARS(totalArs), data.length + " registros", "kc-b") +
-    kpiCard("GASTO TOTAL USD", "$" + totalUsd.toFixed(2), "dólares", "kc-c") +
+    kpiCard("GASTO TOTAL USD", "USD " + totalUsd.toFixed(2), "dólares acumulados", "kc-c") +
     kpiCard("COSTO PROMEDIO / TRABAJO", fmtARS(promArs), "por trabajo", "kc-a") +
     kpiCard("TRABAJO MÁS COSTOSO", fmtARS(maxItem ? maxItem.ars : 0), maxItem ? maxItem.unidad : "", "kc-r");
 
@@ -2454,8 +2454,12 @@ function buildChartCostosMes(data) {
     options: { responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, datalabels: { display: false },
         tooltip: { callbacks: { label: function(c){ return " " + fmtARS(c.raw); } } } },
-      scales: { x: { ticks: { color: "#8899aa", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.05)" } },
-                y: { ticks: { color: "#8899aa", font: { size: 10 }, callback: function(v){ return "$"+Math.round(v/1000)+"k"; } }, grid: { color: "rgba(255,255,255,0.05)" } } } }
+      scales: {
+        x: { ticks: { color: "#ccd6e0", font: { size: 11, weight: "600" }, maxRotation: 45, minRotation: 45 },
+             grid: { color: "rgba(255,255,255,0.05)" } },
+        y: { ticks: { color: "#8899aa", font: { size: 11 },
+             callback: function(v){ return "$"+Math.round(v/1000)+"k"; } },
+             grid: { color: "rgba(255,255,255,0.05)" } } } }
   });
 }
 
@@ -2525,15 +2529,15 @@ function renderTablaCostos(data) {
   });
   var el = document.getElementById("tabla-costos");
   if (!el) return;
-  if (filtered.length === 0) { el.innerHTML = "<div class=\"hist-row\" style=\"color:#888\">Sin registros</div>"; return; }
+  if (filtered.length === 0) { el.innerHTML = '<div class="no-data">Sin registros para mostrar.</div>'; return; }
   el.innerHTML = filtered.map(function(c) {
+    var flotaCls = c.flota === "CAMION" ? "htag-c" : c.flota === "PALA" ? "htag-p" : "htag-p";
     return "<div class=\"hist-row\">" +
-      "<span>" + c.fecha + "</span>" +
-      "<span>" + c.unidad + "</span>" +
-      "<span>" + c.trabajo + "</span>" +
-      "<span>" + c.proveedor + "</span>" +
-      "<span style=\"text-align:right;color:var(--blue)\">" + fmtARS(c.ars) + "</span>" +
-      "<span style=\"text-align:right;color:var(--cyan)\">$" + c.usd.toFixed(2) + "</span>" +
+      "<div style=\"font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)\">" + c.fecha + "</div>" +
+      "<div><div class=\"uname\" style=\"font-size:12px\">" + c.unidad + "</div></div>" +
+      "<div style=\"font-size:11px;color:var(--txt2);line-height:1.4\">" + (c.trabajo || "—") + "</div>" +
+      "<div style=\"font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)\">" + (c.proveedor || "—") + "</div>" +
+      "<div style=\"text-align:right;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--blue)\">" + fmtARS(c.ars) + "</div>" +
       "</div>";
   }).join("");
 }
