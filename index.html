@@ -397,7 +397,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 @media print {
   .cfg-bar, .nav, .hdr-scan, .refresh-btn, .fbtn, .fsearch,
   .tbl-wrap, #page-fleet, #page-palas, #page-camiones,
-  #page-autoel, #page-kpis, #page-alerts, #page-services { display: none !important; }
+  #page-autoel, #page-kpis, #page-alerts, #page-services, #page-costos { display: none !important; }
   #page-overview, .print-target { display: block !important; }
   body, .main, .page, .ccard, .kpi-card {
     background: #fff !important; color: #111 !important; box-shadow: none !important;
@@ -481,6 +481,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <div class="tab" onclick="goTab('kpis',this)">📈 KPIs MTTO</div>
   <div class="tab" onclick="goTab('alerts',this)">⚠️ ALERTAS</div>
   <div class="tab" onclick="goTab('services',this)">🔧 SERVICES</div>
+  <div class="tab" onclick="goTab('costos',this)">💰 COSTOS</div>
 </nav>
 
 <!-- ═══════════════════════════════════
@@ -695,6 +696,50 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   </div>
 </div>
 
+
+<!-- ── PAGE: COSTOS ── -->
+<div id="page-costos" class="page">
+  <div class="slabel">KPIs DE COSTOS — FLOTA GLOBAL</div>
+  <div class="kpi-row" id="kpi-costos"></div>
+
+  <div class="slabel">ANÁLISIS DE COSTOS</div>
+  <div class="charts2">
+    <div class="ccard">
+      <div class="ctitle">Gasto por Mes <span class="cbadge">ARS</span></div>
+      <div class="ch"><canvas id="ch-costos-mes"></canvas></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Gasto por Proveedor <span class="cbadge">ARS</span></div>
+      <div id="total-costos-prov" style="text-align:center;font-family:Rajdhani,sans-serif;font-size:13px;font-weight:700;color:var(--blue);letter-spacing:2px;padding:4px 0 2px">TOTAL: —</div>
+      <div class="ch"><canvas id="ch-costos-prov"></canvas></div>
+    </div>
+  </div>
+  <div class="charts2">
+    <div class="ccard">
+      <div class="ctitle">Gasto por Unidad <span class="cbadge">ARS</span></div>
+      <div id="total-costos-unidad" style="text-align:center;font-family:Rajdhani,sans-serif;font-size:13px;font-weight:700;color:var(--blue);letter-spacing:2px;padding:4px 0 2px">TOTAL: —</div>
+      <div class="ch"><canvas id="ch-costos-unidad"></canvas></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Comparativa por Flota <span class="cbadge">ARS</span></div>
+      <div class="ch" style="max-height:220px"><canvas id="ch-costos-flota"></canvas></div>
+    </div>
+  </div>
+
+  <div class="slabel">DETALLE DE GASTOS</div>
+  <div class="tbl-wrap">
+    <div class="tbl-filters">
+      <button class="fbtn on" onclick="filterCostos('all',this)">TODOS</button>
+      <button class="fbtn" onclick="filterCostos('CAMION',this)">🚛 CAMIONES</button>
+      <button class="fbtn" onclick="filterCostos('PALA',this)">🦾 PALAS</button>
+      <button class="fbtn" onclick="filterCostos('AUTOELEVADOR',this)">🏗️ AUTOEL.</button>
+      <input class="fsearch" id="costos-search" placeholder="Buscar unidad, proveedor..." oninput="searchCostos(this.value)">
+    </div>
+    <div class="hist-hdr"><span>FECHA</span><span>UNIDAD</span><span>TRABAJO/REPUESTOS</span><span>PROVEEDOR</span><span style="text-align:right">MONTO ARS</span><span style="text-align:right">MONTO USD</span></div>
+    <div id="tabla-costos"></div>
+  </div>
+</div>
+
 <!-- ── PAGE: KPIs ── -->
 <div id="page-kpis" class="page">
   <div class="slabel">KPIs AVANZADOS DE MANTENIMIENTO</div>
@@ -805,6 +850,7 @@ const SHEET_NAMES = {
   mttoCamiones:         'MANTENIMIENTO CAMIONES',
   autoelevadores:       'AUTOELEVADORES',
   mttoAutoelevadores:   'MANTENIMIENTO AUTOELEVADORES',
+  costos:               'COSTOS',
 };
 
 // ID del Sheet de Services (planilla separada)
@@ -818,6 +864,7 @@ let G = {
   histCam: [],
   histAut: [],
   services: [],
+  costos: [],
   servicesFilter: 'all',
   charts: {},
 };
@@ -846,6 +893,7 @@ const SHEET_GIDS = {
   'MANTENIMIENTO CAMIONES':       '595486092',
   'AUTOELEVADORES':               '0',
   'MANTENIMIENTO AUTOELEVADORES': '413165072',
+  'COSTOS':                       '336389855',
 };
 
 // Carga una hoja via URL CSV publicada (sin CORS, funciona desde file://)
@@ -930,6 +978,15 @@ async function loadAllData() {
     G.histPalas = palasRes.status === 'fulfilled' ? parseHistorial(palasRes.value) : [];
     G.histCam   = camRes.status   === 'fulfilled' ? parseHistorial(camRes.value)   : [];
     G.histAut   = autRes.status   === 'fulfilled' ? parseHistorial(autRes.value)   : [];
+
+    // Cargar hoja COSTOS
+    try {
+      const costosRows = await fetchSheet(SHEET_NAMES.costos);
+      G.costos = parseCostos(costosRows);
+    } catch(e) {
+      console.warn("No se pudo cargar COSTOS:", e);
+      G.costos = [];
+    }
 
     // Cargar services desde planilla externa
     try {
@@ -1108,6 +1165,7 @@ function renderAll() {
   renderHistorial('aut',   G.histAut);
   renderKPIPage();
   renderServicesPage();
+  renderCostosPage();
   updateClock();
 }
 
@@ -2294,6 +2352,197 @@ function exportPDFPage(pageId) {
   target.classList.add("print-target");
   window.print();
   target.classList.remove("print-target");
+}
+
+// ═══════════════════════════════════════════════════════
+//  COSTOS
+// ═══════════════════════════════════════════════════════
+
+function parseCostos(rows) {
+  if (!rows || rows.length < 2) return [];
+  var headers = rows[0].map(function(h){ return (h||"").trim().toUpperCase(); });
+  function fi(names) {
+    for (var n = 0; n < names.length; n++) {
+      var idx = headers.findIndex(function(h){ return h.includes(names[n]); });
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  }
+  var iFecha = fi(["FECHA"]);
+  var iTrab  = fi(["TRABAJO", "REPUESTO"]);
+  var iUnid  = fi(["UNIDAD"]);
+  var iProv  = fi(["PROVEEDOR"]);
+  var iArs   = fi(["ARS"]);
+  var iUsd   = fi(["USD"]);
+  var result = [];
+  for (var i = 1; i < rows.length; i++) {
+    var r = rows[i];
+    var unidad = (r[iUnid] || "").trim();
+    if (!unidad) continue;
+    var montoArs = parseFloat((r[iArs] || "0").replace(/[^0-9.-]/g,"")) || 0;
+    var montoUsd = parseFloat((r[iUsd] || "0").replace(/[^0-9.-]/g,"")) || 0;
+    var unidUp = unidad.toUpperCase();
+    var flota = unidUp.includes("CAMION") ? "CAMION" : unidUp.includes("PALA") ? "PALA" : unidUp.includes("AUTOELEVADOR") ? "AUTOELEVADOR" : "OTRO";
+    result.push({
+      fecha:    (r[iFecha] || "").trim(),
+      trabajo:  (r[iTrab]  || "").trim(),
+      unidad:   unidad,
+      proveedor:(r[iProv]  || "").trim(),
+      ars:      montoArs,
+      usd:      montoUsd,
+      flota:    flota
+    });
+  }
+  return result;
+}
+
+function fmtARS(n) {
+  return "$" + Math.round(n).toLocaleString("es-AR");
+}
+
+var costosFilter = "all";
+
+function renderCostosPage() {
+  var data = G.costos;
+  if (!data || data.length === 0) return;
+
+  // KPIs
+  var totalArs  = data.reduce(function(s,c){ return s + c.ars; }, 0);
+  var totalUsd  = data.reduce(function(s,c){ return s + c.usd; }, 0);
+  var promArs   = data.length > 0 ? totalArs / data.length : 0;
+  var maxItem   = data.reduce(function(a,b){ return b.ars > a.ars ? b : a; }, data[0]);
+
+  var kpiEl = document.getElementById("kpi-costos");
+  if (kpiEl) kpiEl.innerHTML =
+    kpiCard("GASTO TOTAL ARS", fmtARS(totalArs), "", "var(--blue)") +
+    kpiCard("GASTO TOTAL USD", "$" + totalUsd.toFixed(2), "", "var(--cyan)") +
+    kpiCard("COSTO PROMEDIO / TRABAJO", fmtARS(promArs), "", "var(--yellow)") +
+    kpiCard("TRABAJO MÁS COSTOSO", fmtARS(maxItem ? maxItem.ars : 0), maxItem ? maxItem.unidad : "", "var(--red)");
+
+  buildChartCostosMes(data);
+  buildChartCostosProv(data);
+  buildChartCostosUnidad(data);
+  buildChartCostosFlota(data);
+  renderTablaCostos(data);
+}
+
+function kpiCard(lbl, val, sub, color) {
+  return "<div class=\"kpi-card\">" +
+    "<div class=\"kpi-lbl\">" + lbl + "</div>" +
+    "<div class=\"kpi-val\" style=\"color:" + color + "\">" + val + "</div>" +
+    (sub ? "<div class=\"kpi-sub\">" + sub + "</div>" : "") +
+    "</div>";
+}
+
+function buildChartCostosMes(data) {
+  var meses = {};
+  data.forEach(function(c) {
+    var f = (c.fecha || "").trim();
+    var key = f.length >= 7 ? f.substring(0,7) : f;
+    if (!key) return;
+    meses[key] = (meses[key] || 0) + c.ars;
+  });
+  var labels = Object.keys(meses).sort();
+  var values = labels.map(function(k){ return meses[k]; });
+  mkChart("ch-costos-mes", {
+    type: "bar",
+    data: { labels: labels, datasets: [{ data: values, backgroundColor: "rgba(0,170,255,0.7)", borderRadius: 4, borderSkipped: false }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, datalabels: { display: false },
+        tooltip: { callbacks: { label: function(c){ return " " + fmtARS(c.raw); } } } },
+      scales: { x: { ticks: { color: "#8899aa", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.05)" } },
+                y: { ticks: { color: "#8899aa", font: { size: 10 }, callback: function(v){ return "$"+Math.round(v/1000)+"k"; } }, grid: { color: "rgba(255,255,255,0.05)" } } } }
+  });
+}
+
+function buildChartCostosProv(data) {
+  var counts = {};
+  data.forEach(function(c) {
+    var p = (c.proveedor || "").trim();
+    if (!p) return;
+    counts[p] = (counts[p] || 0) + c.ars;
+  });
+  var labels = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
+  var values = labels.map(function(k){ return counts[k]; });
+  var total  = values.reduce(function(a,b){ return a+b; }, 0);
+  var el = document.getElementById("total-costos-prov");
+  if (el) el.textContent = "TOTAL: " + fmtARS(total);
+  var colors = ['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(255,61,61,0.7)','rgba(0,230,118,0.7)','rgba(255,200,100,0.7)','rgba(100,180,255,0.7)','rgba(200,100,200,0.7)','rgba(100,200,150,0.7)'];
+  mkChart("ch-costos-prov", {
+    type: "bar",
+    data: { labels: labels, datasets: [{ data: values, backgroundColor: colors.slice(0, values.length), borderRadius: 4, borderSkipped: false }] },
+    options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c){ return ' $' + c.raw.toLocaleString('es-AR'); } } }, datalabels: { anchor: 'end', align: 'end', color: '#ccd6e0', font: { size: 10, weight: 'bold' }, formatter: function(v){ return '$'+Math.round(v/1000)+'k'; } } }, scales: { x: { ticks: { color: '#8899aa', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: '#ccd6e0', font: { size: 10 } }, grid: { display: false } } } }
+  });
+}
+
+function buildChartCostosUnidad(data) {
+  var counts = {};
+  data.forEach(function(c) {
+    var u = (c.unidad || "").trim();
+    if (!u) return;
+    counts[u] = (counts[u] || 0) + c.ars;
+  });
+  var labels = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
+  var values = labels.map(function(k){ return counts[k]; });
+  var total  = values.reduce(function(a,b){ return a+b; }, 0);
+  var el = document.getElementById("total-costos-unidad");
+  if (el) el.textContent = "TOTAL: " + fmtARS(total);
+  var colors = ['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(255,61,61,0.7)','rgba(0,230,118,0.7)','rgba(255,200,100,0.7)','rgba(100,180,255,0.7)','rgba(200,100,200,0.7)','rgba(100,200,150,0.7)'];
+  mkChart("ch-costos-unidad", {
+    type: "bar",
+    data: { labels: labels, datasets: [{ data: values, backgroundColor: colors.slice(0, values.length), borderRadius: 4, borderSkipped: false }] },
+    options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c){ return ' $' + c.raw.toLocaleString('es-AR'); } } }, datalabels: { anchor: 'end', align: 'end', color: '#ccd6e0', font: { size: 10, weight: 'bold' }, formatter: function(v){ return '$'+Math.round(v/1000)+'k'; } } }, scales: { x: { ticks: { color: '#8899aa', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: '#ccd6e0', font: { size: 10 } }, grid: { display: false } } } }
+  });
+}
+
+function buildChartCostosFlota(data) {
+  var flotas = { CAMION: 0, PALA: 0, AUTOELEVADOR: 0 };
+  data.forEach(function(c) { if (flotas[c.flota] !== undefined) flotas[c.flota] += c.ars; });
+  var labels = ["Camiones", "Palas", "Autoelevadores"];
+  var values = [flotas.CAMION, flotas.PALA, flotas.AUTOELEVADOR];
+  mkChart("ch-costos-flota", {
+    type: "doughnut",
+    data: { labels: labels, datasets: [{ data: values, backgroundColor: ["rgba(0,170,255,0.8)","rgba(0,229,204,0.8)","rgba(255,193,7,0.8)"], borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: "bottom", labels: { color: "#ccd6e0", font: { size: 11 } } },
+        datalabels: { color: "#fff", font: { size: 11, weight: "bold" }, formatter: function(v,ctx){
+          var sum = ctx.dataset.data.reduce(function(a,b){ return a+b; },0);
+          return sum > 0 ? Math.round(v/sum*100)+"%" : "";
+        }},
+        tooltip: { callbacks: { label: function(c){ return " " + fmtARS(c.raw); } } } } }
+  });
+}
+
+function renderTablaCostos(data) {
+  var filtered = costosFilter === "all" ? data : data.filter(function(c){ return c.flota === costosFilter; });
+  var search = (document.getElementById("costos-search") ? document.getElementById("costos-search").value : "").toLowerCase();
+  if (search) filtered = filtered.filter(function(c){
+    return c.unidad.toLowerCase().includes(search) || c.proveedor.toLowerCase().includes(search) || c.trabajo.toLowerCase().includes(search);
+  });
+  var el = document.getElementById("tabla-costos");
+  if (!el) return;
+  if (filtered.length === 0) { el.innerHTML = "<div class=\"hist-row\" style=\"color:#888\">Sin registros</div>"; return; }
+  el.innerHTML = filtered.map(function(c) {
+    return "<div class=\"hist-row\">" +
+      "<span>" + c.fecha + "</span>" +
+      "<span>" + c.unidad + "</span>" +
+      "<span>" + c.trabajo + "</span>" +
+      "<span>" + c.proveedor + "</span>" +
+      "<span style=\"text-align:right;color:var(--blue)\">" + fmtARS(c.ars) + "</span>" +
+      "<span style=\"text-align:right;color:var(--cyan)\">$" + c.usd.toFixed(2) + "</span>" +
+      "</div>";
+  }).join("");
+}
+
+function filterCostos(tipo, btn) {
+  costosFilter = tipo;
+  document.querySelectorAll("#page-costos .fbtn").forEach(function(b){ b.classList.remove("on"); });
+  if (btn) btn.classList.add("on");
+  renderTablaCostos(G.costos);
+}
+
+function searchCostos(val) {
+  renderTablaCostos(G.costos);
 }
 </script>
 </body>
