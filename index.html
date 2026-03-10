@@ -697,32 +697,35 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 </div>
 
 
+
 <!-- ── PAGE: COSTOS ── -->
 <div id="page-costos" class="page">
   <div class="slabel">KPIs DE COSTOS — FLOTA GLOBAL</div>
   <div class="kpi-row" id="kpi-costos"></div>
 
-  <div class="slabel">ANÁLISIS DE COSTOS</div>
+  <div class="slabel">EVOLUCIÓN Y GASTOS POR PROVEEDOR</div>
   <div class="charts2">
     <div class="ccard">
       <div class="ctitle">Gasto por Mes <span class="cbadge">ARS</span></div>
-      <div class="ch"><canvas id="ch-costos-mes"></canvas></div>
+      <div class="ch" style="height:280px"><canvas id="ch-costos-mes"></canvas></div>
     </div>
     <div class="ccard">
       <div class="ctitle">Gasto por Proveedor <span class="cbadge">ARS</span></div>
       <div id="total-costos-prov" style="text-align:center;font-family:Rajdhani,sans-serif;font-size:13px;font-weight:700;color:var(--blue);letter-spacing:2px;padding:4px 0 2px">TOTAL: —</div>
-      <div class="ch"><canvas id="ch-costos-prov"></canvas></div>
+      <div class="ch" style="height:260px"><canvas id="ch-costos-prov"></canvas></div>
     </div>
   </div>
+
+  <div class="slabel">GASTO POR UNIDAD Y COMPARATIVA DE FLOTA</div>
   <div class="charts2">
     <div class="ccard">
       <div class="ctitle">Gasto por Unidad <span class="cbadge">ARS</span></div>
       <div id="total-costos-unidad" style="text-align:center;font-family:Rajdhani,sans-serif;font-size:13px;font-weight:700;color:var(--blue);letter-spacing:2px;padding:4px 0 2px">TOTAL: —</div>
-      <div class="ch"><canvas id="ch-costos-unidad"></canvas></div>
+      <div class="ch" style="height:260px"><canvas id="ch-costos-unidad"></canvas></div>
     </div>
     <div class="ccard">
       <div class="ctitle">Comparativa por Flota <span class="cbadge">ARS</span></div>
-      <div class="ch" style="max-height:220px"><canvas id="ch-costos-flota"></canvas></div>
+      <div class="ch" style="height:260px"><canvas id="ch-costos-flota"></canvas></div>
     </div>
   </div>
 
@@ -738,6 +741,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     <div class="hist-hdr"><span>FECHA</span><span>UNIDAD</span><span>TRABAJO/REPUESTOS</span><span>PROVEEDOR</span><span style="text-align:right">MONTO ARS</span><span style="text-align:right">MONTO USD</span></div>
     <div id="tabla-costos"></div>
   </div>
+</div>
 </div>
 
 <!-- ── PAGE: KPIs ── -->
@@ -2414,10 +2418,10 @@ function renderCostosPage() {
 
   var kpiEl = document.getElementById("kpi-costos");
   if (kpiEl) kpiEl.innerHTML =
-    kpiCard("GASTO TOTAL ARS", fmtARS(totalArs), "", "var(--blue)") +
-    kpiCard("GASTO TOTAL USD", "$" + totalUsd.toFixed(2), "", "var(--cyan)") +
-    kpiCard("COSTO PROMEDIO / TRABAJO", fmtARS(promArs), "", "var(--yellow)") +
-    kpiCard("TRABAJO MÁS COSTOSO", fmtARS(maxItem ? maxItem.ars : 0), maxItem ? maxItem.unidad : "", "var(--red)");
+    kpiCard("GASTO TOTAL ARS", fmtARS(totalArs), data.length + " registros", "kc-b") +
+    kpiCard("GASTO TOTAL USD", "$" + totalUsd.toFixed(2), "dólares", "kc-c") +
+    kpiCard("COSTO PROMEDIO / TRABAJO", fmtARS(promArs), "por trabajo", "kc-a") +
+    kpiCard("TRABAJO MÁS COSTOSO", fmtARS(maxItem ? maxItem.ars : 0), maxItem ? maxItem.unidad : "", "kc-r");
 
   buildChartCostosMes(data);
   buildChartCostosProv(data);
@@ -2426,11 +2430,11 @@ function renderCostosPage() {
   renderTablaCostos(data);
 }
 
-function kpiCard(lbl, val, sub, color) {
-  return "<div class=\"kpi-card\">" +
-    "<div class=\"kpi-lbl\">" + lbl + "</div>" +
-    "<div class=\"kpi-val\" style=\"color:" + color + "\">" + val + "</div>" +
-    (sub ? "<div class=\"kpi-sub\">" + sub + "</div>" : "") +
+function kpiCard(lbl, val, sub, cls) {
+  return "<div class=\"kcard " + cls + "\">" +
+    "<div class=\"klabel\">" + lbl + "</div>" +
+    "<div class=\"kvalue\">" + val + "</div>" +
+    (sub ? "<div class=\"ksub\">" + sub + "</div>" : "") +
     "</div>";
 }
 
