@@ -2482,41 +2482,57 @@ function buildChartCostosMes(data) {
 }
 
 function buildChartCostosProv(data) {
+  var MIN = 500000;
   var counts = {};
   data.forEach(function(c) {
     var p = (c.proveedor || "").trim();
     if (!p) return;
     counts[p] = (counts[p] || 0) + c.ars;
   });
-  var labels = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
-  var values = labels.map(function(k){ return counts[k]; });
-  var total  = values.reduce(function(a,b){ return a+b; }, 0);
+  var total = Object.keys(counts).reduce(function(s,k){ return s + counts[k]; }, 0);
   var el = document.getElementById("total-costos-prov");
   if (el) el.textContent = "TOTAL: " + fmtARS(total);
+  // Filtrar >= MIN, acumular el resto en Otros
+  var principales = Object.keys(counts).filter(function(k){ return counts[k] >= MIN; });
+  principales.sort(function(a,b){ return counts[b]-counts[a]; });
+  var otros = Object.keys(counts).filter(function(k){ return counts[k] < MIN; })
+                    .reduce(function(s,k){ return s + counts[k]; }, 0);
+  var labels = principales.slice();
+  var values = principales.map(function(k){ return counts[k]; });
+  if (otros > 0) { labels.push("Otros (< $500k)"); values.push(otros); }
   var colors = ['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(255,61,61,0.7)','rgba(0,230,118,0.7)','rgba(255,200,100,0.7)','rgba(100,180,255,0.7)','rgba(200,100,200,0.7)','rgba(100,200,150,0.7)'];
+  var bgColors = labels.map(function(l,i){ return l === "Otros (< $500k)" ? 'rgba(100,100,120,0.6)' : (colors[i] || colors[colors.length-1]); });
   mkChart("ch-costos-prov", {
     type: "bar",
-    data: { labels: labels, datasets: [{ data: values, backgroundColor: colors.slice(0, values.length), borderRadius: 4, borderSkipped: false }] },
+    data: { labels: labels, datasets: [{ data: values, backgroundColor: bgColors, borderRadius: 4, borderSkipped: false }] },
     options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c){ return ' $' + c.raw.toLocaleString('es-AR'); } } }, datalabels: { anchor: 'end', align: 'end', color: '#ccd6e0', font: { size: 10, weight: 'bold' }, formatter: function(v){ return '$'+Math.round(v/1000)+'k'; } } }, scales: { x: { ticks: { color: '#8899aa', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: '#ccd6e0', font: { size: 10 } }, grid: { display: false } } } }
   });
 }
 
 function buildChartCostosUnidad(data) {
+  var MIN = 500000;
   var counts = {};
   data.forEach(function(c) {
     var u = (c.unidad || "").trim();
     if (!u) return;
     counts[u] = (counts[u] || 0) + c.ars;
   });
-  var labels = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
-  var values = labels.map(function(k){ return counts[k]; });
-  var total  = values.reduce(function(a,b){ return a+b; }, 0);
+  var total = Object.keys(counts).reduce(function(s,k){ return s + counts[k]; }, 0);
   var el = document.getElementById("total-costos-unidad");
   if (el) el.textContent = "TOTAL: " + fmtARS(total);
+  // Filtrar >= MIN, acumular el resto en Otros
+  var principales = Object.keys(counts).filter(function(k){ return counts[k] >= MIN; });
+  principales.sort(function(a,b){ return counts[b]-counts[a]; });
+  var otros = Object.keys(counts).filter(function(k){ return counts[k] < MIN; })
+                    .reduce(function(s,k){ return s + counts[k]; }, 0);
+  var labels = principales.slice();
+  var values = principales.map(function(k){ return counts[k]; });
+  if (otros > 0) { labels.push("Otros (< $500k)"); values.push(otros); }
   var colors = ['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(255,61,61,0.7)','rgba(0,230,118,0.7)','rgba(255,200,100,0.7)','rgba(100,180,255,0.7)','rgba(200,100,200,0.7)','rgba(100,200,150,0.7)'];
+  var bgColors = labels.map(function(l,i){ return l === "Otros (< $500k)" ? 'rgba(100,100,120,0.6)' : (colors[i] || colors[colors.length-1]); });
   mkChart("ch-costos-unidad", {
     type: "bar",
-    data: { labels: labels, datasets: [{ data: values, backgroundColor: colors.slice(0, values.length), borderRadius: 4, borderSkipped: false }] },
+    data: { labels: labels, datasets: [{ data: values, backgroundColor: bgColors, borderRadius: 4, borderSkipped: false }] },
     options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c){ return ' $' + c.raw.toLocaleString('es-AR'); } } }, datalabels: { anchor: 'end', align: 'end', color: '#ccd6e0', font: { size: 10, weight: 'bold' }, formatter: function(v){ return '$'+Math.round(v/1000)+'k'; } } }, scales: { x: { ticks: { color: '#8899aa', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { ticks: { color: '#ccd6e0', font: { size: 10 } }, grid: { display: false } } } }
   });
 }
