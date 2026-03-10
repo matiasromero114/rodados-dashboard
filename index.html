@@ -729,6 +729,22 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     </div>
   </div>
 
+  <div class="slabel">RANKING — TOP 5 EQUIPOS MÁS COSTOSOS</div>
+  <div id="ranking-costos" style="margin-bottom:24px"></div>
+
+  <div class="slabel">RESUMEN POR EQUIPO</div>
+  <div class="tbl-wrap" style="margin-bottom:24px">
+    <div class="hist-hdr" style="grid-template-columns:2fr 1fr 1fr 1.4fr 1.4fr 1.4fr">
+      <span>UNIDAD</span>
+      <span>FLOTA</span>
+      <span style="text-align:center">TRABAJOS</span>
+      <span style="text-align:right">GASTO TOTAL</span>
+      <span style="text-align:right">PROM / TRABAJO</span>
+      <span style="text-align:right">ÚLTIMO GASTO</span>
+    </div>
+    <div id="tabla-resumen-equipo"></div>
+  </div>
+
   <div class="slabel">DETALLE DE GASTOS</div>
   <div class="tbl-wrap">
     <div class="tbl-filters">
@@ -2428,6 +2444,8 @@ function renderCostosPage() {
   buildChartCostosProv(data);
   buildChartCostosUnidad(data);
   buildChartCostosFlota(data);
+  renderRankingCostos(data);
+  renderResumenEquipo(data);
   renderTablaCostos(data);
 }
 
@@ -2586,6 +2604,87 @@ function filterCostos(tipo, btn) {
 function searchCostos(val) {
   renderTablaCostos(G.costos);
 }
+
+function buildResumenEquipo(data) {
+  // Agrupa por unidad: total, trabajos, promedio, último gasto
+  var map = {};
+  data.forEach(function(c) {
+    var u = (c.unidad || '').trim();
+    if (!u) return;
+    if (!map[u]) map[u] = { unidad: u, flota: c.flota, total: 0, count: 0, ultimo: '' };
+    map[u].total += c.ars;
+    map[u].count += 1;
+    // Guardar fecha más reciente (string comparado lexicográficamente funciona con ISO; para DD/MM/YYYY convertimos)
+    var f = (c.fecha || '').trim();
+    if (!map[u].ultimo || f > map[u].ultimo) map[u].ultimo = f;
+  });
+  return Object.values(map).sort(function(a,b){ return b.total - a.total; });
+}
+
+function flotaTag(flota) {
+  var cfg = {
+    CAMION:       { cls: 'htag-c', lbl: '🚛 CAMIÓN' },
+    PALA:         { cls: 'htag-p', lbl: '🦾 PALA' },
+    AUTOELEVADOR: { cls: 'htag-p', lbl: '🏗️ AUTOEL.' },
+    OTRO:         { cls: '',       lbl: flota }
+  };
+  var c = cfg[flota] || cfg.OTRO;
+  return '<span class="htag ' + c.cls + '" style="font-size:9px">' + c.lbl + '</span>';
+}
+
+function barraGasto(val, maxVal) {
+  var pct = maxVal > 0 ? Math.round(val / maxVal * 100) : 0;
+  return '<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">' +
+    '<div style="flex:1;max-width:80px;height:4px;background:rgba(255,255,255,0.08);border-radius:2px">' +
+    '<div style="width:' + pct + '%;height:100%;background:var(--blue);border-radius:2px"></div></div>' +
+    '<span style="font-family:\'Rajdhani\',sans-serif;font-size:13px;font-weight:700;color:var(--blue);min-width:90px;text-align:right">' + fmtARS(val) + '</span>' +
+    '</div>';
+}
+
+function renderResumenEquipo(data) {
+  var resumen = buildResumenEquipo(data);
+  var maxTotal = resumen.length > 0 ? resumen[0].total : 1;
+  var el = document.getElementById('tabla-resumen-equipo');
+  if (!el) return;
+  if (resumen.length === 0) { el.innerHTML = '<div class="no-data">Sin datos.</div>'; return; }
+  el.innerHTML = resumen.map(function(r) {
+    var prom = r.count > 0 ? r.total / r.count : 0;
+    return '<div class="hist-row" style="grid-template-columns:2fr 1fr 1fr 1.4fr 1.4fr 1.4fr">' +
+      '<div><div class="uname" style="font-size:12px">' + r.unidad + '</div></div>' +
+      '<div>' + flotaTag(r.flota) + '</div>' +
+      '<div style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--cyan)">' + r.count + '</div>' +
+      '<div>' + barraGasto(r.total, maxTotal) + '</div>' +
+      '<div style="text-align:right;font-family:\'Rajdhani\',sans-serif;font-size:13px;font-weight:600;color:var(--txt2)">' + fmtARS(prom) + '</div>' +
+      '<div style="text-align:right;font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--txt2)">' + (r.ultimo || '—') + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function renderRankingCostos(data) {
+  var resumen = buildResumenEquipo(data);
+  var top5 = resumen.slice(0, 5);
+  var maxTotal = top5.length > 0 ? top5[0].total : 1;
+  var el = document.getElementById('ranking-costos');
+  if (!el) return;
+  if (top5.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">' +
+    top5.map(function(r, idx) {
+      var pct = maxTotal > 0 ? Math.round(r.total / maxTotal * 100) : 0;
+      var medals = ['🥇','🥈','🥉','4°','5°'];
+      var borderColors = ['#ffd700','#c0c0c0','#cd7f32','var(--border2)','var(--border2)'];
+      return '<div class="ccard" style="border-color:' + borderColors[idx] + ';text-align:center;padding:18px 12px">' +
+        '<div style="font-size:24px;margin-bottom:6px">' + medals[idx] + '</div>' +
+        '<div class="uname" style="font-size:11px;letter-spacing:1px;margin-bottom:4px">' + r.unidad + '</div>' +
+        '<div>' + flotaTag(r.flota) + '</div>' +
+        '<div style="font-family:\'Rajdhani\',sans-serif;font-size:20px;font-weight:700;color:var(--blue);margin:10px 0 2px">' + fmtARS(r.total) + '</div>' +
+        '<div style="font-family:\'JetBrains Mono\',monospace;font-size:9px;color:var(--txt3);margin-bottom:10px">' + r.count + ' trabajos</div>' +
+        '<div style="height:4px;background:rgba(255,255,255,0.08);border-radius:2px">' +
+        '<div style="width:' + pct + '%;height:100%;background:var(--blue);border-radius:2px"></div></div>' +
+        '</div>';
+    }).join('') +
+  '</div>';
+}
+
 </script>
 </body>
 </html>
