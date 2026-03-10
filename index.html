@@ -2411,15 +2411,16 @@ function renderCostosPage() {
   if (!data || data.length === 0) return;
 
   // KPIs
+  var COTIZ_USD = 1400; // ARS por USD oficial BNA — actualizar si cambia
   var totalArs  = data.reduce(function(s,c){ return s + c.ars; }, 0);
-  var totalUsd  = data.reduce(function(s,c){ return s + c.usd; }, 0);
+  var totalUsd  = totalArs / COTIZ_USD;
   var promArs   = data.length > 0 ? totalArs / data.length : 0;
   var maxItem   = data.reduce(function(a,b){ return b.ars > a.ars ? b : a; }, data[0]);
 
   var kpiEl = document.getElementById("kpi-costos");
   if (kpiEl) kpiEl.innerHTML =
     kpiCard("GASTO TOTAL ARS", fmtARS(totalArs), data.length + " registros", "kc-b") +
-    kpiCard("GASTO TOTAL USD", "USD " + totalUsd.toFixed(2), "dólares acumulados", "kc-c") +
+    kpiCard("EQUIV. EN USD OFICIAL", "USD " + Math.round(totalUsd).toLocaleString("es-AR"), "Cotización dólar oficial BNA: $" + COTIZ_USD, "kc-c") +
     kpiCard("COSTO PROMEDIO / TRABAJO", fmtARS(promArs), "por trabajo", "kc-a") +
     kpiCard("TRABAJO MÁS COSTOSO", fmtARS(maxItem ? maxItem.ars : 0), maxItem ? maxItem.unidad : "", "kc-r");
 
@@ -2439,14 +2440,31 @@ function kpiCard(lbl, val, sub, cls) {
 }
 
 function buildChartCostosMes(data) {
+  var MESES_NOM = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   var meses = {};
+  var sortKeys = {};
   data.forEach(function(c) {
     var f = (c.fecha || "").trim();
-    var key = f.length >= 7 ? f.substring(0,7) : f;
-    if (!key) return;
-    meses[key] = (meses[key] || 0) + c.ars;
+    if (!f) return;
+    var d, mm, yyyy;
+    // Detectar formato DD/MM/YYYY o D/M/YYYY
+    if (f.indexOf("/") !== -1) {
+      var p = f.split("/");
+      mm   = parseInt(p[1], 10) - 1;
+      yyyy = parseInt(p[2], 10);
+    } else if (f.indexOf("-") !== -1) {
+      // YYYY-MM-DD
+      var p = f.split("-");
+      yyyy = parseInt(p[0], 10);
+      mm   = parseInt(p[1], 10) - 1;
+    } else { return; }
+    if (isNaN(mm) || isNaN(yyyy)) return;
+    var key = MESES_NOM[mm] + " " + yyyy;
+    var sortVal = yyyy * 100 + mm;
+    meses[key]    = (meses[key]    || 0) + c.ars;
+    sortKeys[key] = sortVal;
   });
-  var labels = Object.keys(meses).sort();
+  var labels = Object.keys(meses).sort(function(a,b){ return sortKeys[a]-sortKeys[b]; });
   var values = labels.map(function(k){ return meses[k]; });
   mkChart("ch-costos-mes", {
     type: "bar",
@@ -2455,7 +2473,7 @@ function buildChartCostosMes(data) {
       plugins: { legend: { display: false }, datalabels: { display: false },
         tooltip: { callbacks: { label: function(c){ return " " + fmtARS(c.raw); } } } },
       scales: {
-        x: { ticks: { color: "#ccd6e0", font: { size: 11, weight: "600" }, maxRotation: 45, minRotation: 45 },
+        x: { ticks: { color: "#ccd6e0", font: { size: 12, weight: "700" }, maxRotation: 55, minRotation: 55 },
              grid: { color: "rgba(255,255,255,0.05)" } },
         y: { ticks: { color: "#8899aa", font: { size: 11 },
              callback: function(v){ return "$"+Math.round(v/1000)+"k"; } },
