@@ -2759,9 +2759,30 @@ function parseViajes(rows) {
     }
     return -1;
   }
+  // Convierte "622.545,00" o "622545.00" a número correcto
+  // Formato AR: punto=miles, coma=decimal → quitar puntos, reemplazar coma por punto
+  function parseNum(str) {
+    var s = (str || '').trim();
+    if (!s || s.toLowerCase() === 'fallado' || s.toLowerCase() === 'f/s') return null;
+    // Si tiene coma: formato AR (punto=miles, coma=decimal)
+    if (s.indexOf(',') !== -1) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Sin coma: puede tener punto de miles (ej: 622.545) o punto decimal (ej: 2851.50)
+      var partes = s.split('.');
+      if (partes.length === 2 && partes[1].length === 3) {
+        // Punto de miles (ej: 622.545 → 622545)
+        s = s.replace(/\./g, '');
+      }
+      // Si no, se deja como está (decimal normal)
+    }
+    return parseFloat(s) || 0;
+  }
+
   var iFecha  = fi(['FECHA']);
   var iCam    = fi(['CAMION','UNIDAD']);
   var iChofer = fi(['CHOFER']);
+  var iViajes = fi(['VIAJES']);
   var iHIni   = fi(['INICIAL','INI']);
   var iHFin   = fi(['FINAL','FIN']);
   var iLts    = fi(['COMBUSTIBLE','LTS','LITRO']);
@@ -2770,18 +2791,28 @@ function parseViajes(rows) {
     var r = rows[i];
     var cam = (r[iCam] || '').trim();
     if (!cam) continue;
-    var hIni = parseFloat((r[iHIni] || '0').replace(/[^0-9.]/g,'')) || 0;
-    var hFin = parseFloat((r[iHFin] || '0').replace(/[^0-9.]/g,'')) || 0;
-    var lts  = parseFloat((r[iLts]  || '0').replace(/[^0-9.]/g,'')) || 0;
-    var km   = hFin > hIni ? Math.round(hFin - hIni) : 0;
+    var hIniRaw = (r[iHIni] || '').trim();
+    var hFinRaw = (r[iHFin] || '').trim();
+    // Si horómetro dice "fallado" o "f/s" → fila inválida para km/l
+    var hIniVal = parseNum(hIniRaw);
+    var hFinVal = parseNum(hFinRaw);
+    var hIni = hIniVal !== null ? hIniVal : 0;
+    var hFin = hFinVal !== null ? hFinVal : 0;
+    var lts   = parseNum((r[iLts] || '').trim()) || 0;
+    var viajesCol = iViajes >= 0 ? (parseInt((r[iViajes] || '0'), 10) || 0) : 1;
+    // km solo válido si ambos horómetros son números reales
+    var kmValido = hIniVal !== null && hFinVal !== null && hFin > hIni;
+    var km = kmValido ? Math.round(hFin - hIni) : 0;
     result.push({
-      fecha:  (r[iFecha]  || '').trim(),
-      cam:    cam,
-      chofer: (r[iChofer] || '').trim(),
-      hIni:   hIni,
-      hFin:   hFin,
-      lts:    lts,
-      km:     km
+      fecha:   (r[iFecha]  || '').trim(),
+      cam:     cam,
+      chofer:  (r[iChofer] || '').trim(),
+      hIni:    hIni,
+      hFin:    hFin,
+      lts:     lts,
+      km:      km,
+      viajes:  viajesCol,
+      kmValido: kmValido
     });
   }
   return result;
@@ -2796,15 +2827,16 @@ function renderViajesPage() {
   // KPIs
   var totalLts   = data.reduce(function(s,v){ return s + v.lts; }, 0);
   var totalKm    = data.reduce(function(s,v){ return s + v.km;  }, 0);
-  var totalViajes = data.length;
+  var totalViajes = data.reduce(function(s,v){ return s + v.viajes; }, 0);
   var kmpl       = totalLts > 0 ? (totalKm / totalLts).toFixed(2) : '—';
 
   // Mejor y peor km/l por camión
   var porCam = {};
   data.forEach(function(v) {
-    if (!porCam[v.cam]) porCam[v.cam] = { km: 0, lts: 0 };
-    porCam[v.cam].km  += v.km;
-    porCam[v.cam].lts += v.lts;
+    if (!porCam[v.cam]) porCam[v.cam] = { km: 0, lts: 0, viajes: 0 };
+    if (v.kmValido) porCam[v.cam].km += v.km;
+    porCam[v.cam].lts    += v.lts;
+    porCam[v.cam].viajes += v.viajes;
   });
   var efic = Object.keys(porCam).map(function(k){
     var r = porCam[k];
@@ -2928,10 +2960,10 @@ function renderResumenViajes(data, porCam) {
   var resumen = Object.keys(porCam).map(function(k) {
     var r   = porCam[k];
     var kmpl = r.lts > 0 ? r.km / r.lts : 0;
-    var viajes = data.filter(function(v){ return v.cam === k; });
-    var kmProm = viajes.length > 0 ? Math.round(r.km / viajes.length) : 0;
-    var ultimo = viajes.reduce(function(last, v){ return v.fecha > last ? v.fecha : last; }, '');
-    return { cam: k, viajes: viajes.length, km: r.km, lts: r.lts, kmpl: kmpl, kmProm: kmProm, ultimo: ultimo };
+    var filas  = data.filter(function(v){ return v.cam === k; });
+    var kmProm = r.viajes > 0 ? Math.round(r.km / r.viajes) : 0;
+    var ultimo = filas.reduce(function(last, v){ return v.fecha > last ? v.fecha : last; }, '');
+    return { cam: k, viajes: r.viajes, km: r.km, lts: r.lts, kmpl: kmpl, kmProm: kmProm, ultimo: ultimo };
   }).sort(function(a,b){ return b.km - a.km; });
 
   var maxKm = resumen.length > 0 ? resumen[0].km : 1;
