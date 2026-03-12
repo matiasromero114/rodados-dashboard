@@ -397,7 +397,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 @media print {
   .cfg-bar, .nav, .hdr-scan, .refresh-btn, .fbtn, .fsearch,
   .tbl-wrap, #page-fleet, #page-palas, #page-camiones,
-  #page-autoel, #page-kpis, #page-alerts, #page-services, #page-costos, #page-viajes { display: none !important; }
+  #page-autoel, #page-kpis, #page-services, #page-costos, #page-viajes { display: none !important; }
   #page-overview, .print-target { display: block !important; }
   body, .main, .page, .ccard, .kpi-card {
     background: #fff !important; color: #111 !important; box-shadow: none !important;
@@ -479,7 +479,6 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <div class="tab" onclick="goTab('camiones',this)">🚛 CAMIONES</div>
   <div class="tab" onclick="goTab('autoel',this)">🏗️ AUTOELEVADORES</div>
   <div class="tab" onclick="goTab('kpis',this)">📈 KPIs MTTO</div>
-  <div class="tab" onclick="goTab('alerts',this)">⚠️ ALERTAS</div>
   <div class="tab" onclick="goTab('services',this)">🔧 SERVICES</div>
   <div class="tab" onclick="goTab('costos',this)">💰 COSTOS</div>
   <div class="tab" onclick="goTab('viajes',this)">🚚 VIAJES</div>
@@ -851,27 +850,6 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     <div class="ccard">
       <div class="ctitle">Trabajos por Tipo de Equipo <span class="cbadge">TOTAL</span></div>
       <div class="ch"><canvas id="ch-trabajos"></canvas></div>
-    </div>
-  </div>
-</div>
-
-<!-- ── PAGE: ALERTAS ── -->
-<div id="page-alerts" class="page">
-  <div class="slabel">PANEL COMPLETO DE ALERTAS</div>
-  <div class="apanels">
-    <div class="apanel">
-      <div class="apanel-hdr">
-        <span class="apanel-title">🔴 FUERA DE SERVICIO — EN MANTENIMIENTO</span>
-        <span class="abadge ab-r" id="badge-bad2">—</span>
-      </div>
-      <div id="alerts-bad-full"></div>
-    </div>
-    <div class="apanel">
-      <div class="apanel-hdr">
-        <span class="apanel-title">🟡 OPERATIVAS CON ALERTAS</span>
-        <span class="abadge ab-a" id="badge-alert2">—</span>
-      </div>
-      <div id="alerts-alert-full"></div>
     </div>
   </div>
 </div>
