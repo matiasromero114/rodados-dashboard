@@ -2759,24 +2759,15 @@ function parseViajes(rows) {
     }
     return -1;
   }
-  // Convierte "622.545,00" o "622545.00" a número correcto
-  // Formato AR: punto=miles, coma=decimal → quitar puntos, reemplazar coma por punto
+  // Parsea números en formato AR (punto=miles, coma=decimal) o estándar
   function parseNum(str) {
     var s = (str || '').trim();
     if (!s || s.toLowerCase() === 'fallado' || s.toLowerCase() === 'f/s') return null;
-    // Si tiene coma: formato AR (punto=miles, coma=decimal)
     if (s.indexOf(',') !== -1) {
       s = s.replace(/\./g, '').replace(',', '.');
-    } else {
-      // Sin coma: puede tener punto de miles (ej: 622.545) o punto decimal (ej: 2851.50)
-      var partes = s.split('.');
-      if (partes.length === 2 && partes[1].length === 3) {
-        // Punto de miles (ej: 622.545 → 622545)
-        s = s.replace(/\./g, '');
-      }
-      // Si no, se deja como está (decimal normal)
     }
-    return parseFloat(s) || 0;
+    var v = parseFloat(s);
+    return isNaN(v) ? null : v;
   }
 
   var iFecha  = fi(['FECHA']);
@@ -2786,33 +2777,34 @@ function parseViajes(rows) {
   var iHIni   = fi(['INICIAL','INI']);
   var iHFin   = fi(['FINAL','FIN']);
   var iLts    = fi(['COMBUSTIBLE','LTS','LITRO']);
-  var result = [];
+  var iKmTot  = fi(['KMS TOTALES','KM TOTAL','KMSTTOTALES','KMS_TOTALES']);
+  var result  = [];
   for (var i = 1; i < rows.length; i++) {
-    var r = rows[i];
+    var r   = rows[i];
     var cam = (r[iCam] || '').trim();
     if (!cam) continue;
-    var hIniRaw = (r[iHIni] || '').trim();
-    var hFinRaw = (r[iHFin] || '').trim();
-    // Si horómetro dice "fallado" o "f/s" → fila inválida para km/l
-    var hIniVal = parseNum(hIniRaw);
-    var hFinVal = parseNum(hFinRaw);
-    var hIni = hIniVal !== null ? hIniVal : 0;
-    var hFin = hFinVal !== null ? hFinVal : 0;
-    var lts   = parseNum((r[iLts] || '').trim()) || 0;
+
+    var lts       = parseNum((r[iLts]  || '').trim()) || 0;
     var viajesCol = iViajes >= 0 ? (parseInt((r[iViajes] || '0'), 10) || 0) : 1;
-    // km solo válido si ambos horómetros son números reales
-    var kmValido = hIniVal !== null && hFinVal !== null && hFin > hIni;
-    var km = kmValido ? Math.round(hFin - hIni) : 0;
+    var hIni      = parseNum((r[iHIni] || '').trim()) || 0;
+    var hFin      = parseNum((r[iHFin] || '').trim()) || 0;
+
+    // Leer KMS TOTALES directamente del sheet (más confiable que hFin-hIni)
+    var kmRaw = iKmTot >= 0 ? parseNum((r[iKmTot] || '').trim()) : null;
+    var km    = (kmRaw !== null && kmRaw > 0) ? Math.round(kmRaw) : 0;
+
+    // Solo incluir filas con km > 0 (descartar negativos, ceros y fallados)
+    if (km <= 0) continue;
+
     result.push({
-      fecha:   (r[iFecha]  || '').trim(),
-      cam:     cam,
-      chofer:  (r[iChofer] || '').trim(),
-      hIni:    hIni,
-      hFin:    hFin,
-      lts:     lts,
-      km:      km,
-      viajes:  viajesCol,
-      kmValido: kmValido
+      fecha:  (r[iFecha]  || '').trim(),
+      cam:    cam,
+      chofer: (r[iChofer] || '').trim(),
+      hIni:   hIni,
+      hFin:   hFin,
+      lts:    lts,
+      km:     km,
+      viajes: viajesCol
     });
   }
   return result;
@@ -2834,7 +2826,7 @@ function renderViajesPage() {
   var porCam = {};
   data.forEach(function(v) {
     if (!porCam[v.cam]) porCam[v.cam] = { km: 0, lts: 0, viajes: 0 };
-    if (v.kmValido) porCam[v.cam].km += v.km;
+    porCam[v.cam].km     += v.km;
     porCam[v.cam].lts    += v.lts;
     porCam[v.cam].viajes += v.viajes;
   });
