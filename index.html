@@ -2763,9 +2763,8 @@ function parseViajes(rows) {
   function parseNum(str) {
     var s = (str || '').trim();
     if (!s || s.toLowerCase() === 'fallado' || s.toLowerCase() === 'f/s') return null;
-    if (s.indexOf(',') !== -1) {
-      s = s.replace(/\./g, '').replace(',', '.');
-    }
+    // Formato: coma=miles, punto=decimal (ej: 654,340.00 -> 654340)
+    s = s.replace(/,/g, '');
     var v = parseFloat(s);
     return isNaN(v) ? null : v;
   }
