@@ -2759,51 +2759,103 @@ function parseViajes(rows) {
     }
     return -1;
   }
-  // Parsea números en formato AR (punto=miles, coma=decimal) o estándar
+  // Parsea números: coma=miles, punto=decimal (ej: 654,340.00 -> 654340)
   function parseNum(str) {
     var s = (str || '').trim();
     if (!s || s.toLowerCase() === 'fallado' || s.toLowerCase() === 'f/s') return null;
-    // Formato: coma=miles, punto=decimal (ej: 654,340.00 -> 654340)
     s = s.replace(/,/g, '');
     var v = parseFloat(s);
     return isNaN(v) ? null : v;
   }
 
-  var iFecha  = fi(['FECHA']);
-  var iCam    = fi(['CAMION','UNIDAD']);
-  var iChofer = fi(['CHOFER']);
-  var iViajes = fi(['VIAJES']);
-  var iHIni   = fi(['INICIAL','INI']);
-  var iHFin   = fi(['FINAL','FIN']);
-  var iLts    = fi(['COMBUSTIBLE','LTS','LITRO']);
-  var iKmTot  = fi(['KMS TOTALES','KM TOTAL','KMSTTOTALES','KMS_TOTALES']);
-  var result  = [];
+  // Tabla de distancias IDA en km — simétrica (A->B = B->A)
+  // km totales = distanciaIda * 2 * viajes
+  var DISTANCIAS = {
+    'CANTERA|CEVIL':           30,
+    'CEVIL|CANTERA':           30,
+    'CEVIL|YB':                6.5,
+    'YB|CEVIL':                6.5,
+    'CANTERA|YB':              26,
+    'YB|CANTERA':              26,
+    'F/S|F/S':                 0,
+    'INT-CANTERA|INT-CANTERA': 0.5,
+    'EXCAVACION|CEVIL':        8.2,
+    'CEVIL|EXCAVACION':        8.2,
+    'LOTE BOULEVARD|CEVIL':    6,
+    'CEVIL|LOTE BOULEVARD':    6,
+    'LOTE BOULEVARD|YB':       0.5,
+    'YB|LOTE BOULEVARD':       0.5
+  };
+
+  // Unidades que usan distancia ORIGEN→DESTINO (horómetro poco confiable)
+  var UNIDADES_DISTANCIA = ['NPO 265', 'LQW 319', 'HWC 507'];
+
+  function usaDistancia(cam) {
+    var c = cam.trim().toUpperCase();
+    for (var u = 0; u < UNIDADES_DISTANCIA.length; u++) {
+      if (c.includes(UNIDADES_DISTANCIA[u])) return true;
+    }
+    return false;
+  }
+
+  function getDistanciaIda(origen, destino) {
+    var o = (origen  || '').trim().toUpperCase();
+    var d = (destino || '').trim().toUpperCase();
+    var clave = o + '|' + d;
+    return DISTANCIAS[clave] !== undefined ? DISTANCIAS[clave] : null;
+  }
+
+  var iFecha   = fi(['FECHA']);
+  var iCam     = fi(['CAMION','UNIDAD']);
+  var iChofer  = fi(['CHOFER']);
+  var iViajes  = fi(['VIAJES']);
+  var iOrigen  = fi(['ORIGEN']);
+  var iDestino = fi(['DESTINO']);
+  var iHIni    = fi(['INICIAL','INI']);
+  var iHFin    = fi(['FINAL','FIN']);
+  var iLts     = fi(['COMBUSTIBLE','LTS','LITRO']);
+  var iKmTot   = fi(['KMS TOTALES','KM TOTAL','KMS_TOTALES']);
+  var result   = [];
+
   for (var i = 1; i < rows.length; i++) {
     var r   = rows[i];
     var cam = (r[iCam] || '').trim();
     if (!cam) continue;
 
     var lts       = parseNum((r[iLts]  || '').trim()) || 0;
-    var viajesCol = iViajes >= 0 ? (parseInt((r[iViajes] || '0'), 10) || 0) : 1;
+    var viajesCol = iViajes >= 0 ? (parseInt((r[iViajes] || '0'), 10) || 1) : 1;
     var hIni      = parseNum((r[iHIni] || '').trim()) || 0;
     var hFin      = parseNum((r[iHFin] || '').trim()) || 0;
+    var origen    = (r[iOrigen]  || '').trim();
+    var destino   = (r[iDestino] || '').trim();
+    var km = 0;
 
-    // Leer KMS TOTALES directamente del sheet (más confiable que hFin-hIni)
-    var kmRaw = iKmTot >= 0 ? parseNum((r[iKmTot] || '').trim()) : null;
-    var km    = (kmRaw !== null && kmRaw > 0) ? Math.round(kmRaw) : 0;
+    if (usaDistancia(cam)) {
+      // Calcular km por distancia conocida * 2 * viajes
+      var distIda = getDistanciaIda(origen, destino);
+      if (distIda !== null && distIda > 0 && viajesCol > 0) {
+        km = Math.round(distIda * 2 * viajesCol * 10) / 10;
+      }
+    } else {
+      // Usar columna KMS TOTALES del sheet (horómetro confiable)
+      var kmRaw = iKmTot >= 0 ? parseNum((r[iKmTot] || '').trim()) : null;
+      km = (kmRaw !== null && kmRaw > 0) ? Math.round(kmRaw) : 0;
+    }
 
-    // Solo incluir filas con km > 0 (descartar negativos, ceros y fallados)
+    // Descartar filas con km <= 0
     if (km <= 0) continue;
 
     result.push({
-      fecha:  (r[iFecha]  || '').trim(),
-      cam:    cam,
-      chofer: (r[iChofer] || '').trim(),
-      hIni:   hIni,
-      hFin:   hFin,
-      lts:    lts,
-      km:     km,
-      viajes: viajesCol
+      fecha:   (r[iFecha]  || '').trim(),
+      cam:     cam,
+      chofer:  (r[iChofer] || '').trim(),
+      origen:  origen,
+      destino: destino,
+      hIni:    hIni,
+      hFin:    hFin,
+      lts:     lts,
+      km:      km,
+      viajes:  viajesCol
     });
   }
   return result;
