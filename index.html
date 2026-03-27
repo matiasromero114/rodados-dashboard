@@ -1461,7 +1461,7 @@ function renderFleetRows(data) {
       (fleetFilter === 'good' && u.status === 'good') ||
       (fleetFilter === 'alert' && u.status === 'alert') ||
       (fleetFilter === 'bad'  && u.status === 'bad')  ||
-      u.sector === fleetFilter;
+      u.sector === fleetFilter || u.sector.includes(fleetFilter);
     const matchSearch = !fleetSearch ||
       u.unit.toLowerCase().includes(fleetSearch) ||
       u.model.toLowerCase().includes(fleetSearch) ||
