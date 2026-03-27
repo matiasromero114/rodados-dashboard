@@ -1,1 +1,1000 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Producción · CEVIL</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0e0f11;
+    --bg2: #14161a;
+    --bg3: #1c1f25;
+    --bg4: #23272f;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #e8eaf0;
+    --text2: #8b90a0;
+    --text3: #555a68;
+    --accent: #e8b84b;
+    --accent2: #c99a2e;
+    --green: #4caf7d;
+    --green-bg: rgba(76,175,125,0.1);
+    --amber: #e8a020;
+    --amber-bg: rgba(232,160,32,0.1);
+    --red: #e05252;
+    --red-bg: rgba(224,82,82,0.1);
+    --blue: #5b9cf6;
+    --blue-bg: rgba(91,156,246,0.1);
+    --teal: #3fc9a0;
+    --teal-bg: rgba(63,201,160,0.1);
+    --font-head: 'Barlow Condensed', sans-serif;
+    --font-body: 'Barlow', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --radius: 6px;
+    --radius-lg: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
 
+  /* ── HEADER ── */
+  .header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo-mark {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 14px;
+    color: #0e0f11;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+  .header-title {
+    font-family: var(--font-head);
+    font-weight: 600;
+    font-size: 17px;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  .header-sub {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--green); position: relative; }
+  .pulse::after {
+    content: ''; position: absolute; inset: -3px;
+    border-radius: 50%; border: 1px solid var(--green);
+    animation: pulse 2s ease-out infinite;
+  }
+  @keyframes pulse { 0%{opacity:.8;transform:scale(1)} 100%{opacity:0;transform:scale(2)} }
+
+  /* ── NAV TABS ── */
+  .nav {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    gap: 0;
+  }
+  .nav-tab {
+    padding: 14px 22px;
+    font-family: var(--font-head);
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text3);
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    position: relative;
+    top: 1px;
+  }
+  .nav-tab:hover { color: var(--text2); }
+  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── LAYOUT ── */
+  .main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── SECTION HEADER ── */
+  .section-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .section-head-title {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--text);
+  }
+  .section-head-sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
+  .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-btn {
+    padding: 5px 14px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text3);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { color: var(--text); border-color: var(--border2); }
+  .filter-btn.active { background: var(--accent); color: #0e0f11; border-color: var(--accent); font-weight: 500; }
+
+  /* ── KPI CARDS ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 20px; }
+  @media(max-width:900px){ .kpi-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media(max-width:500px){ .kpi-grid { grid-template-columns: 1fr; } }
+  .kpi {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi:hover { border-color: var(--border2); }
+  .kpi-accent {
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .kpi-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+  .kpi-value {
+    font-family: var(--font-head);
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 5px;
+  }
+  .kpi-meta { font-size: 11px; color: var(--text3); }
+  .kpi-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    margin-top: 6px;
+  }
+
+  /* ── CHART CARDS ── */
+  .chart-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 22px;
+    margin-bottom: 16px;
+  }
+  .chart-card:hover { border-color: var(--border2); }
+  .chart-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .chart-title {
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .chart-desc { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; }
+  .leg { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
+  .leg-sq { width: 10px; height: 4px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── GRID LAYOUTS ── */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; margin-bottom: 16px; }
+  @media(max-width:800px){ .grid-2 { grid-template-columns: 1fr; } }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; margin-bottom: 16px; }
+  @media(max-width:900px){ .grid-3 { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media(max-width:560px){ .grid-3 { grid-template-columns: 1fr; } }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text2);
+    vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--bg4); }
+  .td-date { font-family: var(--font-mono); color: var(--text3); white-space: nowrap; }
+  .td-num { font-family: var(--font-mono); text-align: right; }
+  .td-obs { color: var(--text2); font-size: 11px; max-width: 260px; }
+
+  /* ── STATUS BADGES ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .badge-green { background: var(--green-bg); color: var(--green); }
+  .badge-amber { background: var(--amber-bg); color: var(--amber); }
+  .badge-red { background: var(--red-bg); color: var(--red); }
+  .badge-blue { background: var(--blue-bg); color: var(--blue); }
+  .badge-teal { background: var(--teal-bg); color: var(--teal); }
+  .badge-gray { background: rgba(139,144,160,0.1); color: var(--text3); }
+
+  /* ── MOLDE CARDS ── */
+  .molde-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .molde-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    transition: border-color 0.2s;
+  }
+  .molde-card:hover { border-color: var(--border2); }
+  .molde-card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .molde-name { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--text); line-height: 1; }
+  .molde-num { font-family: var(--font-mono); font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .molde-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 12px; }
+  .molde-row-label { color: var(--text3); }
+  .molde-row-val { font-family: var(--font-mono); color: var(--text); }
+  .weight-bar { margin: 10px 0 6px; }
+  .weight-bar-track { background: var(--bg4); border-radius: 3px; height: 4px; margin-top: 5px; overflow: hidden; }
+  .weight-bar-fill { height: 4px; border-radius: 3px; transition: width 0.6s ease; }
+  .weight-bar-label { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--text3); }
+  .molde-obs { font-size: 11px; color: var(--text3); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); line-height: 1.5; }
+  .molde-date { font-family: var(--font-mono); font-size: 10px; color: var(--text3); margin-top: 6px; }
+
+  /* ── STAT INLINE ── */
+  .stat-row { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat-inline { display: flex; flex-direction: column; }
+  .stat-inline-val { font-family: var(--font-head); font-size: 20px; font-weight: 700; }
+  .stat-inline-label { font-family: var(--font-mono); font-size: 10px; color: var(--text3); letter-spacing: 0.06em; }
+
+  /* ── DIVIDER ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  /* ── ALERT BOX ── */
+  .alert {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    border: 1px solid;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+  .alert-amber { background: rgba(232,160,32,0.06); border-color: rgba(232,160,32,0.25); color: var(--amber); }
+  .alert-red { background: rgba(224,82,82,0.06); border-color: rgba(224,82,82,0.25); color: var(--red); }
+  .alert-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .alert-text { color: var(--text2); line-height: 1.5; }
+  .alert-text strong { color: var(--text); }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center;
+    padding: 28px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+
+  /* ── ANIMATIONS ── */
+  .fade-in { animation: fadeIn 0.35s ease both; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo-mark">CV</div>
+    <div>
+      <div class="header-title">DASHBOARD DE PRODUCCIÓN</div>
+      <div class="header-sub">CMP CEVIL · PLANTA LAMINADORAS</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="pulse"></div>
+    <span id="clock">—</span>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav">
+  <button class="nav-tab active" onclick="switchTab('estano', this)">Control de Estaño — KLB12</button>
+  <button class="nav-tab" onclick="switchTab('moldes', this)">Moldes y Cromado</button>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- ══════════════════════════════════════
+       SECCIÓN 1: CONTROL DE ESTAÑO KLB12
+  ══════════════════════════════════════ -->
+  <section class="section active fade-in" id="sec-estano">
+
+    <div class="section-head">
+      <div>
+        <div class="section-head-title">Laminador KLB12 — Control de Estaño</div>
+        <div class="section-head-sub">154 registros · Ene 2024 – Mar 2026 · Valores de referencia: Esquina 1,50 mm · Tolerancia 0,10 mm</div>
+      </div>
+      <div class="filter-group" id="year-filters">
+        <button class="filter-btn active" onclick="filterYear('todos',this)">Todos</button>
+        <button class="filter-btn" onclick="filterYear('2024',this)">2024</button>
+        <button class="filter-btn" onclick="filterYear('2025',this)">2025</button>
+        <button class="filter-btn" onclick="filterYear('2026',this)">2026</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid" id="kpis-estano"></div>
+
+    <!-- Gráfico 1: Línea temporal -->
+    <div class="chart-card">
+      <div class="chart-top">
+        <div>
+          <div class="chart-title">Evolución de espesores en el tiempo</div>
+          <div class="chart-desc">Centro vs Esquina (mm) · Línea roja punteada = diferencia</div>
+        </div>
+        <div class="legend">
+          <div class="leg"><div class="leg-sq" style="background:#5b9cf6;"></div>Centro</div>
+          <div class="leg"><div class="leg-sq" style="background:#4caf7d;"></div>Esquina</div>
+          <div class="leg"><div class="leg-sq" style="background:#e05252;height:2px;"></div>Diferencia</div>
+        </div>
+      </div>
+      <div style="position:relative;width:100%;height:280px;"><canvas id="chartLinea"></canvas></div>
+    </div>
+
+    <!-- Gráfico 2+3: Mensual + Distribución -->
+    <div class="grid-2">
+      <div class="chart-card" style="margin-bottom:0">
+        <div class="chart-top">
+          <div>
+            <div class="chart-title">Diferencia promedio mensual</div>
+            <div class="chart-desc">Promedio y máximo por mes (mm)</div>
+          </div>
+        </div>
+        <div style="position:relative;width:100%;height:220px;"><canvas id="chartMensual"></canvas></div>
+      </div>
+      <div class="chart-card" style="margin-bottom:0">
+        <div class="chart-top">
+          <div>
+            <div class="chart-title">Distribución de diferencias</div>
+            <div class="chart-desc">Cantidad de registros por rango (mm)</div>
+          </div>
+        </div>
+        <div style="position:relative;width:100%;height:220px;"><canvas id="chartDist"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Gráfico 4: Ajustes (vueltas) -->
+    <div class="chart-card">
+      <div class="chart-top">
+        <div>
+          <div class="chart-title">Historial de ajustes — vueltas aplicadas</div>
+          <div class="chart-desc">Cantidad de vueltas por intervención registrada · Total histórico: 191,5 vueltas</div>
+        </div>
+        <div class="legend">
+          <div class="leg"><div class="leg-sq" style="background:#e8b84b;"></div>Vueltas de ajuste</div>
+        </div>
+      </div>
+      <div style="position:relative;width:100%;height:180px;"><canvas id="chartVueltas"></canvas></div>
+    </div>
+
+    <!-- Tabla de intervenciones -->
+    <div class="chart-card">
+      <div class="chart-top">
+        <div>
+          <div class="chart-title">Registro de intervenciones con observaciones</div>
+          <div class="chart-desc">Últimas 20 entradas con observación registrada</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th style="text-align:right">Centro</th>
+              <th style="text-align:right">Esquina</th>
+              <th style="text-align:right">Dif.</th>
+              <th style="text-align:right">Vueltas</th>
+              <th style="text-align:right">mm/vuelta</th>
+              <th>Observación</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-estano"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════
+       SECCIÓN 2: MOLDES Y CROMADO
+  ══════════════════════════════════════ -->
+  <section class="section fade-in" id="sec-moldes">
+
+    <div class="section-head">
+      <div>
+        <div class="section-head-title">Seguimiento de Moldes y Cromado</div>
+        <div class="section-head-sub">CMP Cevil Redondo · 14 moldes activos · Actualizado al 25/03/2026</div>
+      </div>
+      <div class="filter-group" id="molde-filters">
+        <button class="filter-btn active" onclick="filterMoldes('todos',this)">Todos</button>
+        <button class="filter-btn" onclick="filterMoldes('Operativo',this)">Operativos</button>
+        <button class="filter-btn" onclick="filterMoldes('En calibración',this)">En calibración</button>
+        <button class="filter-btn" onclick="filterMoldes('En fabricación',this)">En fabricación</button>
+      </div>
+    </div>
+
+    <!-- KPIs moldes -->
+    <div class="kpi-grid" id="kpis-moldes"></div>
+
+    <!-- Alertas -->
+    <div id="alertas-moldes"></div>
+
+    <!-- Gráfico peso -->
+    <div class="chart-card">
+      <div class="chart-top">
+        <div>
+          <div class="chart-title">Peso promedio vs nominal por molde</div>
+          <div class="chart-desc">Verde = dentro del rango óptimo · Naranja = excede el peso nominal</div>
+        </div>
+        <div class="legend">
+          <div class="leg"><div class="leg-sq" style="background:#4caf7d;"></div>Óptimo</div>
+          <div class="leg"><div class="leg-sq" style="background:#e8a020;"></div>Excedido</div>
+          <div class="leg"><div class="leg-sq" style="background:#555a68;"></div>Sin datos</div>
+          <div class="leg"><div class="leg-sq" style="background:rgba(232,184,75,0.3);"></div>Nominal</div>
+        </div>
+      </div>
+      <div style="position:relative;width:100%;height:360px;"><canvas id="chartPesos"></canvas></div>
+    </div>
+
+    <!-- Gráfico estados + cromado -->
+    <div class="grid-2">
+      <div class="chart-card" style="margin-bottom:0">
+        <div class="chart-top">
+          <div>
+            <div class="chart-title">Estado de moldes</div>
+            <div class="chart-desc">Distribución por estado operativo</div>
+          </div>
+        </div>
+        <div style="position:relative;width:100%;height:200px;"><canvas id="chartEstados"></canvas></div>
+      </div>
+      <div class="chart-card" style="margin-bottom:0">
+        <div class="chart-top">
+          <div>
+            <div class="chart-title">Estado de cromado</div>
+            <div class="chart-desc">Distribución por estado de cromado</div>
+          </div>
+        </div>
+        <div style="position:relative;width:100%;height:200px;"><canvas id="chartCromado"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Cards individuales -->
+    <div class="chart-card" style="margin-top:16px">
+      <div class="chart-top">
+        <div class="chart-title">Detalle por molde</div>
+      </div>
+      <div class="molde-grid" id="molde-cards"></div>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="footer">
+  Dashboard de Producción · CMP CEVIL · Datos desde Google Sheets · Generado automáticamente
+</footer>
+
+<script>
+// ─────────────────────────────────────────────────────
+// DATOS
+// ─────────────────────────────────────────────────────
+const ESTANO = [{"f":"2024-01-13","c":3.0,"e":2.8,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-01-15","c":2.1,"e":2.0,"d":0.1,"v":null,"mm":null,"o":""},{"f":"2024-01-16","c":1.7,"e":1.5,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-01-25","c":1.9,"e":1.7,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-01-25","c":1.6,"e":1.4,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-02-01","c":2.5,"e":1.9,"d":0.6,"v":null,"mm":null,"o":""},{"f":"2024-02-01","c":1.9,"e":1.3,"d":0.6,"v":null,"mm":null,"o":""},{"f":"2024-02-05","c":1.5,"e":1.5,"d":0.0,"v":null,"mm":null,"o":""},{"f":"2024-02-05","c":1.7,"e":1.5,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-02-09","c":1.6,"e":1.6,"d":0.0,"v":null,"mm":null,"o":""},{"f":"2024-02-09","c":1.5,"e":1.5,"d":0.0,"v":null,"mm":null,"o":""},{"f":"2024-02-16","c":2.2,"e":2.0,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-02-16","c":1.7,"e":1.5,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-02-21","c":2.0,"e":1.7,"d":0.3,"v":null,"mm":null,"o":""},{"f":"2024-02-21","c":1.5,"e":1.2,"d":0.3,"v":null,"mm":null,"o":""},{"f":"2024-02-22","c":1.5,"e":1.2,"d":0.3,"v":null,"mm":null,"o":""},{"f":"2024-02-23","c":1.6,"e":1.3,"d":0.3,"v":null,"mm":null,"o":""},{"f":"2024-02-28","c":1.9,"e":1.4,"d":0.5,"v":null,"mm":null,"o":""},{"f":"2024-02-29","c":2.3,"e":1.6,"d":0.7,"v":null,"mm":null,"o":""},{"f":"2024-03-01","c":1.9,"e":1.3,"d":0.6,"v":null,"mm":null,"o":""},{"f":"2024-03-13","c":2.5,"e":2.0,"d":0.5,"v":null,"mm":null,"o":""},{"f":"2024-03-13","c":2.0,"e":1.5,"d":0.5,"v":null,"mm":null,"o":""},{"f":"2024-03-15","c":2.0,"e":1.8,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-03-21","c":2.4,"e":2.0,"d":0.4,"v":null,"mm":null,"o":""},{"f":"2024-03-22","c":2.1,"e":1.6,"d":0.5,"v":null,"mm":null,"o":""},{"f":"2024-03-28","c":2.4,"e":1.9,"d":0.5,"v":null,"mm":null,"o":""},{"f":"2024-04-03","c":2.4,"e":2.4,"d":0.0,"v":null,"mm":null,"o":""},{"f":"2024-04-06","c":1.9,"e":1.9,"d":0.0,"v":null,"mm":null,"o":""},{"f":"2024-04-15","c":2.6,"e":2.6,"d":0.0,"v":null,"mm":null,"o":""},{"f":"2024-04-16","c":1.5,"e":1.4,"d":0.1,"v":null,"mm":null,"o":""},{"f":"2024-04-26","c":2.2,"e":2.0,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-04-26","c":1.4,"e":1.2,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-04-26","c":1.7,"e":1.7,"d":0.0,"v":null,"mm":null,"o":""},{"f":"2024-05-13","c":1.9,"e":1.7,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-06-19","c":2.8,"e":2.4,"d":0.4,"v":null,"mm":null,"o":""},{"f":"2024-06-25","c":1.9,"e":1.5,"d":0.4,"v":null,"mm":null,"o":""},{"f":"2024-07-10","c":1.5,"e":1.5,"d":0.0,"v":null,"mm":null,"o":""},{"f":"2024-07-10","c":2.8,"e":2.8,"d":0.0,"v":null,"mm":null,"o":""},{"f":"2024-07-22","c":2.2,"e":2.0,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-07-22","c":1.5,"e":1.3,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-07-29","c":2.1,"e":1.8,"d":0.3,"v":3.0,"mm":0.13,"o":"Se necesita acercar."},{"f":"2024-07-29","c":1.7,"e":1.4,"d":0.3,"v":null,"mm":null,"o":"En condiciones."},{"f":"2024-08-03","c":2.4,"e":2.1,"d":0.3,"v":3.0,"mm":0.23,"o":"Se necesita acercar"},{"f":"2024-08-03","c":1.6,"e":1.4,"d":0.2,"v":null,"mm":null,"o":"En condiciones"},{"f":"2024-08-06","c":1.7,"e":1.4,"d":0.3,"v":null,"mm":null,"o":"En condiciones"},{"f":"2024-08-06","c":1.9,"e":1.6,"d":0.3,"v":2.0,"mm":0.1,"o":"Se necesita acercar"},{"f":"2024-08-20","c":2.4,"e":1.9,"d":0.5,"v":3.0,"mm":-0.1,"o":"Se necesita acercar"},{"f":"2024-08-20","c":1.9,"e":1.4,"d":0.5,"v":null,"mm":null,"o":"En condiciones"},{"f":"2024-08-28","c":2.4,"e":2.2,"d":0.2,"v":6.0,"mm":0.17,"o":"Se necesita acercar"},{"f":"2024-08-28","c":1.4,"e":1.2,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2024-09-03","c":2.3,"e":1.6,"d":0.7,"v":null,"mm":null,"o":"Se necesita rectificar"},{"f":"2024-09-03","c":2.1,"e":1.4,"d":0.7,"v":2.0,"mm":0.0,"o":"Se acercan"},{"f":"2024-09-19","c":1.5,"e":1.4,"d":0.1,"v":null,"mm":null,"o":"En condiciones"},{"f":"2024-09-19","c":2.0,"e":1.9,"d":0.1,"v":3.0,"mm":0.17,"o":"Se necesita acercar"},{"f":"2024-09-27","c":1.5,"e":1.4,"d":0.1,"v":null,"mm":null,"o":""},{"f":"2024-09-27","c":2.1,"e":2.0,"d":0.1,"v":null,"mm":null,"o":"Se necesita cerrar"},{"f":"2024-10-09","c":2.4,"e":2.1,"d":0.3,"v":null,"mm":null,"o":""},{"f":"2024-10-09","c":2.0,"e":1.6,"d":0.4,"v":2.0,"mm":-0.15,"o":"Se necesita acercar"},{"f":"2024-10-09","c":1.8,"e":1.4,"d":0.4,"v":null,"mm":null,"o":"En condiciones"},{"f":"2024-10-18","c":2.5,"e":1.9,"d":0.6,"v":null,"mm":null,"o":"Se necesita retificar"},{"f":"2024-10-18","c":1.5,"e":1.5,"d":0.0,"v":null,"mm":null,"o":""},{"f":"2024-11-02","c":2.0,"e":2.0,"d":0.0,"v":3.0,"mm":0.17,"o":"Se necesita cerrar"},{"f":"2024-11-02","c":1.5,"e":1.5,"d":0.0,"v":null,"mm":null,"o":"En condiciones"},{"f":"2024-11-08","c":1.4,"e":1.4,"d":0.0,"v":null,"mm":null,"o":"En condiciones"},{"f":"2024-11-08","c":1.8,"e":1.8,"d":0.0,"v":3.0,"mm":0.13,"o":"Se necesita acercar"},{"f":"2024-11-12","c":1.8,"e":1.7,"d":0.1,"v":2.0,"mm":0.1,"o":"Se necesita acercar"},{"f":"2024-11-12","c":1.6,"e":1.5,"d":0.1,"v":null,"mm":null,"o":"En condiciones"},{"f":"2024-11-20","c":2.4,"e":2.3,"d":0.1,"v":3.0,"mm":0.27,"o":"Se necesita acercar"},{"f":"2024-11-20","c":1.6,"e":1.5,"d":0.1,"v":null,"mm":null,"o":"En condiciones"},{"f":"2024-11-29","c":2.5,"e":2.1,"d":0.4,"v":3.5,"mm":0.17,"o":"Se necesita acercar"},{"f":"2024-11-29","c":1.9,"e":1.5,"d":0.4,"v":null,"mm":null,"o":"En condiciones"},{"f":"2024-12-27","c":2.4,"e":1.8,"d":0.6,"v":3.0,"mm":0.13,"o":"Se necesita acercar"},{"f":"2024-12-27","c":2.0,"e":1.4,"d":0.6,"v":null,"mm":null,"o":"Hay que rectificar"},{"f":"2025-01-09","c":3.0,"e":2.3,"d":0.7,"v":3.5,"mm":0.2,"o":"Se necesita acercar"},{"f":"2025-01-09","c":2.3,"e":1.6,"d":0.7,"v":null,"mm":null,"o":"Hay que rectificar"},{"f":"2025-01-17","c":2.2,"e":1.5,"d":0.7,"v":null,"mm":null,"o":"Hay que rectificar!"},{"f":"2025-01-17","c":3.1,"e":2.4,"d":0.7,"v":4.0,"mm":0.23,"o":"Se necesita acercar"},{"f":"2025-01-20","c":3.0,"e":3.0,"d":0.0,"v":9.0,"mm":0.17,"o":"Se necesita acercar"},{"f":"2025-01-20","c":1.5,"e":1.5,"d":0.0,"v":null,"mm":null,"o":"En condiciones."},{"f":"2025-01-29","c":1.9,"e":1.8,"d":0.1,"v":2.5,"mm":0.16,"o":"Se necesita acercar"},{"f":"2025-01-29","c":1.5,"e":1.4,"d":0.1,"v":null,"mm":null,"o":"En condiciones"},{"f":"2025-02-17","c":2.4,"e":2.0,"d":0.4,"v":3.0,"mm":0.17,"o":"Se necesita acercar"},{"f":"2025-02-17","c":1.9,"e":1.5,"d":0.4,"v":null,"mm":null,"o":"En condiciones"},{"f":"2025-02-26","c":2.6,"e":2.2,"d":0.4,"v":4.5,"mm":0.16,"o":"Se necesita acercar"},{"f":"2025-02-26","c":1.9,"e":1.5,"d":0.4,"v":null,"mm":null,"o":"En condiciones"},{"f":"2025-03-07","c":2.6,"e":2.4,"d":0.2,"v":null,"mm":null,"o":"El laminador está en esas condiciones porque la cinta del desparramados está rota"},{"f":"2025-03-19","c":3.0,"e":2.1,"d":0.9,"v":null,"mm":null,"o":"Se necesita rectificar"},{"f":"2025-03-25","c":3.0,"e":3.0,"d":0.0,"v":7.0,"mm":0.21,"o":"Se necesita cerrar"},{"f":"2025-03-25","c":1.5,"e":1.5,"d":0.0,"v":null,"mm":null,"o":"En condiciones"},{"f":"2025-04-01","c":2.0,"e":2.0,"d":0.0,"v":3.0,"mm":0.2,"o":"Se necesita cerrar"},{"f":"2025-04-01","c":1.4,"e":1.4,"d":0.0,"v":null,"mm":null,"o":"En condiciones"},{"f":"2025-04-08","c":3.0,"e":2.9,"d":0.1,"v":9.0,"mm":0.01,"o":"Se necesita cerrar"},{"f":"2025-04-08","c":2.9,"e":2.8,"d":0.1,"v":null,"mm":null,"o":"Solo se pudo cerrar 3 vueltas, al acercarlo más rozan los cilindros"},{"f":"2025-04-15","c":2.6,"e":2.4,"d":0.2,"v":null,"mm":null,"o":"Se necesita cerrar a lo que nos de, por la vibración"},{"f":"2025-04-15","c":2.3,"e":2.2,"d":0.1,"v":6.0,"mm":-0.12,"o":"Se cerró lo más que se pudo."},{"f":"2025-04-22","c":2.4,"e":2.3,"d":0.1,"v":3.0,"mm":-0.03,"o":"Se cerro los mas que se pudo."},{"f":"2025-04-22","c":3.0,"e":2.9,"d":0.1,"v":null,"mm":null,"o":""},{"f":"2025-04-30","c":2.6,"e":2.4,"d":0.2,"v":3.0,"mm":0.27,"o":"Se necesita cerrar 3 vueltas"},{"f":"2025-04-30","c":1.8,"e":1.6,"d":0.2,"v":null,"mm":null,"o":"En condiciones"},{"f":"2025-05-07","c":2.0,"e":1.8,"d":0.2,"v":2.0,"mm":-0.15,"o":"Se cerrará, por la vibración que tiene"},{"f":"2025-06-02","c":2.6,"e":2.1,"d":0.5,"v":null,"mm":null,"o":"Se necesita rectificar"},{"f":"2025-06-03","c":1.5,"e":1.5,"d":0.0,"v":null,"mm":null,"o":"En condiciones"},{"f":"2025-09-08","c":1.9,"e":1.6,"d":0.3,"v":null,"mm":null,"o":"En condiciones"},{"f":"2025-09-10","c":2.0,"e":1.7,"d":0.3,"v":null,"mm":null,"o":"Se necesita rectificar el Cilindro lento por las ranuras que tiene."},{"f":"2025-09-19","c":1.9,"e":1.6,"d":0.3,"v":null,"mm":null,"o":"Se necesita rectificar"},{"f":"2025-09-22","c":1.5,"e":1.5,"d":0.0,"v":null,"mm":null,"o":"En condiciones"},{"f":"2025-09-24","c":1.6,"e":1.6,"d":0.0,"v":null,"mm":null,"o":"En medida"},{"f":"2025-09-30","c":1.7,"e":1.7,"d":0.0,"v":null,"mm":null,"o":""},{"f":"2025-09-30","c":1.6,"e":1.5,"d":0.1,"v":null,"mm":null,"o":""},{"f":"2025-10-03","c":2.8,"e":1.7,"d":1.1,"v":null,"mm":null,"o":"Se está notando mucha diferencia en el centro."},{"f":"2025-10-03","c":2.5,"e":1.5,"d":1.0,"v":null,"mm":null,"o":"El domingo se abrirá para ver las camisas. Desparramador requiere bajar los brazos."},{"f":"2025-10-10","c":2.6,"e":1.5,"d":1.1,"v":null,"mm":null,"o":"Se investiga el problema de tanta diferencia."},{"f":"2025-10-16","c":2.8,"e":1.7,"d":1.1,"v":null,"mm":null,"o":"Se detectan rectificadores con juego."},{"f":"2025-10-16","c":2.6,"e":1.5,"d":1.1,"v":null,"mm":null,"o":"Los desparramadores no están abriendo la tierra por el desgaste."},{"f":"2025-10-22","c":2.6,"e":1.5,"d":1.1,"v":null,"mm":null,"o":"Queda asentado que el domingo 26/10 se vendrá a rectificar con Martin."},{"f":"2025-10-22","c":2.7,"e":1.6,"d":1.1,"v":null,"mm":null,"o":"El domingo 19/10 se calibraron rectificadores"},{"f":"2025-10-27","c":2.8,"e":2.3,"d":0.5,"v":5.0,"mm":0.2,"o":"Se rectifica el 26/10 y se centra rectificador cilindro rápido"},{"f":"2025-10-27","c":1.5,"e":1.3,"d":0.2,"v":null,"mm":null,"o":"En condiciones para trabajar, con una diferencia."},{"f":"2025-11-10","c":2.5,"e":2.1,"d":0.4,"v":4.0,"mm":0.13,"o":""},{"f":"2025-11-10","c":2.0,"e":1.6,"d":0.4,"v":null,"mm":null,"o":"Urgente reparar desparramadores de producción."},{"f":"2025-11-29","c":2.9,"e":2.3,"d":0.6,"v":4.0,"mm":0.18,"o":""},{"f":"2025-11-29","c":2.2,"e":1.6,"d":0.6,"v":null,"mm":null,"o":"Mañana se rectificará el KLB12"},{"f":"2025-12-01","c":1.6,"e":1.4,"d":0.2,"v":12.0,"mm":-0.03,"o":"Rectificado"},{"f":"2025-12-11","c":1.6,"e":1.4,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2025-12-11","c":2.0,"e":1.8,"d":0.2,"v":3.0,"mm":0.13,"o":""},{"f":"2025-12-31","c":2.5,"e":2.2,"d":0.3,"v":4.0,"mm":0.15,"o":"Se necesita cerrar"},{"f":"2025-12-31","c":1.8,"e":1.6,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2026-01-02","c":2.1,"e":1.9,"d":0.2,"v":3.0,"mm":0.13,"o":"Se necesita cerrar"},{"f":"2026-01-02","c":1.7,"e":1.5,"d":0.2,"v":null,"mm":null,"o":"En condiciones."},{"f":"2026-01-12","c":2.4,"e":2.3,"d":0.1,"v":4.0,"mm":0.2,"o":"Se necesita cerrar"},{"f":"2026-01-12","c":1.6,"e":1.5,"d":0.1,"v":null,"mm":null,"o":""},{"f":"2026-01-16","c":1.8,"e":1.6,"d":0.2,"v":null,"mm":null,"o":""},{"f":"2026-01-16","c":2.3,"e":2.1,"d":0.2,"v":3.0,"mm":0.17,"o":"Se necesita cerrar"},{"f":"2026-01-20","c":1.6,"e":1.5,"d":0.1,"v":null,"mm":null,"o":""},{"f":"2026-01-20","c":2.0,"e":1.9,"d":0.1,"v":2.5,"mm":0.16,"o":"Se necesita cerrar"},{"f":"2026-01-27","c":1.9,"e":1.7,"d":0.2,"v":2.0,"mm":0.15,"o":"Se necesita cerrar"},{"f":"2026-01-27","c":1.6,"e":1.4,"d":0.2,"v":null,"mm":null,"o":"En condiciones"},{"f":"2026-02-05","c":2.6,"e":2.4,"d":0.2,"v":5.0,"mm":0.18,"o":"Se necesita cerrar"},{"f":"2026-02-05","c":1.7,"e":1.5,"d":0.2,"v":null,"mm":null,"o":"En condiciones"},{"f":"2026-02-10","c":2.3,"e":2.0,"d":0.3,"v":3.0,"mm":0.17,"o":"Se necesita cerrar"},{"f":"2026-02-10","c":1.8,"e":1.5,"d":0.3,"v":null,"mm":null,"o":"En condiciones"},{"f":"2026-02-13","c":2.4,"e":2.1,"d":0.3,"v":3.0,"mm":0.17,"o":"Se necesita cerrar"},{"f":"2026-02-13","c":1.9,"e":1.6,"d":0.3,"v":null,"mm":null,"o":"En condiciones"},{"f":"2026-02-19","c":2.5,"e":2.2,"d":0.3,"v":4.0,"mm":0.15,"o":"Se necesita cerrar"},{"f":"2026-02-19","c":1.9,"e":1.6,"d":0.3,"v":null,"mm":null,"o":"En condiciones"},{"f":"2026-02-24","c":2.8,"e":2.4,"d":0.4,"v":6.0,"mm":0.15,"o":"Se necesita cerrar"},{"f":"2026-02-24","c":1.9,"e":1.5,"d":0.4,"v":null,"mm":null,"o":"En condiciones"},{"f":"2026-03-03","c":1.6,"e":1.6,"d":0.0,"v":12.0,"mm":-0.04,"o":"Rectificado"},{"f":"2026-03-09","c":2.1,"e":2.1,"d":0.0,"v":4.0,"mm":0.15,"o":"Se necesita cerrar"},{"f":"2026-03-09","c":1.5,"e":1.5,"d":0.0,"v":null,"mm":null,"o":""},{"f":"2026-03-18","c":1.8,"e":1.7,"d":0.1,"v":2.0,"mm":0.1,"o":"Se necesita cerrar"},{"f":"2026-03-24","c":2.5,"e":2.4,"d":0.1,"v":5.0,"mm":0.18,"o":"Se necesita cerrar"},{"f":"2026-03-24","c":1.6,"e":1.5,"d":0.1,"v":null,"mm":null,"o":"En condiciones."},{"f":"2026-08-18","c":1.6,"e":1.5,"d":0.1,"v":null,"mm":null,"o":"En condiciones."}];
+
+const MOLDES = [
+  {molde:"H8",num:"1",estado:"Operativo",enPeso:"Excedido",nominal:3.5,vias:[3.675,3.625,3.680,3.680,3.610,3.590,3.585,3.580],prom:3.628,cromado:"Sí",obs:"Molde en proceso de cromado",fecha:"17/11/2025"},
+  {molde:"H8",num:"2",estado:"Operativo",enPeso:"Excedido",nominal:3.5,vias:[3.685,3.620,3.680,3.600,3.660,3.645,3.590,3.690],prom:3.646,cromado:"Sí",obs:"Listo para producción",fecha:"25/03/2026"},
+  {molde:"H12",num:"1",estado:"En calibración",enPeso:"Excedido",nominal:4.5,vias:[],prom:null,cromado:"No",obs:"Molde listo para pruebas",fecha:"04/02/2026"},
+  {molde:"H12",num:"2",estado:"En fabricación",enPeso:"Excedido",nominal:4.5,vias:[],prom:null,cromado:"No",obs:"Molde con piezas muy gastadas, sin arreglos.",fecha:"10/03/2026"},
+  {molde:"H12",num:"3 BR",estado:"Operativo",enPeso:"Óptimo",nominal:4.5,vias:[4.340,4.280,4.335,4.330,4.355,4.315],prom:4.326,cromado:"En proceso",obs:"Se mandaron acromar piezas, menos dados y boquillas",fecha:"05/03/2026"},
+  {molde:"H18",num:"1",estado:"En calibración",enPeso:"Excedido",nominal:6.3,vias:[],prom:null,cromado:"No",obs:"Se realizan primeras pruebas",fecha:"17/11/2025"},
+  {molde:"H18",num:"2",estado:"Operativo",enPeso:"Excedido",nominal:6.3,vias:[6.360,6.420,6.440,6.320],prom:6.385,cromado:"Sí",obs:"Reacondicionado",fecha:"12/12/2025"},
+  {molde:"P12",num:"1",estado:"Operativo",enPeso:"Excedido",nominal:5.6,vias:[5.985,5.875],prom:5.930,cromado:"Sí",obs:"Se calibran dados cromas para producción.",fecha:"17/11/2025"},
+  {molde:"P18",num:"1",estado:"Operativo",enPeso:"Óptimo",nominal:7.8,vias:[7.755,7.685],prom:7.720,cromado:"Sí",obs:"En producción",fecha:"04/02/2026"},
+  {molde:"L12",num:"1",estado:"En calibración",enPeso:"Óptimo",nominal:8.0,vias:[7.010,6.905],prom:6.958,cromado:"No",obs:"Se cambiaron los dados por los de repuesto originales.",fecha:"05/03/2026"},
+  {molde:"L16",num:"1",estado:"Operativo",enPeso:"Óptimo",nominal:10.2,vias:[10.100,10.100],prom:10.100,cromado:"No",obs:"Pendiente cromado",fecha:"07/05/2024"},
+  {molde:"DM20",num:"1",estado:"Operativo",enPeso:"Excedido",nominal:7.1,vias:[8.320,8.360,8.260,8.335],prom:8.319,cromado:"No",obs:"Molde listo para producción.",fecha:"04/11/2025"},
+  {molde:"DM27",num:"1",estado:"En calibración",enPeso:"Excedido",nominal:10.5,vias:[],prom:null,cromado:"No",obs:"Formato sin mercado",fecha:"06/05/2024"},
+  {molde:"KB",num:"1",estado:"Operativo",enPeso:"Óptimo",nominal:9.8,vias:[9.200,9.200],prom:9.200,cromado:"No",obs:"Formato sin mercado",fecha:"07/05/2024"}
+];
+
+const MONTHLY = [{"mes":"2024-01","prom":0.18,"max":0.2,"n":5},{"mes":"2024-02","prom":0.3,"max":0.7,"n":14},{"mes":"2024-03","prom":0.457,"max":0.6,"n":7},{"mes":"2024-04","prom":0.071,"max":0.2,"n":7},{"mes":"2024-05","prom":0.2,"max":0.2,"n":1},{"mes":"2024-06","prom":0.4,"max":0.4,"n":2},{"mes":"2024-07","prom":0.167,"max":0.3,"n":6},{"mes":"2024-08","prom":0.312,"max":0.5,"n":8},{"mes":"2024-09","prom":0.3,"max":0.7,"n":6},{"mes":"2024-10","prom":0.34,"max":0.6,"n":5},{"mes":"2024-11","prom":0.12,"max":0.4,"n":10},{"mes":"2024-12","prom":0.6,"max":0.6,"n":2},{"mes":"2025-01","prom":0.375,"max":0.7,"n":8},{"mes":"2025-02","prom":0.4,"max":0.4,"n":4},{"mes":"2025-03","prom":0.275,"max":0.9,"n":4},{"mes":"2025-04","prom":0.11,"max":0.2,"n":10},{"mes":"2025-05","prom":0.2,"max":0.2,"n":1},{"mes":"2025-06","prom":0.25,"max":0.5,"n":2},{"mes":"2025-09","prom":0.143,"max":0.3,"n":7},{"mes":"2025-10","prom":0.922,"max":1.1,"n":9},{"mes":"2025-11","prom":0.5,"max":0.6,"n":4},{"mes":"2025-12","prom":0.22,"max":0.3,"n":5},{"mes":"2026-01","prom":0.16,"max":0.2,"n":10},{"mes":"2026-02","prom":0.3,"max":0.4,"n":10},{"mes":"2026-03","prom":0.05,"max":0.1,"n":6},{"mes":"2026-08","prom":0.1,"max":0.1,"n":1}];
+
+// ─────────────────────────────────────────────────────
+// CHART REGISTRY
+// ─────────────────────────────────────────────────────
+const charts = {};
+function destroyChart(id) { if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
+
+// ─────────────────────────────────────────────────────
+// RELOJ
+// ─────────────────────────────────────────────────────
+function updateClock(){
+  const n = new Date();
+  const p = v => String(v).padStart(2,'0');
+  document.getElementById('clock').textContent = `${p(n.getDate())}/${p(n.getMonth()+1)}/${n.getFullYear()} ${p(n.getHours())}:${p(n.getMinutes())}`;
+}
+updateClock(); setInterval(updateClock, 60000);
+
+// ─────────────────────────────────────────────────────
+// TABS
+// ─────────────────────────────────────────────────────
+function switchTab(id, btn){
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => { s.classList.remove('active'); s.classList.remove('fade-in'); });
+  btn.classList.add('active');
+  const sec = document.getElementById('sec-'+id);
+  sec.classList.add('active');
+  void sec.offsetWidth;
+  sec.classList.add('fade-in');
+  if(id === 'estano') buildEstano('todos');
+  if(id === 'moldes') buildMoldes('todos');
+}
+
+// ─────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────
+function difColor(d){
+  if(d >= 0.8) return '#e05252';
+  if(d >= 0.5) return '#e8a020';
+  if(d >= 0.3) return '#e8b84b';
+  return '#4caf7d';
+}
+function difBadge(d){
+  if(d >= 0.8) return '<span class="badge badge-red">CRÍTICO</span>';
+  if(d >= 0.5) return '<span class="badge badge-amber">ALTO</span>';
+  if(d >= 0.3) return '<span class="badge badge-gray">MODERADO</span>';
+  return '<span class="badge badge-green">OK</span>';
+}
+function fmtFecha(f){ return f.split('-').reverse().join('/'); }
+
+// ─────────────────────────────────────────────────────
+// FILTRO AÑO (ESTAÑO)
+// ─────────────────────────────────────────────────────
+let currentYear = 'todos';
+
+function filterYear(y, btn){
+  currentYear = y;
+  document.querySelectorAll('#year-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  buildEstano(y);
+}
+
+function getEstanoData(y){
+  if(y === 'todos') return ESTANO;
+  return ESTANO.filter(r => r.f.startsWith(y));
+}
+
+// ─────────────────────────────────────────────────────
+// BUILD ESTAÑO
+// ─────────────────────────────────────────────────────
+function buildEstano(y){
+  const data = getEstanoData(y);
+  const monthly = y === 'todos' ? MONTHLY : MONTHLY.filter(m => m.mes.startsWith(y));
+
+  // KPIs
+  const last = data[data.length-1];
+  const avgDif = data.reduce((s,r)=>s+r.d,0)/data.length;
+  const maxDif = Math.max(...data.map(r=>r.d));
+  const rectifs = data.filter(r => r.o && r.o.toLowerCase().includes('rectif')).length;
+  const ajustes = data.filter(r => r.v !== null).length;
+
+  document.getElementById('kpis-estano').innerHTML = `
+    <div class="kpi">
+      <div class="kpi-accent" style="background:var(--accent)"></div>
+      <div class="kpi-label">Última medición</div>
+      <div class="kpi-value" style="font-size:18px;color:var(--text)">${fmtFecha(last.f)}</div>
+      <div class="kpi-meta">Centro: ${last.c.toFixed(2)} mm · Esquina: ${last.e.toFixed(2)} mm</div>
+      ${difBadge(last.d)}
+    </div>
+    <div class="kpi">
+      <div class="kpi-accent" style="background:${difColor(last.d)}"></div>
+      <div class="kpi-label">Diferencia actual</div>
+      <div class="kpi-value" style="color:${difColor(last.d)}">${last.d.toFixed(2)}</div>
+      <div class="kpi-meta">mm · Centro − Esquina</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-accent" style="background:var(--blue)"></div>
+      <div class="kpi-label">Diferencia promedio</div>
+      <div class="kpi-value" style="color:var(--blue)">${avgDif.toFixed(3)}</div>
+      <div class="kpi-meta">mm · ${data.length} registros</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-accent" style="background:var(--amber)"></div>
+      <div class="kpi-label">Intervenciones</div>
+      <div class="kpi-value" style="color:var(--amber)">${ajustes}</div>
+      <div class="kpi-meta">ajustes · ${rectifs} rectificaciones</div>
+    </div>
+  `;
+
+  // CHART LÍNEA
+  destroyChart('linea');
+  charts['linea'] = new Chart(document.getElementById('chartLinea'), {
+    type: 'line',
+    data: {
+      labels: data.map(r => fmtFecha(r.f)),
+      datasets: [
+        { label:'Centro', data: data.map(r=>r.c), borderColor:'#5b9cf6', backgroundColor:'rgba(91,156,246,0.05)', tension:0.3, pointRadius:2, pointHoverRadius:5, borderWidth:2 },
+        { label:'Esquina', data: data.map(r=>r.e), borderColor:'#4caf7d', backgroundColor:'rgba(76,175,125,0.05)', tension:0.3, pointRadius:2, pointHoverRadius:5, borderWidth:2 },
+        { label:'Diferencia', data: data.map(r=>r.d), borderColor:'#e05252', backgroundColor:'rgba(224,82,82,0.04)', tension:0.3, pointRadius:2, pointHoverRadius:5, borderWidth:1.5, borderDash:[5,3] }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      plugins: {
+        legend:{display:false},
+        tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} mm` } }
+      },
+      scales:{
+        x:{ ticks:{maxRotation:45,autoSkip:true,maxTicksLimit:24,font:{size:10},color:'#555a68'}, grid:{color:'rgba(255,255,255,0.04)'} },
+        y:{ title:{display:true,text:'mm',color:'#555a68',font:{size:11}}, ticks:{color:'#555a68',font:{size:11}}, grid:{color:'rgba(255,255,255,0.04)'} }
+      }
+    }
+  });
+
+  // CHART MENSUAL
+  destroyChart('mensual');
+  charts['mensual'] = new Chart(document.getElementById('chartMensual'), {
+    type: 'bar',
+    data: {
+      labels: monthly.map(m => {
+        const [y,mo] = m.mes.split('-');
+        const meses = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        return meses[+mo]+' '+y.slice(2);
+      }),
+      datasets: [
+        { label:'Promedio', data: monthly.map(m=>m.prom), backgroundColor: monthly.map(m => m.prom >= 0.8 ? '#e05252' : m.prom >= 0.5 ? '#e8a020' : m.prom >= 0.3 ? '#e8b84b' : '#4caf7d'), borderRadius:3, borderWidth:0 },
+        { label:'Máximo', data: monthly.map(m=>m.max), type:'line', borderColor:'rgba(224,82,82,0.5)', borderWidth:1.5, borderDash:[4,3], pointRadius:2, tension:0.3, backgroundColor:'transparent' }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)} mm` } } },
+      scales:{
+        x:{ ticks:{maxRotation:45,autoSkip:true,maxTicksLimit:12,font:{size:9},color:'#555a68'}, grid:{display:false} },
+        y:{ ticks:{color:'#555a68',font:{size:10}}, grid:{color:'rgba(255,255,255,0.04)'} }
+      }
+    }
+  });
+
+  // CHART DISTRIBUCIÓN
+  const buckets = {'0.0':0,'0.1–0.2':0,'0.3–0.4':0,'0.5–0.6':0,'0.7–0.9':0,'≥ 1.0':0};
+  data.forEach(r=>{
+    if(r.d===0) buckets['0.0']++;
+    else if(r.d<=0.2) buckets['0.1–0.2']++;
+    else if(r.d<=0.4) buckets['0.3–0.4']++;
+    else if(r.d<=0.6) buckets['0.5–0.6']++;
+    else if(r.d<=0.9) buckets['0.7–0.9']++;
+    else buckets['≥ 1.0']++;
+  });
+  destroyChart('dist');
+  charts['dist'] = new Chart(document.getElementById('chartDist'), {
+    type:'bar',
+    data:{
+      labels: Object.keys(buckets),
+      datasets:[{ label:'Registros', data:Object.values(buckets), backgroundColor:['#4caf7d','#5b9cf6','#e8b84b','#e8a020','#e05252','#791919'], borderRadius:4, borderWidth:0 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ ticks:{color:'#555a68',font:{size:10}}, grid:{display:false} },
+        y:{ ticks:{stepSize:5,color:'#555a68',font:{size:10}}, grid:{color:'rgba(255,255,255,0.04)'} }
+      }
+    }
+  });
+
+  // CHART VUELTAS
+  const ajData = data.filter(r => r.v !== null);
+  destroyChart('vueltas');
+  charts['vueltas'] = new Chart(document.getElementById('chartVueltas'), {
+    type:'bar',
+    data:{
+      labels: ajData.map(r => fmtFecha(r.f)),
+      datasets:[{ label:'Vueltas', data:ajData.map(r=>r.v), backgroundColor:'rgba(232,184,75,0.6)', borderColor:'#e8b84b', borderWidth:1, borderRadius:3 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`${ctx.parsed.y} vueltas` } } },
+      scales:{
+        x:{ ticks:{maxRotation:45,autoSkip:true,maxTicksLimit:20,font:{size:9},color:'#555a68'}, grid:{display:false} },
+        y:{ title:{display:true,text:'Vueltas',color:'#555a68',font:{size:10}}, ticks:{color:'#555a68',font:{size:10}}, grid:{color:'rgba(255,255,255,0.04)'} }
+      }
+    }
+  });
+
+  // TABLA
+  const conObs = [...data].filter(r=>r.o).reverse().slice(0,20);
+  document.getElementById('tabla-estano').innerHTML = conObs.map(r=>`
+    <tr>
+      <td class="td-date">${fmtFecha(r.f)}</td>
+      <td class="td-num">${r.c.toFixed(2)}</td>
+      <td class="td-num">${r.e.toFixed(2)}</td>
+      <td class="td-num" style="color:${difColor(r.d)};font-weight:500">${r.d.toFixed(2)}</td>
+      <td class="td-num">${r.v !== null ? r.v : '—'}</td>
+      <td class="td-num">${r.mm !== null ? r.mm.toFixed(2) : '—'}</td>
+      <td class="td-obs">${r.o || '—'}</td>
+    </tr>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────────────
+// FILTRO MOLDES
+// ─────────────────────────────────────────────────────
+function filterMoldes(f, btn){
+  document.querySelectorAll('#molde-filters .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  buildMoldes(f);
+}
+
+function buildMoldes(filtro){
+  const data = filtro === 'todos' ? MOLDES : MOLDES.filter(m=>m.estado===filtro);
+
+  // KPIs
+  const total = MOLDES.length;
+  const ops = MOLDES.filter(m=>m.estado==='Operativo').length;
+  const crom = MOLDES.filter(m=>m.cromado==='Sí').length;
+  const exc = MOLDES.filter(m=>m.enPeso==='Excedido').length;
+
+  document.getElementById('kpis-moldes').innerHTML = `
+    <div class="kpi">
+      <div class="kpi-accent" style="background:var(--accent)"></div>
+      <div class="kpi-label">Total moldes</div>
+      <div class="kpi-value" style="color:var(--text)">${total}</div>
+      <div class="kpi-meta">en seguimiento activo</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-accent" style="background:var(--green)"></div>
+      <div class="kpi-label">Operativos</div>
+      <div class="kpi-value" style="color:var(--green)">${ops}</div>
+      <div class="kpi-meta">${Math.round(ops/total*100)}% del total</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-accent" style="background:var(--blue)"></div>
+      <div class="kpi-label">Con cromado activo</div>
+      <div class="kpi-value" style="color:var(--blue)">${crom}</div>
+      <div class="kpi-meta">de ${total} moldes</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-accent" style="background:var(--amber)"></div>
+      <div class="kpi-label">Excedidos en peso</div>
+      <div class="kpi-value" style="color:var(--amber)">${exc}</div>
+      <div class="kpi-meta">sobre peso nominal</div>
+    </div>
+  `;
+
+  // Alertas
+  const enFab = MOLDES.filter(m=>m.estado==='En fabricación');
+  const pendCrom = MOLDES.filter(m=>m.estado==='Operativo' && m.cromado==='No');
+  let alertHTML = '';
+  enFab.forEach(m => {
+    alertHTML += `<div class="alert alert-red"><div class="alert-icon">⚠</div><div class="alert-text"><strong>${m.molde} #${m.num} — En fabricación:</strong> ${m.obs}</div></div>`;
+  });
+  if(pendCrom.length > 0){
+    alertHTML += `<div class="alert alert-amber"><div class="alert-icon">◆</div><div class="alert-text"><strong>Cromado pendiente:</strong> ${pendCrom.map(m=>m.molde+' #'+m.num).join(', ')} — Revisar programación de cromado.</div></div>`;
+  }
+  document.getElementById('alertas-moldes').innerHTML = alertHTML;
+
+  // CHART PESOS
+  const withData = MOLDES.filter(m=>m.prom !== null);
+  const withoutData = MOLDES.filter(m=>m.prom === null);
+  destroyChart('pesos');
+  charts['pesos'] = new Chart(document.getElementById('chartPesos'), {
+    type:'bar',
+    data:{
+      labels: MOLDES.map(m=>`${m.molde} #${m.num}`),
+      datasets:[
+        { label:'Peso promedio real', data: MOLDES.map(m=>m.prom || 0),
+          backgroundColor: MOLDES.map(m=>
+            m.prom === null ? 'rgba(85,90,104,0.3)' :
+            m.enPeso==='Óptimo' ? 'rgba(76,175,125,0.75)' : 'rgba(232,160,32,0.75)'
+          ),
+          borderColor: MOLDES.map(m=>
+            m.prom === null ? '#555a68' :
+            m.enPeso==='Óptimo' ? '#4caf7d' : '#e8a020'
+          ),
+          borderWidth:1, borderRadius:4
+        },
+        { label:'Peso nominal', data: MOLDES.map(m=>m.nominal),
+          backgroundColor:'rgba(232,184,75,0.12)', borderColor:'rgba(232,184,75,0.4)', borderWidth:1.5, borderRadius:4, type:'bar'
+        }
+      ]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${ctx.parsed.x.toFixed(3)} kg` } } },
+      scales:{
+        x:{ title:{display:true,text:'kg',color:'#555a68',font:{size:11}}, ticks:{color:'#555a68',font:{size:10}}, grid:{color:'rgba(255,255,255,0.04)'} },
+        y:{ ticks:{color:'#8b90a0',font:{size:11}}, grid:{display:false} }
+      }
+    }
+  });
+
+  // CHART ESTADOS
+  const estadoCount = {'Operativo':0,'En calibración':0,'En fabricación':0};
+  MOLDES.forEach(m=>estadoCount[m.estado]++);
+  destroyChart('estados');
+  charts['estados'] = new Chart(document.getElementById('chartEstados'), {
+    type:'doughnut',
+    data:{
+      labels:['Operativo','En calibración','En fabricación'],
+      datasets:[{ data:Object.values(estadoCount), backgroundColor:['#4caf7d','#5b9cf6','#e05252'], borderColor:'#14161a', borderWidth:3, hoverOffset:6 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:'bottom', labels:{color:'#8b90a0',font:{size:11},padding:14,boxWidth:12}} }
+    }
+  });
+
+  // CHART CROMADO
+  const cromCount = {'Sí':0,'En proceso':0,'No':0};
+  MOLDES.forEach(m=>cromCount[m.cromado]++);
+  destroyChart('cromado');
+  charts['cromado'] = new Chart(document.getElementById('chartCromado'), {
+    type:'doughnut',
+    data:{
+      labels:['Cromado activo','En proceso','Sin cromado'],
+      datasets:[{ data:Object.values(cromCount), backgroundColor:['#4caf7d','#e8b84b','#555a68'], borderColor:'#14161a', borderWidth:3, hoverOffset:6 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:'bottom', labels:{color:'#8b90a0',font:{size:11},padding:14,boxWidth:12}} }
+    }
+  });
+
+  // MOLDE CARDS
+  function estadoBadge(e){
+    if(e==='Operativo') return '<span class="badge badge-green">Operativo</span>';
+    if(e==='En calibración') return '<span class="badge badge-blue">En calibración</span>';
+    return '<span class="badge badge-red">En fabricación</span>';
+  }
+  function pesoBadge(p){ return p==='Óptimo' ? '<span class="badge badge-green">Óptimo</span>' : '<span class="badge badge-amber">Excedido</span>'; }
+  function cromBadge(c){
+    if(c==='Sí') return '<span class="badge badge-teal">Cromado</span>';
+    if(c==='En proceso') return '<span class="badge badge-amber">En proceso</span>';
+    return '<span class="badge badge-gray">Sin cromado</span>';
+  }
+
+  document.getElementById('molde-cards').innerHTML = data.map(m=>{
+    const barPct = m.prom ? Math.min((m.prom/m.nominal)*100,130) : 0;
+    const barColor = m.enPeso==='Óptimo' ? '#4caf7d' : '#e8a020';
+    const nomPct = Math.min((m.nominal/m.nominal)*100,130);
+
+    const viasHTML = m.vias.length > 0 ? `
+      <div style="margin:10px 0 8px;">
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:.06em;margin-bottom:5px;">PESOS POR VÍA (kg)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+          ${m.vias.map((v,i)=>`<span style="background:var(--bg4);border-radius:3px;padding:2px 6px;font-family:var(--font-mono);font-size:10px;color:var(--text2);">V${i+1}: ${v.toFixed(3)}</span>`).join('')}
+        </div>
+      </div>` : '';
+
+    return `
+    <div class="molde-card">
+      <div class="molde-card-head">
+        <div>
+          <div class="molde-name">${m.molde}</div>
+          <div class="molde-num">N° ${m.num}</div>
+        </div>
+        <div style="text-align:right;">${estadoBadge(m.estado)}</div>
+      </div>
+      <div class="molde-row"><span class="molde-row-label">En peso</span>${pesoBadge(m.enPeso)}</div>
+      <div class="molde-row"><span class="molde-row-label">Nominal</span><span class="molde-row-val">${m.nominal.toFixed(1)} kg</span></div>
+      <div class="molde-row"><span class="molde-row-label">Promedio</span><span class="molde-row-val" style="color:${m.prom?barColor:'var(--text3)'}">${m.prom ? m.prom.toFixed(3)+' kg' : '— sin datos'}</span></div>
+      ${m.prom ? `
+      <div class="weight-bar">
+        <div class="weight-bar-label"><span>0</span><span>Nom. ${m.nominal.toFixed(1)}</span><span>${(m.nominal*1.2).toFixed(1)}</span></div>
+        <div class="weight-bar-track">
+          <div class="weight-bar-fill" style="width:${Math.min(barPct/1.3,100).toFixed(1)}%;background:${barColor};"></div>
+        </div>
+      </div>` : ''}
+      ${viasHTML}
+      <div class="molde-row" style="margin-top:6px;"><span class="molde-row-label">Cromado</span>${cromBadge(m.cromado)}</div>
+      <div class="molde-obs">${m.obs}</div>
+      <div class="molde-date">Actualizado: ${m.fecha}</div>
+    </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────
+buildEstano('todos');
+</script>
+</body>
+</html>
