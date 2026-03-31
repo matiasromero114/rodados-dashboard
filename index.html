@@ -2964,7 +2964,7 @@ function buildChartViajesPorCam(data) {
   data.forEach(function(v) {
     var c = (v.cam || '').trim();
     if (!c) return;
-    counts[c] = (counts[c] || 0) + 1;
+    counts[c] = (counts[c] || 0) + (v.viajes || 1);
   });
   var labels = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
   var values = labels.map(function(k){ return counts[k]; });
@@ -2984,7 +2984,7 @@ function buildChartViajesPorChofer(data) {
   data.forEach(function(v) {
     var c = (v.chofer || '').trim();
     if (!c) return;
-    counts[c] = (counts[c] || 0) + 1;
+    counts[c] = (counts[c] || 0) + (v.viajes || 1);
   });
   var labels = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
   var values = labels.map(function(k){ return counts[k]; });
