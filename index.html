@@ -2762,10 +2762,23 @@ function parseViajes(rows) {
   // Parsea números: coma=miles, punto=decimal (ej: 654,340.00 -> 654340)
   function parseNum(str) {
     var s = (str || '').trim();
-    if (!s || s.toLowerCase() === 'fallado' || s.toLowerCase() === 'f/s') return null;
+    if (!s || s.toLowerCase() === 'fallado' || s.toLowerCase() === 'f/s' || s === '#VALUE!' || s === '#REF!') return null;
     s = s.replace(/,/g, '');
     var v = parseFloat(s);
     return isNaN(v) ? null : v;
+  }
+
+  // Parsea específicamente la columna VIAJES - solo números enteros
+  function parseViajes(str) {
+    var s = (str || '').trim();
+    if (!s) return 0; // Si está vacío, retornar 0 viajes
+    // Limpiar caracteres no numéricos excepto punto y coma
+    s = s.replace(/[^0-9.,]/g, '');
+    // Remover comas de miles
+    s = s.replace(/,/g, '');
+    // Convertir a entero
+    var v = parseInt(s, 10);
+    return isNaN(v) ? 0 : v; // Si no es válido, retornar 0
   }
 
   // Tabla de distancias IDA en km — simétrica (A->B = B->A)
@@ -2823,7 +2836,8 @@ function parseViajes(rows) {
     if (!cam) continue;
 
     var lts       = parseNum((r[iLts]  || '').trim()) || 0;
-    var viajesCol = iViajes >= 0 ? (parseInt((r[iViajes] || '0'), 10) || 1) : 1;
+    // MODIFICACIÓN: Usar la nueva función parseViajes para leer correctamente la columna VIAJES
+    var viajesCol = iViajes >= 0 ? parseViajes(r[iViajes]) : 0;
     var hIni      = parseNum((r[iHIni] || '').trim()) || 0;
     var hFin      = parseNum((r[iHFin] || '').trim()) || 0;
     var origen    = (r[iOrigen]  || '').trim();
@@ -2842,8 +2856,9 @@ function parseViajes(rows) {
       km = (kmRaw !== null && kmRaw > 0) ? Math.round(kmRaw) : 0;
     }
 
-    // Descartar filas con km <= 0
-    if (km <= 0) continue;
+    // MODIFICACIÓN: Incluir filas con 0 km pero con viajes válidos
+    // Solo descartar si no hay datos de viajes y km = 0
+    if (km <= 0 && viajesCol <= 0) continue;
 
     result.push({
       fecha:   (r[iFecha]  || '').trim(),
@@ -2964,7 +2979,7 @@ function buildChartViajesPorCam(data) {
   data.forEach(function(v) {
     var c = (v.cam || '').trim();
     if (!c) return;
-    counts[c] = (counts[c] || 0) + (v.viajes || 1);
+    counts[c] = (counts[c] || 0) + (v.viajes || 0);
   });
   var labels = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
   var values = labels.map(function(k){ return counts[k]; });
@@ -2984,7 +2999,7 @@ function buildChartViajesPorChofer(data) {
   data.forEach(function(v) {
     var c = (v.chofer || '').trim();
     if (!c) return;
-    counts[c] = (counts[c] || 0) + (v.viajes || 1);
+    counts[c] = (counts[c] || 0) + (v.viajes || 0);
   });
   var labels = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
   var values = labels.map(function(k){ return counts[k]; });
