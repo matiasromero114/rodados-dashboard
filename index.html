@@ -951,6 +951,9 @@ const SHEET_NAMES = {
   mttoAutoelevadores:   'MANTENIMIENTO AUTOELEVADORES',
   costos:               'COSTOS',
   viajes:               'CONTROL VIAJES CAM',
+  checklistPalas:       'CHECKLIST PALAS',          
+  checklistAut:         'CHECKLIST AUTOELEVADORES', 
+};
 };
 
 // ID del Sheet de Services (planilla separada)
@@ -968,6 +971,8 @@ let G = {
   viajes: [],
   servicesFilter: 'all',
   charts: {},
+  checklistPalas: [],
+  checklistAut: [],
 };
 
 // ═══════════════════════════════════════════════════════
@@ -996,6 +1001,8 @@ const SHEET_GIDS = {
   'MANTENIMIENTO AUTOELEVADORES': '413165072',
   'COSTOS':                       '336389855',
   'CONTROL VIAJES CAM':           '1170616663',
+  'CHECKLIST PALAS':              '1743129799',  
+  'CHECKLIST AUTOELEVADORES':     '1958650087',  
 };
 
 // Carga una hoja via URL CSV publicada (sin CORS, funciona desde file://)
@@ -1107,7 +1114,22 @@ async function loadAllData() {
       console.warn('No se pudieron cargar los services:', e);
       G.services = [];
     }
+  // Cargar checklists
+    try {
+      const chkPalasRows = await fetchSheet(SHEET_NAMES.checklistPalas);
+      G.checklistPalas = parseChecklist(chkPalasRows, 'PALA');
+    } catch(e) {
+      console.warn('No se pudo cargar CHECKLIST PALAS:', e);
+      G.checklistPalas = [];
+    }
 
+    try {
+      const chkAutRows = await fetchSheet(SHEET_NAMES.checklistAut);
+      G.checklistAut = parseChecklist(chkAutRows, 'AUTOELEVADOR');
+    } catch(e) {
+      console.warn('No se pudo cargar CHECKLIST AUTOELEVADORES:', e);
+      G.checklistAut = [];
+    }
     if (G.fleet.length === 0) {
       setStatus('err','❌ Hoja DISPONIBILIDAD vacía o nombres de columnas incorrectos');
     } else {
@@ -1128,7 +1150,7 @@ async function loadAllData() {
 
   document.getElementById('loading').classList.add('hide');
 }
-
+  
 function showError(msg) {
   // Mostrar panel de error visible en el dashboard
   const overview = document.getElementById('kpi-overview');
@@ -1898,6 +1920,102 @@ function renderKPIPage() {
       <div class="mcard-desc">Camiones de abastecimiento</div>
     </div>
   `;
+}
+function parseChecklist(rows, tipo) {
+  if (!rows || rows.length < 2) return [];
+  // Encontrar fila de encabezado
+  let hdrIdx = rows.findIndex(r => r.some(c => /fecha|modelo|maquinista/i.test(c)));
+  if (hdrIdx < 0) hdrIdx = 0;
+  const headers = rows[hdrIdx].map(h => (h || '').trim().toUpperCase());
+
+  // Mapeo de ítems de inspección (nombres normalizados -> clave interna)
+  const itemMap = {
+    'REVISAR FUGAS DE FLUIDOS': 'fugas',
+    'REVISAR FUGAS DE ACEITE, COMBUSTIBLE E HIDRÁULICO': 'fugas',
+    'VERIFICAR NIVELES DE ACEITE MOTOR, TRANSMISIÓN E HIDRÁULICO': 'niveles',
+    'VERIFICAR NIVEL DE REFRIGERANTE Y LIQUIDO DE FRENOS': 'refrigerante',
+    'REVISIÓN Y LIMPIEZA DEL FILTRO DE AIRE (AIRE A PRESION)': 'filtro',
+    'REVISIÓN Y LIMPIEZA DEL FILTRO DE AIRE (AIRE A PRESIÓN)': 'filtro',
+    'ESTADO DE NEUMÁTICOS (PRESIÓN Y DESGASTE)': 'neumaticos',
+    'ESTADO DE LUCES, BOCINA Y ALARMA DE REVERSA': 'luces',
+    'REVISAR ESTADO DE CORREAS': 'correas',
+    'ENGRASE DE PUNTOS DE LUBRICACIÓN (PERNOS, BISAGRAS)': 'engrase',
+    'LIMPIEZA GENERAL DEL EQUIPO': 'limpieza',
+    'LIMPIEZA HABITÁCULO MOTOR CON AIRE A PRESION': 'limpieza',
+    'LIMPIEZA HABITÁCULO MOTOR CON AIRE A PRESIÓN': 'limpieza',
+  };
+
+  // Índices de columnas
+  const idxFecha   = headers.findIndex(h => h.includes('FECHA') && !h.includes('MARCA'));
+  const idxTurno   = headers.findIndex(h => h.includes('TURNO'));
+  const idxMaq     = headers.findIndex(h => h.includes('MAQUINISTA'));
+  const idxAud     = headers.findIndex(h => h.includes('AUDITORIA'));
+  const idxModelo  = headers.findIndex(h => h.includes('MODELO'));
+  const idxObsAdic = headers.findIndex(h => h.includes('OBSERVACIONES ADICIONALES'));
+  const idxHm      = headers.findIndex(h => h.includes('HOROMETRO'));
+
+  // Detectar pares (estado + observación) de cada ítem
+  const items = [];
+  const usedCols = new Set(); // para evitar duplicados
+  for (let i = 0; i < headers.length; i++) {
+    if (usedCols.has(i)) continue;
+    const h = headers[i];
+    const clave = itemMap[h] || (h.includes('FUGAS') ? 'fugas' : 
+                                  h.includes('NIVELES') ? 'niveles' :
+                                  h.includes('REFRIGERANTE') ? 'refrigerante' :
+                                  h.includes('FILTRO DE AIRE') ? 'filtro' :
+                                  h.includes('NEUMÁTICOS') ? 'neumaticos' :
+                                  h.includes('LUCES') && h.includes('BOCINA') ? 'luces' :
+                                  h.includes('CORREAS') ? 'correas' :
+                                  h.includes('ENGRASE') ? 'engrase' :
+                                  h.includes('LIMPIEZA') ? 'limpieza' : null);
+    if (!clave) continue;
+    // Buscar siguiente columna con el mismo nombre (o similar) para observación
+    let obsIdx = -1;
+    for (let j = i + 1; j < headers.length; j++) {
+      if (!usedCols.has(j) && (headers[j] === h || Math.abs(headers[j].length - h.length) < 5)) {
+        obsIdx = j;
+        break;
+      }
+    }
+    items.push({ clave, estadoIdx: i, obsIdx: obsIdx >= 0 ? obsIdx : -1 });
+    usedCols.add(i);
+    if (obsIdx >= 0) usedCols.add(obsIdx);
+  }
+
+  // Parsear cada fila
+  const result = [];
+  for (let i = hdrIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    const fecha = (r[idxFecha] || '').trim();
+    if (!fecha) continue; // saltar filas sin fecha
+    const modelo = (r[idxModelo] || '').trim();
+    if (!modelo) continue;
+
+    const checklist = {};
+    items.forEach(it => {
+      const estadoRaw = (r[it.estadoIdx] || '').trim();
+      let estado = 'ok';
+      if (estadoRaw.includes('✕') || estadoRaw.includes('❌') || estadoRaw.includes('✖') || estadoRaw.toUpperCase().includes('MAL') || estadoRaw.toUpperCase().includes('NO FUNCIONA')) estado = 'fail';
+      else if (estadoRaw.includes('⚠') || estadoRaw.includes('REVISAR') || estadoRaw.includes('ATENCIÓN')) estado = 'warn';
+      else if (!estadoRaw || estadoRaw === '✅' || estadoRaw.includes('✔') || estadoRaw.toUpperCase().includes('OK')) estado = 'ok';
+      const obs = it.obsIdx >= 0 ? (r[it.obsIdx] || '').trim() : '';
+      checklist[it.clave] = { estado, obs };
+    });
+
+    result.push({
+      tipo,
+      fecha,
+      turno:        (r[idxTurno]   || '').trim(),
+      maquinista:   (r[idxMaq]     || '').trim(),
+      auditor:      (r[idxAud]     || '').trim(),
+      modelo:       modelo,
+      checklist,
+      obsAdicional: (r[idxObsAdic] || '').trim(),
+      horometro:    (r[idxHm]      || '').trim(),
+    });
+  }
+  return result;
 }
 
 // ═══════════════════════════════════════════════════════
