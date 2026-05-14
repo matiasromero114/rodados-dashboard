@@ -534,7 +534,18 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     </div>
   </div>
 </div>
-
+<div class="slabel">FLOTA COMPLETA</div>
+<div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>UNIDAD</th><th>MODELO</th><th>SECTOR</th>
+        <th>ESTADO</th><th>OBSERVACIONES</th>
+      </tr>
+    </thead>
+    <tbody id="overview-fleet-tbody"></tbody>
+  </table>
+</div>
 <!-- ── PAGE: FLEET ── -->
 <div id="page-fleet" class="page">
   <div class="slabel">INVENTARIO COMPLETO DE FLOTA</div>
@@ -1246,6 +1257,7 @@ function renderAll() {
   renderCostosPage();
   renderViajesPage();
   updateClock();
+  renderFleetRows(G.fleet, 'overview-fleet-tbody');
 }
 
 // ─── OVERVIEW SERVICES ───
@@ -1453,8 +1465,8 @@ function renderFleet() {
   renderFleetRows(G.fleet);
 }
 
-function renderFleetRows(data) {
-  const tbody = document.getElementById('fleet-tbody');
+function renderFleetRows(data, targetId) {
+  const tbody = document.getElementById(targetId || 'fleet-tbody');
   if (!tbody) return;
   const filtered = data.filter(u => {
     const matchFilter = fleetFilter === 'all' ||
