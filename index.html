@@ -474,7 +474,6 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 <!-- NAV -->
 <nav class="nav">
   <div class="tab on" onclick="goTab('overview',this)">📊 RESUMEN EJECUTIVO</div>
-  <div class="tab" onclick="goTab('fleet',this)">🚜 FLOTA</div>
   <div class="tab" onclick="goTab('palas',this)">🦾 PALAS CARGADORAS</div>
   <div class="tab" onclick="goTab('camiones',this)">🚛 CAMIONES</div>
   <div class="tab" onclick="goTab('autoel',this)">🏗️ AUTOELEVADORES</div>
@@ -545,32 +544,6 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     </thead>
     <tbody id="overview-fleet-tbody"></tbody>
   </table>
-</div>
-<!-- ── PAGE: FLEET ── -->
-<div id="page-fleet" class="page">
-  <div class="slabel">INVENTARIO COMPLETO DE FLOTA</div>
-  <div class="tbl-wrap">
-    <div class="tbl-filters">
-      <button class="fbtn on" onclick="filterFleet('all',this)">TODAS</button>
-      <button class="fbtn fg" onclick="filterFleet('good',this)">✅ OPERATIVAS</button>
-      <button class="fbtn fa" onclick="filterFleet('alert',this)">⚠️ ALERTA</button>
-      <button class="fbtn fr" onclick="filterFleet('bad',this)">🔴 MANTENIMIENTO</button>
-      <button class="fbtn" onclick="filterFleet('CEVIL',this)">CEVIL</button>
-      <button class="fbtn" onclick="filterFleet('YERBA BUENA',this)">YERBA BUENA</button>
-      <button class="fbtn" onclick="filterFleet('CANTERA',this)">CANTERA</button>
-      <button class="fbtn" onclick="filterFleet('ABASTECIMIENTO',this)">ABASTECIMIENTO</button>
-      <input class="fsearch" id="fleet-search" placeholder="Buscar unidad..." oninput="searchFleet(this.value)">
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th>UNIDAD</th><th>MODELO</th><th>SECTOR</th>
-          <th>ESTADO</th><th>OBSERVACIONES</th>
-        </tr>
-      </thead>
-      <tbody id="fleet-tbody"></tbody>
-    </table>
-  </div>
 </div>
 
 <!-- ── PAGE: PALAS ── -->
@@ -1248,7 +1221,6 @@ function parseHistorial(rows) {
 // ═══════════════════════════════════════════════════════
 function renderAll() {
   renderOverview();
-  renderFleet();
   renderHistorial('palas', G.histPalas);
   renderHistorial('cam',   G.histCam);
   renderHistorial('aut',   G.histAut);
