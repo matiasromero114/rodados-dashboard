@@ -481,6 +481,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <div class="tab" onclick="goTab('services',this)">🔧 SERVICES</div>
   <div class="tab" onclick="goTab('costos',this)">💰 COSTOS</div>
   <div class="tab" onclick="goTab('viajes',this)">🚚 VIAJES</div>
+  <div class="tab" onclick="goTab('checklist',this)">📋 INSPECCIONES</div>
 </nav>
 
 <!-- ═══════════════════════════════════
@@ -873,6 +874,54 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     <div class="ccard">
       <div class="ctitle">Horas Restantes por Unidad <span class="cbadge">HS</span></div>
       <div class="ch"><canvas id="ch-srv-horas"></canvas></div>
+    </div>
+  </div>
+</div>
+<!-- ── PAGE: CHECKLIST ── -->
+<div id="page-checklist" class="page">
+  <div class="slabel">CHECKLIST DE INSPECCIÓN — PALAS Y AUTOELEVADORES</div>
+  
+  <!-- KPIs Resumen -->
+  <div class="kpi-row" id="kpi-checklist"></div>
+
+  <!-- Gráficos de cumplimiento -->
+  <div class="charts2">
+    <div class="ccard">
+      <div class="ctitle">Cumplimiento por Ítem — Palas <span class="cbadge">% OK</span></div>
+      <div class="ch"><canvas id="ch-checklist-palas"></canvas></div>
+    </div>
+    <div class="ccard">
+      <div class="ctitle">Cumplimiento por Ítem — Autoelevadores <span class="cbadge">% OK</span></div>
+      <div class="ch"><canvas id="ch-checklist-aut"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Ranking de fallas -->
+  <div class="slabel">TOP 5 ÍTEMS CON MÁS FALLAS</div>
+  <div id="ranking-checklist-fallas" style="margin-bottom:24px"></div>
+
+  <!-- Tabla de inspecciones -->
+  <div class="slabel">DETALLE DE INSPECCIONES</div>
+  <div class="tbl-wrap">
+    <div class="tbl-filters">
+      <button class="fbtn on" onclick="filterChecklist('all',this)">TODAS</button>
+      <button class="fbtn" onclick="filterChecklist('PALA',this)">🦾 PALAS</button>
+      <button class="fbtn" onclick="filterChecklist('AUTOELEVADOR',this)">🏗️ AUTOEL.</button>
+      <input class="fsearch" id="checklist-search" placeholder="Buscar unidad, maquinista..." oninput="searchChecklist(this.value)">
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>FECHA</th><th>TURNO</th><th>EQUIPO</th><th>MODELO</th>
+            <th>FUGAS</th><th>NIVELES</th><th>FILTRO AIRE</th>
+            <th>NEUMÁTICOS</th><th>LUCES/ALARMA</th>
+            <th>CORREAS</th><th>ENGRASE</th><th>LIMPIEZA</th>
+            <th>OBSERVACIONES</th><th>HORÓMETRO</th>
+          </tr>
+        </thead>
+        <tbody id="checklist-tbody"></tbody>
+      </table>
     </div>
   </div>
 </div>
