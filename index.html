@@ -972,6 +972,7 @@ let G = {
   charts: {},
   checklistPalas: [],
   checklistAut: [],
+
 };
 
 // ═══════════════════════════════════════════════════════
@@ -1300,6 +1301,7 @@ function renderAll() {
   renderViajesPage();
   updateClock();
   renderFleetRows(G.fleet, 'overview-fleet-tbody');
+  renderChecklistPage();
 }
 
 // ─── OVERVIEW SERVICES ───
@@ -1502,6 +1504,8 @@ function renderAlertList(units, containerId, dotClass, badgeId) {
 // ─── FLEET TABLE ───
 let fleetFilter = 'all';
 let fleetSearch = '';
+let checklistFilter = 'all';
+let checklistSearch = '';
 
 function renderFleet() {
   renderFleetRows(G.fleet);
@@ -2583,6 +2587,232 @@ function exportPDFPage(pageId) {
   target.classList.remove("print-target");
 }
 
+function renderChecklistPage() {
+  const palas = G.checklistPalas || [];
+  const aut   = G.checklistAut   || [];
+  const todos = [...palas, ...aut];
+
+  // ---------- KPIs ----------
+  const totalInsp = todos.length;
+  const totalPalas = palas.length;
+  const totalAut   = aut.length;
+
+  // % general de ítems OK
+  let totalItems = 0, totalOk = 0;
+  todos.forEach(insp => {
+    Object.values(insp.checklist).forEach(item => {
+      totalItems++;
+      if (item.estado === 'ok') totalOk++;
+    });
+  });
+  const cumplGral = totalItems > 0 ? Math.round((totalOk / totalItems) * 100) : 0;
+
+  // Unidades distintas inspeccionadas
+  const unidades = new Set(todos.map(i => i.modelo)).size;
+
+  document.getElementById('kpi-checklist').innerHTML = `
+    <div class="kcard kc-b">
+      <div class="klabel">INSPECCIONES TOTALES</div>
+      <div class="kvalue">${totalInsp}</div>
+      <div class="ksub">${totalPalas} palas · ${totalAut} autoelevadores</div>
+    </div>
+    <div class="kcard kc-g">
+      <div class="klabel">CUMPLIMIENTO GENERAL</div>
+      <div class="kvalue">${cumplGral}%</div>
+      <div class="ksub">${totalOk} / ${totalItems} ítems OK</div>
+    </div>
+    <div class="kcard kc-c">
+      <div class="klabel">UNIDADES INSPECCIONADAS</div>
+      <div class="kvalue">${unidades}</div>
+      <div class="ksub">Modelos distintos</div>
+    </div>
+    <div class="kcard kc-a">
+      <div class="klabel">ÍTEMS CON FALLAS</div>
+      <div class="kvalue">${totalItems - totalOk}</div>
+      <div class="ksub">Requieren atención</div>
+    </div>
+  `;
+
+  // ---------- Gráficos ----------
+  buildChartChecklistCumplimiento('ch-checklist-palas', palas, 'PALAS');
+  buildChartChecklistCumplimiento('ch-checklist-aut', aut, 'AUTOELEVADORES');
+
+  // ---------- Ranking de fallas ----------
+  renderRankingFallasChecklist(todos);
+
+  // ---------- Tabla ----------
+  renderChecklistTable(todos);
+}
+function buildChartChecklistCumplimiento(canvasId, data, tipo) {
+  const el = document.getElementById(canvasId);
+  if (!el) return;
+  if (G.charts[canvasId]) { try { G.charts[canvasId].destroy(); } catch{} }
+
+  const itemsKeys = ['fugas','niveles','refrigerante','filtro','neumaticos','luces','correas','engrase','limpieza'];
+  const itemsLabels = ['Fugas','Niveles','Refrigerante','Filtro Aire','Neumáticos','Luces/Alarma','Correas','Engrase','Limpieza'];
+
+  const counts = {};
+  itemsKeys.forEach(k => { counts[k] = { total: 0, ok: 0 }; });
+
+  data.forEach(insp => {
+    itemsKeys.forEach(k => {
+      if (insp.checklist[k]) {
+        counts[k].total++;
+        if (insp.checklist[k].estado === 'ok') counts[k].ok++;
+      }
+    });
+  });
+
+  const labels = [];
+  const values = [];
+  itemsKeys.forEach((k, i) => {
+    if (counts[k].total > 0) {
+      labels.push(itemsLabels[i]);
+      values.push(Math.round((counts[k].ok / counts[k].total) * 100));
+    }
+  });
+
+  if (values.length === 0) return;
+
+  G.charts[canvasId] = new Chart(el, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        backgroundColor: values.map(v => v >= 85 ? C.green : v >= 60 ? C.amber : C.red),
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      scales: {
+        x: { 
+          max: 100,
+          ticks: { color: C.txt, font: { family: C.font, size: 10 }, callback: v => v + '%' },
+          grid: { color: C.grid }
+        },
+        y: { ticks: { color: C.txt, font: { family: C.font, size: 10 } }, grid: { display: false } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.raw}% OK` } }
+      }
+    }
+  });
+}
+  function renderRankingFallasChecklist(todos) {
+  const el = document.getElementById('ranking-checklist-fallas');
+  if (!el) return;
+
+  const itemsKeys = ['fugas','niveles','refrigerante','filtro','neumaticos','luces','correas','engrase','limpieza'];
+  const itemsLabels = ['Fugas','Niveles','Refrigerante','Filtro Aire','Neumáticos','Luces/Alarma','Correas','Engrase','Limpieza'];
+
+  const fallas = {};
+  itemsKeys.forEach(k => { fallas[k] = 0; });
+
+  todos.forEach(insp => {
+    itemsKeys.forEach(k => {
+      if (insp.checklist[k] && insp.checklist[k].estado !== 'ok') {
+        fallas[k]++;
+      }
+    });
+  });
+
+  const sorted = Object.entries(fallas)
+    .filter(([k, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  if (sorted.length === 0) {
+    el.innerHTML = '<div class="no-data">Sin fallas registradas</div>';
+    return;
+  }
+
+  const maxVal = sorted[0][1];
+  const medals = ['🥇','🥈','🥉','4°','5°'];
+  const colors = ['#ffd700','#c0c0c0','#cd7f32','var(--border2)','var(--border2)'];
+
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(${sorted.length},1fr);gap:12px">` +
+    sorted.map(([key, val], idx) => {
+      const pct = Math.round((val / maxVal) * 100);
+      const label = itemsLabels[itemsKeys.indexOf(key)] || key;
+      return `
+        <div class="ccard" style="border-color:${colors[idx]};text-align:center;padding:18px 12px">
+          <div style="font-size:24px;margin-bottom:6px">${medals[idx]}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--txt1);margin-bottom:8px">${label}</div>
+          <div style="font-family:Rajdhani,sans-serif;font-size:28px;font-weight:700;color:var(--red)">${val}</div>
+          <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:var(--txt3)">fallas</div>
+          <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:2px;margin-top:8px">
+            <div style="width:${pct}%;height:100%;background:var(--red);border-radius:2px"></div>
+          </div>
+        </div>`;
+    }).join('') +
+  `</div>`;
+}
+  function renderChecklistTable(data) {
+  const tbody = document.getElementById('checklist-tbody');
+  if (!tbody) return;
+
+  let filtered = data;
+  if (checklistFilter === 'PALA') filtered = data.filter(i => i.tipo === 'PALA');
+  if (checklistFilter === 'AUTOELEVADOR') filtered = data.filter(i => i.tipo === 'AUTOELEVADOR');
+  if (checklistSearch) {
+    const s = checklistSearch.toLowerCase();
+    filtered = filtered.filter(i =>
+      i.modelo.toLowerCase().includes(s) ||
+      i.maquinista.toLowerCase().includes(s) ||
+      (i.obsAdicional && i.obsAdicional.toLowerCase().includes(s))
+    );
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="14" class="no-data">Sin inspecciones</td></tr>';
+    return;
+  }
+
+  const icono = (estado) => {
+    if (estado === 'ok') return '<span style="color:var(--green);font-size:16px">✅</span>';
+    if (estado === 'warn') return '<span style="color:var(--amber);font-size:16px">⚠️</span>';
+    return '<span style="color:var(--red);font-size:16px">❌</span>';
+  };
+
+  tbody.innerHTML = filtered.map(insp => {
+    const items = ['fugas','niveles','refrigerante','filtro','neumaticos','luces','correas','engrase','limpieza'];
+    const celdas = items.map(k => {
+      const it = insp.checklist[k];
+      if (!it) return '<td></td>';
+      let content = icono(it.estado);
+      if (it.obs) content += ` <span style="font-size:9px;color:var(--txt3);display:block">${it.obs}</span>`;
+      return `<td style="text-align:center">${content}</td>`;
+    }).join('');
+
+    return `
+      <tr>
+        <td style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--txt2)">${insp.fecha}</td>
+        <td style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--txt2)">${insp.turno || '—'}</td>
+        <td><div class="uname" style="font-size:12px">${insp.modelo}</div>
+            <div style="font-size:9px;color:var(--txt3)">${insp.tipo === 'PALA' ? '🦾 Pala' : '🏗️ Autoelevador'}</div></td>
+        <td style="font-size:10px;color:var(--txt2)">${insp.modelo || '—'}</td>
+        ${celdas}
+        <td style="font-size:10px;color:var(--txt2);max-width:150px">${insp.obsAdicional || '—'}</td>
+        <td style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--cyan)">${insp.horometro || '—'}</td>
+      </tr>`;
+  }).join('');
+}
+  function filterChecklist(tipo, btn) {
+  checklistFilter = tipo;
+  document.querySelectorAll('#page-checklist .fbtn').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  renderChecklistTable([...G.checklistPalas, ...G.checklistAut]);
+}
+
+function searchChecklist(val) {
+  checklistSearch = val.toLowerCase();
+  renderChecklistTable([...G.checklistPalas, ...G.checklistAut]);
+}
 // ═══════════════════════════════════════════════════════
 //  COSTOS
 // ═══════════════════════════════════════════════════════
