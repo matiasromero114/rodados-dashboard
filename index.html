@@ -516,16 +516,26 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <div class="slabel">KPIs DE MANTENIMIENTO CALCULADOS</div>
   <div class="mcard-row" id="mcard-row"></div>
 
-  <div class="slabel">ALERTAS ACTIVAS</div>
-  <div class="apanels">
-    <div class="apanel">
-      <div class="apanel-hdr">
-        <span class="apanel-title">🔴 En Mantenimiento</span>
-        <span class="abadge ab-r" id="badge-bad">—</span>
-      </div>
-      <div id="list-bad"></div>
+ <div class="slabel">ALERTAS ACTIVAS</div>
+<div class="apanels">
+  <div class="apanel">
+    <div class="apanel-hdr">
+      <span class="apanel-title">🔴 En Mantenimiento</span>
+      <span class="abadge ab-r" id="badge-bad">—</span>
     </div>
-   <div class="slabel">FLOTA COMPLETA</div>
+    <div id="list-bad"></div>
+  </div>
+  <div class="apanel">
+    <div class="apanel-hdr">
+      <span class="apanel-title">🟡 Con Alertas</span>
+      <span class="abadge ab-a" id="badge-alert">—</span>
+    </div>
+    <div id="list-alert"></div>
+  </div>
+</div><!-- CIERRE DE APANELS -->
+
+<!-- FLOTA COMPLETA, FUERA de apanels -->
+<div class="slabel">FLOTA COMPLETA</div>
 <div class="tbl-wrap" style="overflow-x:auto;">
   <table style="min-width:600px;">
     <thead>
@@ -537,17 +547,6 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     <tbody id="overview-fleet-tbody"></tbody>
   </table>
 </div>
-    <div class="apanel">
-      <div class="apanel-hdr">
-        <span class="apanel-title">🟡 Con Alertas</span>
-        <span class="abadge ab-a" id="badge-alert">—</span>
-      </div>
-      <div id="list-alert"></div>
-    </div>
-  </div>
-</div>
-</div>
-
 <!-- ── PAGE: PALAS ── -->
 <div id="page-palas" class="page">
   <div class="slabel">PALAS CARGADORAS — DATOS Y MANTENIMIENTO</div>
