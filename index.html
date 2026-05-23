@@ -1253,8 +1253,9 @@ function renderChecklistTable(data) {
   if(chkFilterSeverity==='fail')filtered=filtered.filter(i=>Object.values(i.checklist).some(v=>v.estado==='fail'));
   if(chkFilterSeverity==='warn')filtered=filtered.filter(i=>Object.values(i.checklist).some(v=>v.estado==='warn'));
   if(chkSearch)filtered=filtered.filter(i=>i.modelo.toLowerCase().includes(chkSearch)||i.maquinista.toLowerCase().includes(chkSearch)||(i.obsAdicional&&i.obsAdicional.toLowerCase().includes(chkSearch)));
-  // Ordenar por fecha desc
-  filtered=[...filtered].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  // Ordenar por fecha desc (parsear D/M/YYYY correctamente)
+  function parseFecha(f){const p=(f||'').split('/');if(p.length<3)return 0;return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0])).getTime();}
+  filtered=[...filtered].sort((a,b)=>parseFecha(b.fecha)-parseFecha(a.fecha));
   if(!filtered.length){tbody.innerHTML='<tr><td colspan="15" class="no-data">Sin inspecciones</td></tr>';return;}
   const ico=(estado)=>estado==='ok'?'<span class="chk-item-ok">✅</span>':estado==='warn'?'<span class="chk-item-warn">⚠️</span>':'<span class="chk-item-fail">❌</span>';
   tbody.innerHTML=filtered.map(insp=>{
