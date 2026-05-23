@@ -706,8 +706,8 @@ async function loadAllData() {
     try { G.costos = parseCostos(await fetchSheet(SHEET_NAMES.costos)); } catch(e) { G.costos = []; console.warn('COSTOS:', e); }
     try { G.viajes = parseViajes(await fetchSheet(SHEET_NAMES.viajes)); } catch(e) { G.viajes = []; console.warn('VIAJES:', e); }
     try { G.services = parseServices(await fetchExternalSheet(SERVICES_SHEET_ID, SERVICES_GID)); } catch(e) { G.services = []; console.warn('SERVICES:', e); }
-    try { G.checklistPalas = parseChecklist(await fetchSheet(SHEET_NAMES.checklistPalas), 'PALA'); } catch(e) { G.checklistPalas = []; console.warn('CHK PALAS:', e); }
-    try { G.checklistAut   = parseChecklist(await fetchSheet(SHEET_NAMES.checklistAut),   'AUTOELEVADOR'); } catch(e) { G.checklistAut = []; console.warn('CHK AUT:', e); }
+    try { G.checklistPalas = parseChecklist(await fetchExternalSheet(SERVICES_SHEET_ID, '1743129799'), 'PALA'); } catch(e) { G.checklistPalas = []; console.warn('CHK PALAS:', e); }
+    try { G.checklistAut   = parseChecklist(await fetchExternalSheet(SERVICES_SHEET_ID, '1958650087'), 'AUTOELEVADOR'); } catch(e) { G.checklistAut = []; console.warn('CHK AUT:', e); }
 
     const total = G.histPalas.length + G.histCam.length + G.histAut.length;
     setStatus('ok', `✅ ${G.fleet.length} unidades · ${total} trabajos · ${G.services.length} services · ${G.checklistPalas.length+G.checklistAut.length} inspecciones`);
