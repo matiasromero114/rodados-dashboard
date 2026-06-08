@@ -1197,12 +1197,6 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 
 </main><!-- /main -->
 
-<footer class="ftr">
-  <div class="ftr-l">RODADOS v2.2 — Dashboard de Mantenimiento Vehicular · Cerámica MP</div>
-  <div class="ftr-r" id="ftr-date">—</div>
-</footer>
-</div><!-- /wrap -->
-
 <!-- Gantt Tooltip & Edit Panel -->
 <div id="gantt-tooltip"></div>
 <div id="gantt-edit-panel">
@@ -1228,6 +1222,12 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <h3 style="font-size:11px;color:var(--txt2);margin-bottom:6px">Historial de cambios</h3>
   <ul class="gantt-history-list" id="ganttEpHistory"></ul>
 </div>
+
+<footer class="ftr">
+  <div class="ftr-l">RODADOS v2.2 — Dashboard de Mantenimiento Vehicular · Cerámica MP</div>
+  <div class="ftr-r" id="ftr-date">—</div>
+</footer>
+</div><!-- /wrap -->
 
 <script>
 Chart.register(ChartDataLabels);
@@ -1361,7 +1361,844 @@ function setStatus(type, msg) {
   el.className = 'cfg-status ' + (type==='ok'?'cfg-ok':type==='err'?'cfg-err':'cfg-loading');
 }
 
-// ... (resto de funciones del dashboard original sin cambios) ...
+// ═══════════════════════════════════════════════════════
+//  PARSERS
+// ═══════════════════════════════════════════════════════
+function parseDisponibilidad(rows) {
+  const fleet = [];
+  let hdrIdx = rows.findIndex(r => r.some(c => /^UNIDAD$/i.test((c||'').trim())));
+  if (hdrIdx < 0) hdrIdx = 1;
+  const headers = (rows[hdrIdx]||[]).map(h=>(h||'').toUpperCase().trim());
+  const iUnit  = headers.findIndex(h=>h==='UNIDAD')      >= 0 ? headers.findIndex(h=>h==='UNIDAD')      : 0;
+  const iModel = headers.findIndex(h=>h==='MODELO')      >= 0 ? headers.findIndex(h=>h==='MODELO')      : 1;
+  const iSect  = headers.findIndex(h=>h==='SECTOR')      >= 0 ? headers.findIndex(h=>h==='SECTOR')      : 2;
+  const iStat  = headers.findIndex(h=>h==='ESTADO')      >= 0 ? headers.findIndex(h=>h==='ESTADO')      : 3;
+  const iObs   = headers.findIndex(h=>/OBSERVACI/.test(h))>=0 ? headers.findIndex(h=>/OBSERVACI/.test(h)): 4;
+  for (let i = hdrIdx+1; i < rows.length; i++) {
+    const r = rows[i];
+    const unit = (r[iUnit]||'').trim();
+    if (!unit || /^UNIDAD$/i.test(unit)) continue;
+    const sector = (r[iSect]||'').trim();
+    if (!sector) continue;
+    const statRaw = (r[iStat]||'').toUpperCase();
+    let status = 'good';
+    if (statRaw.includes('MANTENIMIENTO')||statRaw.includes('FUERA')) status='bad';
+    else if (statRaw.includes('ALERTA')) status='alert';
+    fleet.push({ unit, model:(r[iModel]||'').trim(), sector:sector.toUpperCase(), status, obs:(r[iObs]||'').trim() });
+  }
+  return fleet;
+}
+  function parseHistorial(rows) {
+  if (!rows.length) return [];
+  let hdrIdx = rows.findIndex(r => r.some(c => { const v=(c||'').trim().toUpperCase(); return v==='MODELO'||v.includes('TIPO MANT')||v.includes('DOMINIO')||v.includes('FECHA INICIO'); }));
+  if (hdrIdx < 0) hdrIdx = 0;
+  const headers = (rows[hdrIdx]||[]).map(h=>(h||'').toUpperCase().trim());
+  const findIdx = (keywords, fallback) => { const idx=headers.findIndex(h=>keywords.some(k=>h.includes(k))); return idx>=0?idx:fallback; };
+  const iUnit  = findIdx(['MODELO','DOMINIO'],0);
+  const iTipo  = findIdx(['TIPO MANT','TIPOMANT'],2);
+  const iIni   = findIdx(['FECHA INICIO','FECHAINICIO'],iTipo===1?5:4);
+  const iFin   = findIdx(['FECHA FIN','FECHAFIN'],iTipo===1?6:5);
+  const iDesc  = findIdx(['DESCRIPCION','DESCRIPCI'],iTipo===1?9:8);
+  const iFalla = findIdx(['FALLA','REQUER'],1);
+  const iResp  = findIdx(['RESPONSABLE','RESP'],3);
+  const hist = [];
+  for (let i = hdrIdx+1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r||r.length<3) continue;
+    const unit = (r[iUnit]||'').trim();
+    if (!unit||unit.length>40) continue;
+    if (/^(MODELO|TIPO.DOMINIO|UNIDAD)$/i.test(unit)) continue;
+    const tipo = (r[iTipo]||'').trim().toUpperCase();
+    const tipoNorm = tipo.includes('PREV')?'Preventivo':tipo.includes('CORR')?'Correctivo':'';
+    if (!tipoNorm) continue;
+    hist.push({ unit, tipo:tipoNorm, ini:(r[iIni]||'').trim(), fin:(r[iFin]||'').trim(), desc:(r[iDesc]||'').trim(), falla:(r[iFalla]||'').trim(), resp:(r[iResp]||'').trim() });
+  }
+  return hist;
+}
+
+// ── CHECKLIST PARSER ──
+function parseChecklist(rows, tipo) {
+  if (!rows || rows.length < 2) return [];
+  const result = [];
+
+  function normEstado(raw) {
+    const s = (raw || '').trim();
+    if (!s) return { estado: 'ok', obs: '' };
+    if (s === '✅' || s === '✔' || s.toUpperCase() === 'OK') return { estado: 'ok', obs: '' };
+    if (s === '❌' || s === '✖') return { estado: 'fail', obs: '' };
+    if (s === '⚠' || s === '⚠️') return { estado: 'warn', obs: '' };
+    if (s.toLowerCase().includes('no funciona') || s.toLowerCase().includes('rota') || s.toLowerCase().includes('sin ')) return { estado: 'fail', obs: s };
+    if (s.length > 2) return { estado: 'warn', obs: s };
+    return { estado: 'ok', obs: '' };
+  }
+
+  const ITEMS = [
+    { clave:'fugas',        si:6,  oi:7  },
+    { clave:'niveles',      si:8,  oi:9  },
+    { clave:'refrigerante', si:10, oi:11 },
+    { clave:'filtro',       si:12, oi:13 },
+    { clave:'neumaticos',   si:14, oi:15 },
+    { clave:'luces',        si:16, oi:17 },
+    { clave:'correas',      si:18, oi:19 },
+    { clave:'engrase',      si:20, oi:21 },
+    { clave:'limpieza',     si:22, oi:23 },
+  ];
+
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || r.length < 6) continue;
+    const fecha  = (r[1] || '').trim();
+    const modelo = (r[5] || '').trim();
+    if (!fecha || !modelo) continue;
+
+    const checklist = {};
+    ITEMS.forEach(it => {
+      const { estado, obs: obsFromEstado } = normEstado(r[it.si]);
+      const obsFromObs = (r[it.oi] || '').trim();
+      const obs = obsFromEstado || obsFromObs;
+      const finalEstado = (obsFromObs && obsFromObs.length > 1 && estado === 'ok') ? 'warn' : estado;
+      checklist[it.clave] = { estado: finalEstado, obs };
+    });
+
+    result.push({
+      tipo,
+      fecha,
+      turno:        (r[2]  || '').trim(),
+      maquinista:   (r[3]  || '').trim(),
+      auditor:      (r[4]  || '').trim(),
+      modelo,
+      checklist,
+      obsAdicional: (r[24] || '').trim(),
+      horometro:    (r[25] || '').trim(),
+    });
+  }
+  return result;
+}
+
+function parseServices(rows) {
+  if (!rows.length) return [];
+  let hdrIdx = rows.findIndex(r=>r.some(c=>/MAQUINA|MÁQUINA|EQUIPO/i.test(c)));
+  if (hdrIdx<0) hdrIdx=0;
+  const headers = rows[hdrIdx].map(h=>h.toUpperCase().trim());
+  const iMaq  = headers.findIndex(h=>/MAQUINA|MÁQUINA/.test(h));
+  const iMod  = headers.findIndex(h=>/MODELO/.test(h));
+  const iSect = headers.findIndex(h=>/SECTOR/.test(h));
+  const iProp = headers.findIndex(h=>/PROPIO|TERCERO/.test(h));
+  const iHAct = headers.findIndex(h=>/HOROMETRO ACTUAL|HORÓMETRO ACTUAL/.test(h));
+  const iHAnt = headers.findIndex(h=>/SERVICE ANTERIOR/.test(h));
+  const iHProx= headers.findIndex(h=>/SERVICE PROXIMO|SERVICE PRÓXIMO/.test(h));
+  const iHRest= headers.findIndex(h=>/HORAS RESTANTES/.test(h));
+  const iEst  = headers.findIndex(h=>/ESTADO/.test(h));
+  const iFecha= headers.findIndex(h=>/FECHA PLANIFICADA/.test(h));
+  const iAct  = headers.findIndex(h=>/ULTIMA ACTUALIZACION|ÚLTIMA ACTUALIZACIÓN/.test(h));
+  const services = [];
+  for (let i=hdrIdx+1;i<rows.length;i++) {
+    const r=rows[i];
+    const maq=(r[iMaq>=0?iMaq:0]||'').trim();
+    if (!maq) continue;
+    const hRest=parseFloat((r[iHRest>=0?iHRest:7]||'0').replace(',','.').replace(/[^0-9.\-]/g,''))||0;
+    let alertLevel='ok';
+    if (hRest<50) alertLevel='urgente';
+    else if (hRest<=75) alertLevel='alerta';
+    else if (hRest<=150) alertLevel='planificar';
+    services.push({ maq, modelo:(r[iMod>=0?iMod:1]||'').trim(), sector:(r[iSect>=0?iSect:2]||'').trim(), prop:(r[iProp>=0?iProp:3]||'').trim(), hAct:(r[iHAct>=0?iHAct:4]||'').trim(), hAnt:(r[iHAnt>=0?iHAnt:5]||'').trim(), hProx:(r[iHProx>=0?iHProx:6]||'').trim(), hRest, estado:(r[iEst>=0?iEst:8]||'').trim(), fecha:(r[iFecha>=0?iFecha:9]||'').trim(), actuali:(r[iAct>=0?iAct:10]||'').trim(), alertLevel });
+  }
+  return services;
+}
+
+function parseCostos(rows) {
+  if (!rows||rows.length<2) return [];
+  const headers=rows[0].map(h=>(h||'').trim().toUpperCase());
+  const fi=names=>{ for(const n of names){ const i=headers.findIndex(h=>h.includes(n)); if(i>=0)return i;} return -1;};
+  const iFecha=fi(['FECHA']),iTrab=fi(['TRABAJO','REPUESTO']),iUnid=fi(['UNIDAD']),iProv=fi(['PROVEEDOR']),iArs=fi(['ARS']);
+  const result=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i];
+    const unidad=(r[iUnid]||'').trim();
+    if(!unidad)continue;
+    const ars=parseFloat((r[iArs]||'0').replace(/[^0-9.-]/g,''))||0;
+    const unidUp=unidad.toUpperCase();
+    const flota=unidUp.includes('CAMION')?'CAMION':unidUp.includes('PALA')?'PALA':unidUp.includes('AUTOELEVADOR')?'AUTOELEVADOR':'OTRO';
+    result.push({fecha:(r[iFecha]||'').trim(),trabajo:(r[iTrab]||'').trim(),unidad,proveedor:(r[iProv]||'').trim(),ars,flota});
+  }
+  return result;
+}
+
+function parseViajes(rows) {
+  if (!rows||rows.length<2) return [];
+  const headers=rows[0].map(h=>(h||'').trim().toUpperCase());
+  const fi=names=>{ for(const n of names){ const i=headers.findIndex(h=>h.includes(n)); if(i>=0)return i;} return -1;};
+  const parseNum=str=>{ const s=(str||'').trim(); if(!s||s.toLowerCase()==='fallado'||s==='#VALUE!'||s==='#REF!')return null; const v=parseFloat(s.replace(/,/g,'')); return isNaN(v)?null:v;};
+  const parseViajesNum=str=>{ const s=(str||'').trim().replace(/[^0-9]/g,''); const v=parseInt(s,10); return isNaN(v)?0:v;};
+  const DIST={'CANTERA|CEVIL':30,'CEVIL|CANTERA':30,'CEVIL|YB':6.5,'YB|CEVIL':6.5,'CANTERA|YB':26,'YB|CANTERA':26,'EXCAVACION|CEVIL':8.2,'CEVIL|EXCAVACION':8.2,'LOTE BOULEVARD|CEVIL':6,'CEVIL|LOTE BOULEVARD':6,'LOTE BOULEVARD|YB':0.5,'YB|LOTE BOULEVARD':0.5};
+  const UNID_DIST=['NPO 265','LQW 319','HWC 507','LHU 365'];
+  const usaDist=cam=>UNID_DIST.some(u=>cam.toUpperCase().includes(u));
+  const getDist=(o,d)=>{ const k=`${o.toUpperCase()}|${d.toUpperCase()}`; return DIST[k]!==undefined?DIST[k]:null;};
+  const iFecha=fi(['FECHA']),iCam=fi(['CAMION','UNIDAD']),iChofer=fi(['CHOFER']),iViajes=fi(['VIAJES']),iOrigen=fi(['ORIGEN']),iDestino=fi(['DESTINO']),iHIni=fi(['INICIAL','INI']),iHFin=fi(['FINAL','FIN']),iLts=fi(['COMBUSTIBLE','LTS','LITRO']),iKmTot=fi(['KMS TOTALES','KM TOTAL']);
+  const result=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i]; const cam=(r[iCam]||'').trim(); if(!cam)continue;
+    const lts=parseNum((r[iLts]||''))||0;
+    const viajesCol=iViajes>=0?parseViajesNum(r[iViajes]):0;
+    const hIni=parseNum((r[iHIni]||''))||0,hFin=parseNum((r[iHFin]||''))||0;
+    const origen=(r[iOrigen]||'').trim(),destino=(r[iDestino]||'').trim();
+    let km=0;
+    if(usaDist(cam)){ const d=getDist(origen,destino); if(d!==null&&d>0&&viajesCol>0)km=Math.round(d*2*viajesCol*10)/10;}
+    else{ const kr=iKmTot>=0?parseNum((r[iKmTot]||'')):null; km=(kr!==null&&kr>0)?Math.round(kr):0;}
+    if(km<=0&&viajesCol<=0)continue;
+    result.push({fecha:(r[iFecha]||'').trim(),cam,chofer:(r[iChofer]||'').trim(),origen,destino,hIni,hFin,lts,km,viajes:viajesCol});
+  }
+  return result;
+}
+  // ═══════════════════════════════════════════════════════
+//  RENDER ALL
+// ═══════════════════════════════════════════════════════
+function renderAll() {
+  renderOverview();
+  renderHistorial('palas',G.histPalas);
+  renderHistorial('cam',  G.histCam);
+  renderHistorial('aut',  G.histAut);
+  renderKPIPage();
+  renderServicesPage();
+  renderCostosPage();
+  renderViajesPage();
+  renderChecklistPage();
+  renderFleetRows(G.fleet,'overview-fleet-tbody');
+  updateClock();
+}
+
+// ── OVERVIEW ──
+function renderOverview() {
+  const f=G.fleet, total=f.length;
+  const good=f.filter(u=>u.status==='good').length;
+  const alertCount=f.filter(u=>u.status==='alert').length;
+  const bad=f.filter(u=>u.status==='bad').length;
+  const operat=good+alertCount;
+  const dispPct=total>0?Math.round(operat/total*100):0;
+  const allHist=[...G.histPalas,...G.histCam,...G.histAut];
+  const {mttr,mtbf,prevPct}=calcMttoKPIs(allHist);
+  document.getElementById('kpi-overview').innerHTML=`
+    <div class="kcard kc-b"><div class="klabel">DISPONIBILIDAD</div><div class="kvalue">${dispPct}%</div><div class="ksub">${operat}/${total} operativas</div></div>
+    <div class="kcard kc-g"><div class="klabel">BUEN ESTADO</div><div class="kvalue">${good}</div><div class="ksub">Sin obs. críticas</div></div>
+    <div class="kcard kc-a"><div class="klabel">EN ALERTA</div><div class="kvalue">${alertCount}</div><div class="ksub">Atención pronta</div></div>
+    <div class="kcard kc-r"><div class="klabel">FUERA DE SERVICIO</div><div class="kvalue">${bad}</div><div class="ksub">En mantenimiento</div></div>
+    <div class="kcard kc-c"><div class="klabel">TOTAL FLOTA</div><div class="kvalue">${total}</div><div class="ksub">Unidades registradas</div></div>
+    <div class="kcard kc-p"><div class="klabel">% PREVENTIVO</div><div class="kvalue">${prevPct}%</div><div class="ksub">Del total trabajos</div></div>`;
+  const palasOp=f.filter(u=>/PALA|LONKING|LIUGONG|CAT|KOMATSU|TOPADORA/.test(u.unit.toUpperCase())&&u.status!=='bad').length;
+  const palasTot=f.filter(u=>/PALA|LONKING|LIUGONG|CAT|KOMATSU|TOPADORA/.test(u.unit.toUpperCase())).length;
+  const camOp=f.filter(u=>/AXOR|ATRON|CAMION|TATU|BATEA/.test(u.unit.toUpperCase())&&u.status!=='bad').length;
+  const camTot=f.filter(u=>/AXOR|ATRON|CAMION|TATU|BATEA/.test(u.unit.toUpperCase())).length;
+  const autOp=f.filter(u=>/TOYOTA|DOOSAN|LINDE|AUTOEL/.test(u.unit.toUpperCase())&&u.status!=='bad').length;
+  const autTot=f.filter(u=>/TOYOTA|DOOSAN|LINDE|AUTOEL/.test(u.unit.toUpperCase())).length;
+  document.getElementById('kpi-type-grid').innerHTML=`
+    <div class="ktype-card"><div class="ktype-title"><span>🦾</span> PALAS CARGADORAS</div>
+      <div class="ktype-metric"><span class="ktype-metric-name">Disponibilidad</span><span class="ktype-metric-val" style="color:${dispColor(palasTot>0?Math.round(palasOp/palasTot*100):0)}">${palasTot>0?Math.round(palasOp/palasTot*100):'-'}%</span></div>
+      <div class="ktype-metric"><span class="ktype-metric-name">Operativas</span><span class="ktype-metric-val" style="color:var(--txt1)">${palasOp}/${palasTot}</span></div>
+      <div class="ktype-metric"><span class="ktype-metric-name">% Preventivo</span><span class="ktype-metric-val" style="color:${dispColor(calcPrevPct(G.histPalas))}">${calcPrevPct(G.histPalas)}%</span></div>
+      <div class="ktype-metric"><span class="ktype-metric-name">Trabajos</span><span class="ktype-metric-val" style="color:var(--cyan)">${G.histPalas.length}</span></div></div>
+    <div class="ktype-card"><div class="ktype-title"><span>🚛</span> CAMIONES</div>
+      <div class="ktype-metric"><span class="ktype-metric-name">Disponibilidad</span><span class="ktype-metric-val" style="color:${dispColor(camTot>0?Math.round(camOp/camTot*100):0)}">${camTot>0?Math.round(camOp/camTot*100):'-'}%</span></div>
+      <div class="ktype-metric"><span class="ktype-metric-name">Operativas</span><span class="ktype-metric-val" style="color:var(--txt1)">${camOp}/${camTot}</span></div>
+      <div class="ktype-metric"><span class="ktype-metric-name">% Preventivo</span><span class="ktype-metric-val" style="color:${dispColor(calcPrevPct(G.histCam))}">${calcPrevPct(G.histCam)}%</span></div>
+      <div class="ktype-metric"><span class="ktype-metric-name">Trabajos</span><span class="ktype-metric-val" style="color:var(--cyan)">${G.histCam.length}</span></div></div>
+    <div class="ktype-card"><div class="ktype-title"><span>🏗️</span> AUTOELEVADORES</div>
+      <div class="ktype-metric"><span class="ktype-metric-name">Disponibilidad</span><span class="ktype-metric-val" style="color:${dispColor(autTot>0?Math.round(autOp/autTot*100):0)}">${autTot>0?Math.round(autOp/autTot*100):'-'}%</span></div>
+      <div class="ktype-metric"><span class="ktype-metric-name">Operativas</span><span class="ktype-metric-val" style="color:var(--txt1)">${autOp}/${autTot}</span></div>
+      <div class="ktype-metric"><span class="ktype-metric-name">% Preventivo</span><span class="ktype-metric-val" style="color:${dispColor(calcPrevPct(G.histAut))}">${calcPrevPct(G.histAut)}%</span></div>
+      <div class="ktype-metric"><span class="ktype-metric-name">Trabajos</span><span class="ktype-metric-val" style="color:var(--cyan)">${G.histAut.length}</span></div></div>`;
+  const conf=mtbf>0?Math.round(mtbf/(mtbf+mttr)*100):0;
+  document.getElementById('mcard-row').innerHTML=`
+    <div class="mcard"><span class="mcard-ico">⏱️</span><div class="mcard-name">MTTR — TIEMPO MEDIO REPARACIÓN</div><div class="mcard-val">${mttr.toFixed(1)}</div><div class="mcard-unit">días promedio</div><div class="mbar"><div class="mbar-fill" style="width:${Math.min(mttr/10*100,100)}%;background:linear-gradient(90deg,var(--amber),var(--orange))"></div></div><div class="mcard-desc">Objetivo: &lt; 3 días</div></div>
+    <div class="mcard"><span class="mcard-ico">📅</span><div class="mcard-name">MTBF — TIEMPO ENTRE FALLAS</div><div class="mcard-val">${mtbf.toFixed(0)}</div><div class="mcard-unit">días entre eventos</div><div class="mbar"><div class="mbar-fill" style="width:${Math.min(mtbf/60*100,100)}%"></div></div><div class="mcard-desc">Objetivo: &gt; 30 días</div></div>
+    <div class="mcard"><span class="mcard-ico">📈</span><div class="mcard-name">CONFIABILIDAD</div><div class="mcard-val">${conf}%</div><div class="mcard-unit">MTBF/(MTBF+MTTR)</div><div class="mbar"><div class="mbar-fill" style="width:${conf}%;background:linear-gradient(90deg,var(--green),var(--cyan))"></div></div><div class="mcard-desc">Mayor = mejor</div></div>
+    <div class="mcard"><span class="mcard-ico">🔩</span><div class="mcard-name">PREVENTIVO vs CORRECTIVO</div><div class="mcard-val">${prevPct}%</div><div class="mcard-unit">trabajos preventivos</div><div class="mbar"><div class="mbar-fill" style="width:${prevPct}%;background:linear-gradient(90deg,var(--cyan),var(--blue))"></div></div><div class="mcard-desc">${prevPct>=70?'✅ En target (>70%)':'⚠️ Por debajo del objetivo'}</div></div>`;
+  renderAlertList(f.filter(u=>u.status==='bad'), 'list-bad', 'adot-r', 'badge-bad');
+  renderAlertList(f.filter(u=>u.status==='alert'),'list-alert','adot-a','badge-alert');
+  destroyCharts();
+  buildChartEstado(good,alertCount,bad);
+  buildChartSector();
+  buildChartStacked();
+  buildChartPalasTipo(); buildChartPalasMes(); buildChartPalasFallas(); buildChartPalasResp(); buildChartPalasModelo();
+  buildChartCamTipo();   buildChartCamMes();   buildChartCamFallas();   buildChartCamResp();   buildChartCamUnidad();
+  buildChartAutTipo();   buildChartAutMes();   buildChartAutFallas();   buildChartAutResp();   buildChartAutEquipo();
+  buildChartTendencia(); buildChartMTTR(mttr); buildChartPrevCorr(prevPct); buildChartTrabajos();
+}
+
+function renderAlertList(units,containerId,dotClass,badgeId) {
+  const el=document.getElementById(containerId); if(!el)return;
+  const badge=document.getElementById(badgeId); if(badge)badge.textContent=units.length+' unidades';
+  if(!units.length){el.innerHTML='<div class="no-data">Sin unidades en esta categoría</div>';return;}
+  el.innerHTML=units.map(u=>`<div class="aitem"><span class="adot ${dotClass}"></span><div><div class="aunit">${u.unit} <span style="font-size:9px;color:var(--txt3)">${u.model}</span></div><div class="adesc">${u.obs||'—'}</div></div><span class="asect">${u.sector}</span></div>`).join('');
+}
+
+let fleetFilter='all',fleetSearch='';
+function renderFleetRows(data,targetId) {
+  const tbody=document.getElementById(targetId||'fleet-tbody'); if(!tbody)return;
+  const filtered=data.filter(u=>{
+    const mF=fleetFilter==='all'||(fleetFilter==='good'&&u.status==='good')||(fleetFilter==='alert'&&u.status==='alert')||(fleetFilter==='bad'&&u.status==='bad')||u.sector===fleetFilter;
+    const mS=!fleetSearch||u.unit.toLowerCase().includes(fleetSearch)||u.model.toLowerCase().includes(fleetSearch)||u.obs.toLowerCase().includes(fleetSearch);
+    return mF&&mS;
+  });
+  if(!filtered.length){tbody.innerHTML='<tr><td colspan="5" class="no-data">Sin resultados</td></tr>';return;}
+  const sMap={good:{label:'OPERATIVA',cls:'p-g'},alert:{label:'ALERTA',cls:'p-a'},bad:{label:'EN MANTENIMIENTO',cls:'p-r'}};
+  tbody.innerHTML=filtered.map(u=>{const s=sMap[u.status]||sMap.good;return`<tr><td><div class="uname">${u.unit}</div></td><td><div class="umodel">${u.model||'—'}</div></td><td><span class="stag">${u.sector}</span></td><td><span class="pill ${s.cls}">${s.label}</span></td><td class="obs">${u.obs||'<span class="obs-none">Sin observaciones</span>'}</td></tr>`;}).join('');
+}
+
+const histState={palas:{filter:'all',search:''},cam:{filter:'all',search:''},aut:{filter:'all',search:''}};
+function renderHistorial(key,data) {
+  const el=document.getElementById(`hist-${key}`); if(!el)return;
+  const {filter,search}=histState[key];
+  const filtered=data.filter(h=>{
+    const mF=filter==='all'||h.tipo.toLowerCase().includes(filter.toLowerCase());
+    const mS=!search||h.unit.toLowerCase().includes(search)||h.desc.toLowerCase().includes(search);
+    return mF&&mS;
+  });
+  if(!filtered.length){el.innerHTML='<div class="no-data">Sin datos cargados.</div>';return;}
+  el.innerHTML=filtered.map(h=>{
+    const isPrev=/prev/i.test(h.tipo);
+    const dias=calcDias(h.ini,h.fin);
+    return`<div class="hist-row"><div><div class="uname" style="font-size:12px">${h.unit}</div></div><div><span class="htag ${isPrev?'htag-p':'htag-c'}">${isPrev?'PREVENTIVO':'CORRECTIVO'}</span></div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${h.ini||'—'}</div><div style="display:flex;align-items:center;gap:6px"><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${h.fin||'—'}</span>${dias>0?`<span class="hdays">${dias}d</span>`:'—'}</div><div style="font-size:11px;color:var(--txt2)">${h.desc||'—'}</div></div>`;
+  }).join('');
+}
+function filterHist(key,f,btn){btn.closest('.tbl-filters').querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');histState[key].filter=f;const dm={palas:G.histPalas,cam:G.histCam,aut:G.histAut};renderHistorial(key,dm[key]);}
+function searchHist(key,val){histState[key].search=val.toLowerCase();const dm={palas:G.histPalas,cam:G.histCam,aut:G.histAut};renderHistorial(key,dm[key]);}
+
+// ── KPI PAGE ──
+function renderKPIPage() {
+  const allHist=[...G.histPalas,...G.histCam,...G.histAut];
+  const{mttr,mtbf,prevPct}=calcMttoKPIs(allHist);
+  const conf=mtbf>0?Math.round(mtbf/(mtbf+mttr)*100):0;
+  const oee=Math.round((G.fleet.length>0?(G.fleet.filter(u=>u.status!=='bad').length/G.fleet.length)*100:0)*(prevPct/100)*0.95);
+  document.getElementById('kpi-adv-cards').innerHTML=`
+    <div class="mcard"><span class="mcard-ico">⏱️</span><div class="mcard-name">MTTR GLOBAL</div><div class="mcard-val">${mttr.toFixed(1)} días</div><div class="mcard-unit">Tiempo medio reparación</div><div class="mbar"><div class="mbar-fill" style="width:${Math.min(mttr/10*100,100)}%;background:linear-gradient(90deg,var(--amber),var(--orange))"></div></div></div>
+    <div class="mcard"><span class="mcard-ico">🔄</span><div class="mcard-name">MTBF GLOBAL</div><div class="mcard-val">${mtbf.toFixed(0)} días</div><div class="mcard-unit">Tiempo entre fallas</div><div class="mbar"><div class="mbar-fill" style="width:${Math.min(mtbf/60*100,100)}%"></div></div></div>
+    <div class="mcard"><span class="mcard-ico">📈</span><div class="mcard-name">CONFIABILIDAD</div><div class="mcard-val">${conf}%</div><div class="mcard-unit">MTBF/(MTBF+MTTR)</div><div class="mbar"><div class="mbar-fill" style="width:${conf}%;background:linear-gradient(90deg,var(--green),var(--cyan))"></div></div></div>
+    <div class="mcard"><span class="mcard-ico">⚡</span><div class="mcard-name">OEE</div><div class="mcard-val">${oee}%</div><div class="mcard-unit">Efectividad global</div><div class="mbar"><div class="mbar-fill" style="width:${oee}%;background:linear-gradient(90deg,var(--amber),var(--green))"></div></div><div class="mcard-desc">World class: &gt;85%</div></div>
+    <div class="mcard"><span class="mcard-ico">✅</span><div class="mcard-name">% PREVENTIVO GLOBAL</div><div class="mcard-val">${prevPct}%</div><div class="mcard-unit">Del total intervenciones</div><div class="mbar"><div class="mbar-fill" style="width:${prevPct}%;background:linear-gradient(90deg,var(--cyan),var(--blue))"></div></div></div>
+    <div class="mcard"><span class="mcard-ico">🛑</span><div class="mcard-name">ÍNDICE DE PARADA</div><div class="mcard-val">${G.fleet.length>0?Math.round(G.fleet.filter(u=>u.status==='bad').length/G.fleet.length*100):0}%</div><div class="mcard-unit">Unidades no disponibles</div><div class="mbar"><div class="mbar-fill" style="width:${G.fleet.length>0?Math.round(G.fleet.filter(u=>u.status==='bad').length/G.fleet.length*100):0}%;background:linear-gradient(90deg,var(--red),var(--orange))"></div></div></div>
+    <div class="mcard"><span class="mcard-ico">🔩</span><div class="mcard-name">PALAS — % PREVENTIVO</div><div class="mcard-val">${calcPrevPct(G.histPalas)}%</div><div class="mcard-unit">${G.histPalas.length} trabajos</div><div class="mbar"><div class="mbar-fill" style="width:${calcPrevPct(G.histPalas)}%;background:linear-gradient(90deg,var(--blue),var(--cyan))"></div></div></div>
+    <div class="mcard"><span class="mcard-ico">🚛</span><div class="mcard-name">CAMIONES — % PREVENTIVO</div><div class="mcard-val">${calcPrevPct(G.histCam)}%</div><div class="mcard-unit">${G.histCam.length} trabajos</div><div class="mbar"><div class="mbar-fill" style="width:${calcPrevPct(G.histCam)}%;background:linear-gradient(90deg,var(--blue),var(--cyan))"></div></div></div>`;
+}
+
+// ── SERVICES ──
+let srvFilter='all';
+function filterServices(f,btn){btn.closest('.tbl-filters').querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');srvFilter=f;renderServicesTable();}
+function renderServicesPage() {
+  if(!G.services.length){const k=document.getElementById('kpi-services');if(k)k.innerHTML='<div style="grid-column:1/-1" class="no-data">No se cargaron services.</div>';return;}
+  const total=G.services.length;
+  const urgente=G.services.filter(s=>s.alertLevel==='urgente').length;
+  const alerta=G.services.filter(s=>s.alertLevel==='alerta').length;
+  const planificar=G.services.filter(s=>s.alertLevel==='planificar').length;
+  const ok=G.services.filter(s=>s.alertLevel==='ok').length;
+  const hrsP=total>0?Math.round(G.services.reduce((a,s)=>a+s.hRest,0)/total):0;
+  const kpi=document.getElementById('kpi-services');
+  if(kpi)kpi.innerHTML=kpiCard('TOTAL UNIDADES',total,'Con plan de service','kc-b')+kpiCard('OK — AL DÍA',ok,'&gt;150 hs restantes','kc-g')+kpiCard('PLANIFICAR',planificar,'76-150 hs restantes','kc-a')+kpiCard('ALERTA',alerta,'50-75 hs restantes','kc-r')+kpiCard('URGENTE',urgente,'&lt;50 hs restantes','kc-r')+kpiCard('HS PROM. RESTANTES',hrsP,'Promedio flota','kc-c');
+  renderServicesTable();
+  buildChartSrvEstado();
+  buildChartSrvHoras();
+}
+function renderServicesTable() {
+  const tbody=document.getElementById('services-tbody'); if(!tbody)return;
+  const filtered=G.services.filter(s=>srvFilter==='all'||s.alertLevel===srvFilter);
+  if(!filtered.length){tbody.innerHTML='<tr><td colspan="11" class="no-data">Sin resultados</td></tr>';return;}
+  const order={urgente:0,alerta:1,planificar:2,ok:3};
+  filtered.sort((a,b)=>(order[a.alertLevel]??9)-(order[b.alertLevel]??9));
+  const am={urgente:{cls:'p-r',lbl:'🔴 URGENTE',color:'var(--red)'},alerta:{cls:'p-a',lbl:'🟠 ALERTA',color:'var(--orange)'},planificar:{cls:'p-a',lbl:'🟡 PLANIFICAR',color:'var(--amber)'},ok:{cls:'p-g',lbl:'✅ OK',color:'var(--green)'}};
+  tbody.innerHTML=filtered.map(s=>{
+    const a=am[s.alertLevel]||am.ok;
+    const pct=s.hRest>0?Math.min(Math.round(s.hRest/300*100),100):0;
+    return`<tr><td><div class="uname">${s.maq}</div></td><td><div class="umodel">${s.modelo||'—'}</div></td><td><span class="stag">${s.sector||'—'}</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${s.prop||'—'}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)">${s.hAct||'—'} hs</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2)">${s.hAnt||'—'} hs</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2)">${s.hProx||'—'} hs</td><td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:${a.color}">${s.hRest>0?s.hRest:'⚠️ '+Math.abs(s.hRest)} hs</span><div style="margin-top:3px;height:3px;background:var(--border);border-radius:2px;width:80px"><div style="height:100%;background:${a.color};width:${pct}%;border-radius:2px"></div></div></td><td><span class="pill ${a.cls}">${a.lbl}</span></td><td style="font-size:10px;color:var(--txt2)">${s.fecha||'—'}</td><td style="font-size:9px;color:var(--txt3)">${s.actuali||'—'}</td></tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+//  CHECKLIST PAGE — RENDER COMPLETO
+// ══════════════════════════════════════════════════════
+const CHK_ITEMS = [
+  { key:'fugas',        label:'Fugas' },
+  { key:'niveles',      label:'Niveles' },
+  { key:'refrigerante', label:'Refrig.' },
+  { key:'filtro',       label:'Filtro' },
+  { key:'neumaticos',   label:'Neumát.' },
+  { key:'luces',        label:'Luces' },
+  { key:'correas',      label:'Correas' },
+  { key:'engrase',      label:'Engrase' },
+  { key:'limpieza',     label:'Limpieza' },
+];
+
+let chkFilter='all', chkFilterSeverity='all', chkSearch='';
+
+function renderChecklistPage() {
+  const palas=G.checklistPalas||[], aut=G.checklistAut||[];
+  const todos=[...palas,...aut];
+  const totalInsp=todos.length;
+  let totalItems=0,totalOk=0,totalWarn=0,totalFail=0;
+  todos.forEach(insp=>Object.values(insp.checklist).forEach(it=>{totalItems++;if(it.estado==='ok')totalOk++;else if(it.estado==='warn')totalWarn++;else totalFail++;}));
+  const cumplGral=totalItems>0?Math.round(totalOk/totalItems*100):0;
+  const unidades=new Set(todos.map(i=>i.modelo)).size;
+  const inspecConFalla=todos.filter(i=>Object.values(i.checklist).some(it=>it.estado==='fail')).length;
+  const inspecConWarn=todos.filter(i=>Object.values(i.checklist).some(it=>it.estado==='warn')).length;
+  document.getElementById('kpi-checklist').innerHTML=
+    kpiCard('INSPECCIONES TOTALES',totalInsp,`${palas.length} palas · ${aut.length} autoel.`,'kc-b')+
+    kpiCard('CUMPLIMIENTO GENERAL',cumplGral+'%',`${totalOk}/${totalItems} ítems OK`,'kc-g')+
+    kpiCard('EQUIPOS DISTINTOS',unidades,'Modelos inspeccionados','kc-c')+
+    kpiCard('INSPECCIONES CON FALLA',inspecConFalla,'Requieren acción inmediata','kc-r')+
+    kpiCard('INSPECCIONES CON ALERTA',inspecConWarn,'Requieren seguimiento','kc-a')+
+    kpiCard('ÍTEMS CON PROBLEMAS',totalWarn+totalFail,'Warn + Fail','kc-p');
+  renderChecklistAlertas(todos);
+  buildChartChecklistCumplimiento('ch-checklist-palas', palas);
+  buildChartChecklistCumplimiento('ch-checklist-aut', aut);
+  buildChartChecklistTrend(todos);
+  buildChartChecklistDist(totalOk, totalWarn, totalFail);
+  renderRankingFallasChecklist(todos);
+  renderChecklistTable(todos);
+  renderResumenEquiposChk(todos);
+}
+
+function renderChecklistAlertas(todos) {
+  const el=document.getElementById('checklist-alertas'); if(!el)return;
+  const byEquipo={};
+  todos.forEach(insp=>{ if(!byEquipo[insp.modelo]||insp.fecha>byEquipo[insp.modelo].fecha) byEquipo[insp.modelo]=insp; });
+  const conProblemas=Object.values(byEquipo).filter(insp=>Object.entries(insp.checklist).some(([,v])=>v.estado!=='ok')).sort((a,b)=>{
+    const fa=Object.values(a.checklist).filter(v=>v.estado==='fail').length;
+    const fb=Object.values(b.checklist).filter(v=>v.estado==='fail').length;
+    return fb-fa;
+  });
+  if(!conProblemas.length){el.innerHTML='<div class="no-data" style="padding:16px;background:rgba(0,230,118,0.05);border:1px solid rgba(0,230,118,0.15);border-radius:6px">✅ Sin alertas activas en última inspección de cada equipo</div>';return;}
+  el.innerHTML=conProblemas.map(insp=>{
+    const fails=Object.entries(insp.checklist).filter(([,v])=>v.estado==='fail');
+    const warns=Object.entries(insp.checklist).filter(([,v])=>v.estado==='warn');
+    const isCrit=fails.length>0;
+    const itemLabel=k=>CHK_ITEMS.find(i=>i.key===k)?.label||k;
+    const failStr=fails.map(([k,v])=>`<span style="color:var(--red);font-weight:600">${itemLabel(k)}</span>${v.obs?': '+v.obs:''}`).join(' · ');
+    const warnStr=warns.map(([k,v])=>`<span style="color:var(--amber)">${itemLabel(k)}</span>${v.obs?': '+v.obs:''}`).join(' · ');
+    return`<div class="alert-card ${isCrit?'':'alert-card-warn'}" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div><div class="aunit" style="font-size:14px">${insp.modelo} <span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--txt3);font-weight:400">${insp.tipo}</span></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3);margin-top:2px">Última inspec: ${insp.fecha} · ${insp.maquinista||'—'}</div></div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          ${fails.length>0?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;background:rgba(255,61,61,0.12);color:var(--red);border:1px solid rgba(255,61,61,0.3);border-radius:3px">❌ ${fails.length} FALLA${fails.length>1?'S':''}</span>`:''}
+          ${warns.length>0?`<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;background:rgba(255,193,7,0.12);color:var(--amber);border:1px solid rgba(255,193,7,0.3);border-radius:3px">⚠️ ${warns.length} ALERTA${warns.length>1?'S':''}</span>`:''}
+        </div>
+      </div>
+      ${failStr?`<div style="margin-top:8px;font-size:11px;line-height:1.6">${failStr}</div>`:''}
+      ${warnStr?`<div style="margin-top:4px;font-size:11px;line-height:1.6">${warnStr}</div>`:''}
+      ${insp.obsAdicional?`<div style="margin-top:6px;font-size:11px;color:var(--txt2);font-style:italic">📝 ${insp.obsAdicional}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function buildChartChecklistCumplimiento(canvasId, data) {
+  const el=document.getElementById(canvasId); if(!el)return;
+  if(G.charts[canvasId])try{G.charts[canvasId].destroy();}catch{}
+  const counts={};
+  CHK_ITEMS.forEach(it=>{counts[it.key]={total:0,ok:0};});
+  data.forEach(insp=>CHK_ITEMS.forEach(it=>{if(insp.checklist[it.key]){counts[it.key].total++;if(insp.checklist[it.key].estado==='ok')counts[it.key].ok++;}}));
+  const labels=[],values=[];
+  CHK_ITEMS.forEach(it=>{if(counts[it.key].total>0){labels.push(it.label);values.push(Math.round(counts[it.key].ok/counts[it.key].total*100));}});
+  if(!values.length)return;
+  G.charts[canvasId]=new Chart(el,{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:values.map(v=>v>=85?C.green:v>=60?C.amber:C.red),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',scales:{x:{max:100,ticks:{color:C.txt,font:{family:C.font,size:9},callback:v=>v+'%'},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw}% OK`}}}}});
+}
+
+function buildChartChecklistTrend(todos) {
+  const el=document.getElementById('ch-checklist-trend'); if(!el)return;
+  if(G.charts['ch-checklist-trend'])try{G.charts['ch-checklist-trend'].destroy();}catch{}
+  const byFecha={};
+  todos.forEach(insp=>{
+    if(!byFecha[insp.fecha])byFecha[insp.fecha]={total:0,ok:0};
+    Object.values(insp.checklist).forEach(it=>{byFecha[insp.fecha].total++;if(it.estado==='ok')byFecha[insp.fecha].ok++;});
+  });
+  const sorted=Object.keys(byFecha).sort();
+  const labels=sorted;
+  const values=sorted.map(k=>byFecha[k].total>0?Math.round(byFecha[k].ok/byFecha[k].total*100):0);
+  G.charts['ch-checklist-trend']=new Chart(el,{type:'line',data:{labels,datasets:[{label:'% Cumplimiento',data:values,borderColor:C.cyan,backgroundColor:'rgba(0,229,204,0.08)',fill:true,tension:0.3,pointBackgroundColor:values.map(v=>v>=85?C.green:v>=60?C.amber:C.red),pointRadius:4},{label:'Objetivo 85%',data:labels.map(()=>85),borderColor:C.muted,borderDash:[6,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,scales:{...scalesDef,y:{...scalesDef.y,min:0,max:100,ticks:{...scalesDef.y.ticks,callback:v=>v+'%'}}},plugins:pluginDef}});
+}
+
+function buildChartChecklistDist(ok,warn,fail) {
+  const el=document.getElementById('ch-checklist-dist'); if(!el)return;
+  if(G.charts['ch-checklist-dist'])try{G.charts['ch-checklist-dist'].destroy();}catch{}
+  G.charts['ch-checklist-dist']=new Chart(el,{type:'doughnut',data:{labels:['✅ OK','⚠️ Alerta','❌ Falla'],datasets:[{data:[ok,warn,fail],backgroundColor:[C.green,C.amber,C.red],borderColor:'#0b1118',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{...pluginDef,datalabels:{display:true,color:'#fff',font:{size:11,weight:'bold'},formatter:(v,ctx)=>{const s=ctx.dataset.data.reduce((a,b)=>a+b,0);return s>0?Math.round(v/s*100)+'%':'';}}}}}); 
+}
+
+function renderRankingFallasChecklist(todos) {
+  const el=document.getElementById('ranking-checklist-fallas'); if(!el)return;
+  const fallas={};
+  CHK_ITEMS.forEach(it=>{fallas[it.key]=0;});
+  todos.forEach(insp=>CHK_ITEMS.forEach(it=>{if(insp.checklist[it.key]&&insp.checklist[it.key].estado!=='ok')fallas[it.key]++;}));
+  const sorted=Object.entries(fallas).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  if(!sorted.length){el.innerHTML='<div class="no-data">Sin fallas registradas</div>';return;}
+  const maxV=sorted[0][1];
+  const medals=['🥇','🥈','🥉','4°','5°'];
+  const borderColors=['#ffd700','#c0c0c0','#cd7f32','var(--border2)','var(--border2)'];
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(${sorted.length},1fr);gap:12px">`+
+    sorted.map(([key,val],idx)=>{
+      const pct=Math.round(val/maxV*100);
+      const label=CHK_ITEMS.find(i=>i.key===key)?.label||key;
+      return`<div class="ccard" style="border-color:${borderColors[idx]};text-align:center;padding:18px 12px">
+        <div style="font-size:24px;margin-bottom:6px">${medals[idx]}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--txt1);margin-bottom:8px">${label}</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:var(--red)">${val}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3)">fallas/alertas</div>
+        <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:2px;margin-top:8px"><div style="width:${pct}%;height:100%;background:var(--red);border-radius:2px"></div></div></div>`;
+    }).join('')+'</div>';
+}
+
+function filterChecklist(tipo,btn) {
+  if(tipo==='fail'||tipo==='warn') chkFilterSeverity=tipo;
+  else { chkFilter=tipo; chkFilterSeverity='all'; }
+  document.querySelectorAll('#page-checklist .fbtn').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  renderChecklistTable([...G.checklistPalas,...G.checklistAut]);
+}
+function searchChecklist(val){chkSearch=val.toLowerCase();renderChecklistTable([...G.checklistPalas,...G.checklistAut]);}
+
+function renderChecklistTable(data) {
+  const tbody=document.getElementById('checklist-tbody'); if(!tbody)return;
+  let filtered=data;
+  if(chkFilter==='PALA')filtered=filtered.filter(i=>i.tipo==='PALA');
+  if(chkFilter==='AUTOELEVADOR')filtered=filtered.filter(i=>i.tipo==='AUTOELEVADOR');
+  if(chkFilterSeverity==='fail')filtered=filtered.filter(i=>Object.values(i.checklist).some(v=>v.estado==='fail'));
+  if(chkFilterSeverity==='warn')filtered=filtered.filter(i=>Object.values(i.checklist).some(v=>v.estado==='warn'));
+  if(chkSearch)filtered=filtered.filter(i=>i.modelo.toLowerCase().includes(chkSearch)||i.maquinista.toLowerCase().includes(chkSearch)||(i.obsAdicional&&i.obsAdicional.toLowerCase().includes(chkSearch)));
+  function parseFecha(f){const p=(f||'').split('/');if(p.length<3)return 0;return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0])).getTime();}
+  filtered=[...filtered].sort((a,b)=>parseFecha(b.fecha)-parseFecha(a.fecha));
+  if(!filtered.length){tbody.innerHTML='<tr><td colspan="15" class="no-data">Sin inspecciones</td></tr>';return;}
+  const ico=(estado)=>estado==='ok'?'<span class="chk-item-ok">✅</span>':estado==='warn'?'<span class="chk-item-warn">⚠️</span>':'<span class="chk-item-fail">❌</span>';
+  tbody.innerHTML=filtered.map(insp=>{
+    const cells=CHK_ITEMS.map(it=>{
+      const it_data=insp.checklist[it.key];
+      if(!it_data)return'<td></td>';
+      const obs=it_data.obs?`<span class="chk-obs-cell" title="${it_data.obs}">${it_data.obs}</span>`:'';
+      return`<td style="text-align:center">${ico(it_data.estado)}${obs}</td>`;
+    }).join('');
+    const tipoIco=insp.tipo==='PALA'?'🦾':'🏗️';
+    return`<tr>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${insp.fecha}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${insp.turno||'—'}</td>
+      <td><div class="uname" style="font-size:12px">${tipoIco} ${insp.modelo}</div></td>
+      <td style="font-size:11px;color:var(--txt2)">${insp.maquinista||'—'}</td>
+      ${cells}
+      <td style="font-size:10px;color:var(--txt2);max-width:160px;white-space:normal;line-height:1.4">${insp.obsAdicional||'—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cyan);text-align:right">${insp.horometro||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderResumenEquiposChk(todos) {
+  const el=document.getElementById('tabla-resumen-equipos-chk'); if(!el)return;
+  const byEquipo={};
+  todos.forEach(insp=>{
+    if(!byEquipo[insp.modelo])byEquipo[insp.modelo]={modelo:insp.modelo,tipo:insp.tipo,count:0,okTotal:0,warnTotal:0,failTotal:0,itemCount:0,ultimaObs:'',ultimaFecha:''};
+    const e=byEquipo[insp.modelo];
+    e.count++;
+    Object.values(insp.checklist).forEach(it=>{e.itemCount++;if(it.estado==='ok')e.okTotal++;else if(it.estado==='warn')e.warnTotal++;else e.failTotal++;});
+    if(insp.fecha>e.ultimaFecha){e.ultimaFecha=insp.fecha;const fails=Object.entries(insp.checklist).filter(([,v])=>v.estado!=='ok').map(([k,v])=>(CHK_ITEMS.find(i=>i.key===k)?.label||k)+(v.obs?' ('+v.obs+')':'')).join(', ');e.ultimaObs=fails||'OK';}
+  });
+  const list=Object.values(byEquipo).sort((a,b)=>b.failTotal-a.failTotal||b.warnTotal-a.warnTotal);
+  if(!list.length){el.innerHTML='<div class="no-data">Sin datos</div>';return;}
+  el.innerHTML=list.map(r=>{
+    const cumpl=r.itemCount>0?Math.round(r.okTotal/r.itemCount*100):0;
+    const tipoIco=r.tipo==='PALA'?'🦾':'🏗️';
+    const cumplColor=cumpl>=85?'var(--green)':cumpl>=60?'var(--amber)':'var(--red)';
+    const obsColor=r.failTotal>0?'var(--red)':r.warnTotal>0?'var(--amber)':'var(--green)';
+    return`<div class="hist-row" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 2fr">
+      <div><div class="uname" style="font-size:12px">${tipoIco} ${r.modelo}</div><div style="font-size:9px;color:var(--txt3)">${r.count} inspecciones</div></div>
+      <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cyan)">${r.count}</div>
+      <div style="text-align:center;color:var(--green);font-size:13px;font-weight:600">${r.okTotal}</div>
+      <div style="text-align:center;color:var(--amber);font-size:13px;font-weight:600">${r.warnTotal}</div>
+      <div style="text-align:center;color:var(--red);font-size:13px;font-weight:600">${r.failTotal}</div>
+      <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:${cumplColor}">${cumpl}%</div>
+      <div style="font-size:10px;color:${obsColor};line-height:1.4">${r.ultimaObs}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  COSTOS
+// ═══════════════════════════════════════════════════════
+function fmtARS(n){return'$'+Math.round(n).toLocaleString('es-AR');}
+let costosFilter='all';
+function renderCostosPage(){
+  const data=G.costos; if(!data||data.length===0)return;
+  const COTIZ=1400;
+  const totalArs=data.reduce((s,c)=>s+c.ars,0);
+  const promArs=data.length>0?totalArs/data.length:0;
+  const maxItem=data.reduce((a,b)=>b.ars>a.ars?b:a,data[0]);
+  const kpi=document.getElementById('kpi-costos');
+  if(kpi)kpi.innerHTML=kpiCard('GASTO TOTAL ARS',fmtARS(totalArs),data.length+' registros','kc-b')+kpiCard('EQUIV. USD OFICIAL','USD '+Math.round(totalArs/COTIZ).toLocaleString('es-AR'),'Cotiz. BNA: $'+COTIZ,'kc-c')+kpiCard('COSTO PROM./TRABAJO',fmtARS(promArs),'por trabajo','kc-a')+kpiCard('TRABAJO MÁS COSTOSO',fmtARS(maxItem?maxItem.ars:0),maxItem?maxItem.unidad:'','kc-r');
+  buildChartCostosMes(data); buildChartCostosProv(data); buildChartCostosUnidad(data); buildChartCostosFlota(data);
+  renderRankingCostos(data); renderResumenEquipo(data); renderTablaCostos(data);
+}
+function kpiCard(lbl,val,sub,cls){return`<div class="kcard ${cls}"><div class="klabel">${lbl}</div><div class="kvalue">${val}</div>${sub?`<div class="ksub">${sub}</div>`:''}</div>`;}
+function buildChartCostosMes(data){
+  const MESES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const meses={},sortKeys={};
+  data.forEach(c=>{const f=(c.fecha||'').trim();if(!f)return;let mm,yyyy;if(f.includes('/')){const p=f.split('/');mm=parseInt(p[1],10)-1;yyyy=parseInt(p[2],10);}else if(f.includes('-')){const p=f.split('-');yyyy=parseInt(p[0],10);mm=parseInt(p[1],10)-1;}else return;if(isNaN(mm)||isNaN(yyyy))return;const key=MESES[mm]+' '+yyyy;meses[key]=(meses[key]||0)+c.ars;sortKeys[key]=yyyy*100+mm;});
+  const labels=Object.keys(meses).sort((a,b)=>sortKeys[a]-sortKeys[b]);
+  mkChart('ch-costos-mes',{type:'bar',data:{labels,datasets:[{data:labels.map(k=>meses[k]),backgroundColor:'rgba(0,170,255,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false},tooltip:{callbacks:{label:c=>' '+fmtARS(c.raw)}}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:10},maxRotation:55,minRotation:55},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9},callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:C.grid}}}}});
+}
+function buildChartCostosProv(data){
+  const counts={};data.forEach(c=>{const p=(c.proveedor||'').trim();if(!p)return;counts[p]=(counts[p]||0)+c.ars;});
+  const total=Object.values(counts).reduce((s,v)=>s+v,0);
+  const el=document.getElementById('total-costos-prov');if(el)el.textContent='TOTAL: '+fmtARS(total);
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const COLORS=['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(255,61,61,0.7)','rgba(0,230,118,0.7)','rgba(255,200,100,0.7)','rgba(100,180,255,0.7)','rgba(200,100,200,0.7)'];
+  mkChart('ch-costos-prov',{type:'bar',data:{labels:sorted.map(s=>s[0]),datasets:[{data:sorted.map(s=>s[1]),backgroundColor:COLORS.slice(0,sorted.length),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmtARS(c.raw)}},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>'$'+Math.round(v/1000)+'k'}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
+}
+function buildChartCostosUnidad(data){
+  const counts={};data.forEach(c=>{const u=(c.unidad||'').trim();if(!u)return;counts[u]=(counts[u]||0)+c.ars;});
+  const total=Object.values(counts).reduce((s,v)=>s+v,0);
+  const el=document.getElementById('total-costos-unidad');if(el)el.textContent='TOTAL: '+fmtARS(total);
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const COLORS=['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(255,61,61,0.7)','rgba(0,230,118,0.7)','rgba(255,200,100,0.7)','rgba(100,180,255,0.7)','rgba(200,100,200,0.7)'];
+  mkChart('ch-costos-unidad',{type:'bar',data:{labels:sorted.map(s=>s[0]),datasets:[{data:sorted.map(s=>s[1]),backgroundColor:COLORS.slice(0,sorted.length),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmtARS(c.raw)}},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>'$'+Math.round(v/1000)+'k'}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
+}
+function buildChartCostosFlota(data){
+  const f={CAMION:0,PALA:0,AUTOELEVADOR:0};data.forEach(c=>{if(f[c.flota]!==undefined)f[c.flota]+=c.ars;});
+  mkChart('ch-costos-flota',{type:'doughnut',data:{labels:['Camiones','Palas','Autoelevadores'],datasets:[{data:[f.CAMION,f.PALA,f.AUTOELEVADOR],backgroundColor:['rgba(0,170,255,0.8)','rgba(0,229,204,0.8)','rgba(255,193,7,0.8)'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{color:C.txt,font:{size:11}}},datalabels:{display:true,color:'#fff',font:{size:11,weight:'bold'},formatter:(v,ctx)=>{const s=ctx.dataset.data.reduce((a,b)=>a+b,0);return s>0?Math.round(v/s*100)+'%':''}},tooltip:{callbacks:{label:c=>' '+fmtARS(c.raw)}}}}});
+}
+function buildResumenEquipo(data){
+  const map={};
+  data.forEach(c=>{const u=(c.unidad||'').trim();if(!u)return;if(!map[u])map[u]={unidad:u,flota:c.flota,total:0,count:0,ultimo:''};map[u].total+=c.ars;map[u].count++;const f=(c.fecha||'').trim();if(!map[u].ultimo||f>map[u].ultimo)map[u].ultimo=f;});
+  return Object.values(map).sort((a,b)=>b.total-a.total);
+}
+function renderResumenEquipo(data){
+  const r=buildResumenEquipo(data),maxT=r.length>0?r[0].total:1;
+  const el=document.getElementById('tabla-resumen-equipo');if(!el)return;
+  if(!r.length){el.innerHTML='<div class="no-data">Sin datos.</div>';return;}
+  el.innerHTML=r.map(row=>{
+    const pct=Math.round(row.total/maxT*100);
+    const prom=row.count>0?row.total/row.count:0;
+    return`<div class="hist-row" style="grid-template-columns:2fr 1fr 1fr 1.4fr 1.4fr 1.4fr">
+      <div><div class="uname" style="font-size:12px">${row.unidad}</div><div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:3px"><div style="width:${pct}%;height:100%;background:var(--blue);border-radius:2px"></div></div></div>
+      <div><span class="htag htag-p" style="font-size:8px">${row.flota}</span></div>
+      <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)">${row.count}</div>
+      <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--blue)">${fmtARS(row.total)}</div>
+      <div style="text-align:right;font-size:12px;color:var(--txt2)">${fmtARS(prom)}</div>
+      <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt3)">${row.ultimo||'—'}</div>
+    </div>`;
+  }).join('');
+}
+function renderRankingCostos(data){
+  const r=buildResumenEquipo(data).slice(0,5);
+  const maxT=r.length>0?r[0].total:1;
+  const el=document.getElementById('ranking-costos');if(!el)return;
+  const medals=['🥇','🥈','🥉','4°','5°'];
+  const bc=['#ffd700','#c0c0c0','#cd7f32','var(--border2)','var(--border2)'];
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(${r.length},1fr);gap:12px">`+r.map((row,i)=>{
+    const pct=Math.round(row.total/maxT*100);
+    return`<div class="ccard" style="border-color:${bc[i]};text-align:center;padding:18px 12px">
+      <div style="font-size:24px;margin-bottom:6px">${medals[i]}</div>
+      <div class="uname" style="font-size:11px;margin-bottom:4px">${row.unidad}</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:var(--blue);margin:8px 0 2px">${fmtARS(row.total)}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3);margin-bottom:10px">${row.count} trabajos</div>
+      <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:2px"><div style="width:${pct}%;height:100%;background:var(--blue);border-radius:2px"></div></div>
+    </div>`;
+  }).join('')+'</div>';
+}
+function renderTablaCostos(data){
+  let filtered=costosFilter==='all'?data:data.filter(c=>c.flota===costosFilter);
+  const search=(document.getElementById('costos-search')?document.getElementById('costos-search').value:'').toLowerCase();
+  if(search)filtered=filtered.filter(c=>c.unidad.toLowerCase().includes(search)||c.proveedor.toLowerCase().includes(search)||c.trabajo.toLowerCase().includes(search));
+  const el=document.getElementById('tabla-costos');if(!el)return;
+  if(!filtered.length){el.innerHTML='<div class="no-data">Sin registros.</div>';return;}
+  el.innerHTML=filtered.map(c=>`<div class="hist-row"><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${c.fecha}</div><div><div class="uname" style="font-size:12px">${c.unidad}</div></div><div style="font-size:11px;color:var(--txt2)">${c.trabajo||'—'}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${c.proveedor||'—'}</div><div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--blue)">${fmtARS(c.ars)}</div></div>`).join('');
+}
+function filterCostos(tipo,btn){costosFilter=tipo;document.querySelectorAll('#page-costos .fbtn').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');renderTablaCostos(G.costos);}
+function searchCostos(){renderTablaCostos(G.costos);}
+
+// ═══════════════════════════════════════════════════════
+//  VIAJES
+// ═══════════════════════════════════════════════════════
+let viajesFilter='all';
+function renderViajesPage(){
+  const data=G.viajes;if(!data||data.length===0)return;
+  const totalLts=data.reduce((s,v)=>s+v.lts,0);
+  const totalKm=data.reduce((s,v)=>s+v.km,0);
+  const totalViajes=data.reduce((s,v)=>s+v.viajes,0);
+  const kmpl=totalLts>0?(totalKm/totalLts).toFixed(2):'—';
+  const porCam={};
+  data.forEach(v=>{if(!porCam[v.cam])porCam[v.cam]={km:0,lts:0,viajes:0};porCam[v.cam].km+=v.km;porCam[v.cam].lts+=v.lts;porCam[v.cam].viajes+=v.viajes;});
+  const efic=Object.keys(porCam).map(k=>({cam:k,kmpl:porCam[k].lts>0?porCam[k].km/porCam[k].lts:0})).filter(e=>e.kmpl>0).sort((a,b)=>b.kmpl-a.kmpl);
+  const mejor=efic.length>0?efic[0]:null;
+  const kpi=document.getElementById('kpi-viajes');
+  if(kpi)kpi.innerHTML=kpiCard('TOTAL VIAJES',totalViajes+' viajes',data.length+' registros','kc-b')+kpiCard('KM RECORRIDOS',Math.round(totalKm).toLocaleString('es-AR')+' km','flota completa','kc-c')+kpiCard('COMBUSTIBLE',Math.round(totalLts).toLocaleString('es-AR')+' lts','total acumulado','kc-a')+kpiCard('RENDIMIENTO PROM.',kmpl+' km/l',mejor?'Mejor: '+mejor.cam:'','kc-g');
+  buildChartViajesKmpl(efic);buildChartViajesCombustibleMes(data);buildChartViajesPorCam(data);buildChartViajesPorChofer(data);
+  renderRankingViajes(data,porCam);renderResumenViajes(data,porCam);renderTablaViajes(data);
+}
+function buildChartViajesKmpl(efic){
+  const COLORS=['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(255,61,61,0.7)'];
+  const bg=efic.map((_,i)=>i===0?'rgba(0,230,118,0.8)':i===efic.length-1?'rgba(255,61,61,0.7)':(COLORS[i]||COLORS[COLORS.length-1]));
+  mkChart('ch-viajes-kmpl',{type:'bar',data:{labels:efic.map(e=>e.cam),datasets:[{data:efic.map(e=>parseFloat(e.kmpl.toFixed(2))),backgroundColor:bg,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+' km/l'}},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>v+' km/l'}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
+}
+function buildChartViajesCombustibleMes(data){
+  const MESES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const meses={},sortKeys={};
+  data.forEach(v=>{const f=(v.fecha||'').trim();if(!f)return;let mm,yyyy;if(f.includes('/')){const p=f.split('/');mm=parseInt(p[1],10)-1;yyyy=parseInt(p[2],10);}else if(f.includes('-')){const p=f.split('-');yyyy=parseInt(p[0],10);mm=parseInt(p[1],10)-1;}else return;if(isNaN(mm)||isNaN(yyyy))return;const k=MESES[mm]+' '+yyyy;meses[k]=(meses[k]||0)+v.lts;sortKeys[k]=yyyy*100+mm;});
+  const labels=Object.keys(meses).sort((a,b)=>sortKeys[a]-sortKeys[b]);
+  mkChart('ch-viajes-combustible',{type:'bar',data:{labels,datasets:[{data:labels.map(k=>Math.round(meses[k])),backgroundColor:'rgba(255,193,7,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+' lts'}}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:10},maxRotation:55,minRotation:55},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9},callback:v=>v+'L'},grid:{color:C.grid}}}}});
+}
+function buildChartViajesPorCam(data){
+  const counts={};data.forEach(v=>{const c=(v.cam||'').trim();if(!c)return;counts[c]=(counts[c]||0)+(v.viajes||0);});
+  const labels=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]),values=labels.map(k=>counts[k]);
+  const total=values.reduce((a,b)=>a+b,0);
+  const el=document.getElementById('total-viajes-cam');if(el)el.textContent='TOTAL: '+total+' viajes';
+  const COLORS=['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(255,61,61,0.7)','rgba(0,230,118,0.7)','rgba(255,200,100,0.7)','rgba(100,180,255,0.7)'];
+  mkChart('ch-viajes-por-cam',{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:COLORS.slice(0,values.length),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>v}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
+}
+function buildChartViajesPorChofer(data){
+  const counts={};data.forEach(v=>{const c=(v.chofer||'').trim();if(!c)return;counts[c]=(counts[c]||0)+(v.viajes||0);});
+  const labels=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]),values=labels.map(k=>counts[k]);
+  const total=values.reduce((a,b)=>a+b,0);
+  const el=document.getElementById('total-viajes-chofer');if(el)el.textContent='TOTAL: '+total+' viajes';
+  const COLORS=['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(255,61,61,0.7)','rgba(0,230,118,0.7)','rgba(255,200,100,0.7)'];
+  mkChart('ch-viajes-por-chofer',{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:COLORS.slice(0,values.length),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>v}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
+}
+function renderRankingViajes(data,porCam){
+  const lista=Object.keys(porCam).map(k=>{const filas=data.filter(v=>v.cam===k).length;const kmpl=porCam[k].lts>0?porCam[k].km/porCam[k].lts:0;return{cam:k,km:porCam[k].km,lts:porCam[k].lts,viajes:filas,kmpl};}).sort((a,b)=>b.km-a.km).slice(0,5);
+  const maxKm=lista.length>0?lista[0].km:1;
+  const el=document.getElementById('ranking-viajes');if(!el)return;
+  const medals=['🥇','🥈','🥉','4°','5°'],bc=['#ffd700','#c0c0c0','#cd7f32','var(--border2)','var(--border2)'];
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(${lista.length},1fr);gap:12px">`+lista.map((r,i)=>{
+    const pct=Math.round(r.km/maxKm*100);
+    return`<div class="ccard" style="border-color:${bc[i]};text-align:center;padding:18px 12px">
+      <div style="font-size:24px;margin-bottom:6px">${medals[i]}</div>
+      <div class="uname" style="font-size:11px;margin-bottom:8px">${r.cam}</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:var(--blue);margin-bottom:2px">${Math.round(r.km).toLocaleString('es-AR')} km</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3);margin-bottom:10px">${r.viajes} viajes · ${r.kmpl>0?r.kmpl.toFixed(2)+' km/l':'—'}</div>
+      <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:2px"><div style="width:${pct}%;height:100%;background:var(--blue);border-radius:2px"></div></div>
+    </div>`;
+  }).join('')+'</div>';
+}
+function renderResumenViajes(data,porCam){
+  const resumen=Object.keys(porCam).map(k=>{const filas=data.filter(v=>v.cam===k);const kmpl=porCam[k].lts>0?porCam[k].km/porCam[k].lts:0;const kmProm=porCam[k].viajes>0?Math.round(porCam[k].km/porCam[k].viajes):0;const ultimo=filas.reduce((last,v)=>v.fecha>last?v.fecha:last,'');return{cam:k,viajes:porCam[k].viajes,km:porCam[k].km,lts:porCam[k].lts,kmpl,kmProm,ultimo};}).sort((a,b)=>b.km-a.km);
+  const maxKm=resumen.length>0?resumen[0].km:1;
+  const el=document.getElementById('tabla-resumen-viajes');if(!el)return;
+  el.innerHTML=resumen.map(r=>{
+    const pct=Math.round(r.km/maxKm*100);
+    const kc=r.kmpl>=4?'var(--green)':r.kmpl>=2.5?'var(--cyan)':'var(--red)';
+    return`<div class="hist-row" style="grid-template-columns:2fr 1fr 1fr 1.2fr 1.2fr 1.2fr 1.2fr">
+      <div><div class="uname" style="font-size:12px">${r.cam}</div><div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:3px"><div style="width:${pct}%;height:100%;background:var(--blue);border-radius:2px"></div></div></div>
+      <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)">${r.viajes}</div>
+      <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--blue)">${Math.round(r.km).toLocaleString('es-AR')} km</div>
+      <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--amber)">${Math.round(r.lts).toLocaleString('es-AR')} L</div>
+      <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:${kc}">${r.kmpl.toFixed(2)} km/l</div>
+      <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${r.kmProm.toLocaleString('es-AR')} km</div>
+      <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${r.ultimo||'—'}</div>
+    </div>`;
+  }).join('');
+}
+function renderTablaViajes(data){
+  let filtered=viajesFilter==='all'?data:data.filter(v=>v.cam===viajesFilter);
+  const search=(document.getElementById('viajes-search')?document.getElementById('viajes-search').value:'').toLowerCase();
+  if(search)filtered=filtered.filter(v=>v.cam.toLowerCase().includes(search)||v.chofer.toLowerCase().includes(search));
+  const el=document.getElementById('tabla-viajes');if(!el)return;
+  if(!filtered.length){el.innerHTML='<div class="no-data">Sin registros.</div>';return;}
+  el.innerHTML=filtered.map(v=>`<div class="hist-row" style="grid-template-columns:1fr 1.5fr 1.5fr 1fr 1fr 1fr 1fr">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${v.fecha}</div>
+    <div><div class="uname" style="font-size:12px">${v.cam}</div></div>
+    <div style="font-size:11px;color:var(--txt2)">${v.chofer||'—'}</div>
+    <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${Math.round(v.hIni).toLocaleString('es-AR')}</div>
+    <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${Math.round(v.hFin).toLocaleString('es-AR')}</div>
+    <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--blue)">${v.km>0?v.km.toLocaleString('es-AR')+' km':'—'}</div>
+    <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:13px;color:var(--amber)">${v.lts>0?v.lts+' L':'—'}</div>
+  </div>`).join('');
+}
+function filterViajes(tipo,btn){viajesFilter=tipo;document.querySelectorAll('#page-viajes .fbtn').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');renderTablaViajes(G.viajes);}
+function searchViajes(){renderTablaViajes(G.viajes);}
+
+// ═══════════════════════════════════════════════════════
+//  CHART HELPERS
+// ═══════════════════════════════════════════════════════
+const C={blue:'#00aaff',cyan:'#00e5cc',green:'#00e676',amber:'#ffc107',red:'#ff3d3d',orange:'#ff6e40',purple:'#b388ff',muted:'#2d4a5e',txt:'#6a92b0',grid:'rgba(26,45,62,0.8)',font:"'JetBrains Mono',monospace"};
+const pluginDef={legend:{labels:{color:C.txt,font:{family:C.font,size:10},padding:14}},tooltip:{backgroundColor:'#0b1118',borderColor:'#1a2d3e',borderWidth:1,titleColor:'#ddeeff',bodyColor:'#6a92b0',titleFont:{family:C.font,size:10},bodyFont:{family:C.font,size:9}}};
+const scalesDef={x:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}}};
+function destroyCharts(){Object.values(G.charts).forEach(c=>{try{c.destroy();}catch{}});G.charts={};}
+function mkChart(id,config){const el=document.getElementById(id);if(!el)return;if(G.charts[id])try{G.charts[id].destroy();}catch{}G.charts[id]=new Chart(el,config);}
+
+function buildChartEstado(good,alert,bad){mkChart('ch-estado',{type:'doughnut',data:{labels:['Buen Estado','Alerta','Mantenimiento'],datasets:[{data:[good,alert,bad],backgroundColor:[C.green,C.amber,C.red],borderColor:'#0b1118',borderWidth:3,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:pluginDef}});}
+function buildChartSector(){
+  const sectors=[...new Set(G.fleet.map(u=>u.sector))].filter(Boolean);
+  const dispData=sectors.map(s=>{const units=G.fleet.filter(u=>u.sector===s);return units.length?Math.round(units.filter(u=>u.status!=='bad').length/units.length*100):0;});
+  mkChart('ch-sector',{type:'bar',data:{labels:sectors.map(s=>s.length>12?s.substring(0,12)+'…':s),datasets:[{label:'Disponibilidad %',data:dispData,backgroundColor:dispData.map(v=>v>=85?C.green:v>=70?C.amber:C.red),borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',scales:{...scalesDef,x:{...scalesDef.x,max:100,ticks:{...scalesDef.x.ticks,callback:v=>v+'%'}}},plugins:{...pluginDef,legend:{display:false}}}});
+}
+function buildChartStacked(){
+  const sectors=[...new Set(G.fleet.map(u=>u.sector))].filter(Boolean);
+  mkChart('ch-stacked',{type:'bar',data:{labels:sectors.map(s=>s.length>10?s.substring(0,10)+'…':s),datasets:[{label:'Buen Estado',data:sectors.map(s=>G.fleet.filter(u=>u.sector===s&&u.status==='good').length),backgroundColor:C.green,borderRadius:2},{label:'Alerta',data:sectors.map(s=>G.fleet.filter(u=>u.sector===s&&u.status==='alert').length),backgroundColor:C.amber,borderRadius:2},{label:'Mtto.',data:sectors.map(s=>G.fleet.filter(u=>u.sector===s&&u.status==='bad').length),backgroundColor:C.red,borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{...scalesDef.x,stacked:true},y:{...scalesDef.y,stacked:true}},plugins:pluginDef}});
+}
+function buildPrevCorrChart(id,hist){const prev=hist.filter(h=>/prev/i.test(h.tipo)).length,corr=hist.filter(h=>/corr/i.test(h.tipo)).length;mkChart(id,{type:'doughnut',data:{labels:['Preventivo','Correctivo'],datasets:[{data:[prev,corr],backgroundColor:[C.blue,C.amber],borderColor:'#0b1118',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:pluginDef}});}
+function buildMesChart(id,hist){
+  const meses={};
+  hist.forEach(h=>{if(!h.ini)return;const parts=h.ini.split('/');if(parts.length<3)return;const key=`${parts[1]}/${parts[2].slice(-2)}`;meses[key]=(meses[key]||0)+1;});
+  const sorted=Object.entries(meses).sort((a,b)=>{const[ma,ya]=a[0].split('/');const[mb,yb]=b[0].split('/');return new Date(2000+parseInt(ya),parseInt(ma)-1)-new Date(2000+parseInt(yb),parseInt(mb)-1);}).slice(-6);
+  mkChart(id,{type:'bar',data:{labels:sorted.map(e=>e[0]),datasets:[{label:'Trabajos',data:sorted.map(e=>e[1]),backgroundColor:'rgba(0,170,255,0.3)',borderColor:C.blue,borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,scales:scalesDef,plugins:{...pluginDef,legend:{display:false}}}});
+}
+function buildBarChart(id,hist,keyFn,totalElId,limitN){
+  const counts={};hist.forEach(h=>{const k=keyFn(h);if(!k)return;counts[k]=(counts[k]||0)+1;});
+  const labels=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).slice(0,limitN||20);
+  const values=labels.map(k=>counts[k]);
+  const total=values.reduce((a,b)=>a+b,0);
+  const el=document.getElementById(totalElId);if(el)el.textContent='TOTAL: '+total+' trabajos';
+  const COLORS=['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(255,110,64,0.7)','rgba(138,99,210,0.7)','rgba(255,61,61,0.7)','rgba(0,230,118,0.7)','rgba(255,200,100,0.7)','rgba(100,180,255,0.7)','rgba(200,100,200,0.7)'];
+  mkChart(id,{type:'bar',data:{labels:labels.map(l=>l.charAt(0).toUpperCase()+l.slice(1)),datasets:[{data:values,backgroundColor:COLORS.slice(0,values.length),borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} trabajos`}},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9,weight:'bold'},formatter:v=>v}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
+}
+function buildChartPalasTipo(){buildPrevCorrChart('ch-palas-tipo',G.histPalas);}
+function buildChartPalasMes(){buildMesChart('ch-palas-mes',G.histPalas);}
+function buildChartPalasFallas(){buildBarChart('ch-palas-fallas',G.histPalas,h=>h.falla,'total-palas-fallas');}
+function buildChartPalasResp(){buildBarChart('ch-palas-resp',G.histPalas,h=>h.resp,'');}
+function buildChartPalasModelo(){buildBarChart('ch-palas-modelo',G.histPalas,h=>h.unit,'total-palas-modelo');}
+function buildChartCamTipo(){buildPrevCorrChart('ch-cam-tipo',G.histCam);}
+function buildChartCamMes(){buildMesChart('ch-cam-mes',G.histCam);}
+function buildChartCamFallas(){buildBarChart('ch-cam-fallas',G.histCam,h=>h.falla,'total-cam-fallas');}
+function buildChartCamResp(){buildBarChart('ch-cam-resp',G.histCam,h=>h.resp,'');}
+function buildChartCamUnidad(){buildBarChart('ch-cam-unidad',G.histCam,h=>h.unit,'total-cam-unidad');}
+function buildChartAutTipo(){buildPrevCorrChart('ch-aut-tipo',G.histAut);}
+function buildChartAutMes(){buildMesChart('ch-aut-mes',G.histAut);}
+function buildChartAutFallas(){buildBarChart('ch-aut-fallas',G.histAut,h=>h.falla,'total-aut-fallas');}
+function buildChartAutResp(){buildBarChart('ch-aut-resp',G.histAut,h=>h.resp,'');}
+function buildChartAutEquipo(){buildBarChart('ch-aut-equipo',G.histAut,h=>h.unit,'total-aut-equipo');}
+
+function buildChartTendencia(){
+  const f=G.fleet,total=f.length||1;
+  const base=Math.round(f.filter(u=>u.status!=='bad').length/total*100);
+  const trend=[base-4,base-2,base-6,base+2,base-1,base].map(v=>Math.min(100,Math.max(0,v)));
+  mkChart('ch-tendencia',{type:'line',data:{labels:['Sep','Oct','Nov','Dic','Ene','Feb'],datasets:[{label:'Disponibilidad %',data:trend,borderColor:C.blue,backgroundColor:'rgba(0,170,255,0.08)',fill:true,tension:0.4,pointBackgroundColor:C.blue,pointRadius:4},{label:'Objetivo 90%',data:[90,90,90,90,90,90],borderColor:C.muted,borderDash:[6,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,scales:{...scalesDef,y:{...scalesDef.y,min:60,max:100,ticks:{...scalesDef.y.ticks,callback:v=>v+'%'}}},plugins:pluginDef}});
+}
+function buildChartMTTR(mttrGlobal){
+  mkChart('ch-mttr',{type:'bar',data:{labels:['Palas','Camiones','Autoel.'],datasets:[{label:'MTTR (días)',data:[calcMttoKPIs(G.histPalas).mttr.toFixed(1),calcMttoKPIs(G.histCam).mttr.toFixed(1),calcMttoKPIs(G.histAut).mttr.toFixed(1)],backgroundColor:[C.blue,C.orange,C.purple],borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,scales:scalesDef,plugins:{...pluginDef,legend:{display:false}}}});
+}
+function buildChartPrevCorr(prevPct){mkChart('ch-prevCorr',{type:'doughnut',data:{labels:['Preventivo','Correctivo'],datasets:[{data:[prevPct,100-prevPct],backgroundColor:[C.cyan,C.orange],borderColor:'#0b1118',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:pluginDef}});}
+function buildChartTrabajos(){mkChart('ch-trabajos',{type:'bar',data:{labels:['Palas','Camiones','Autoelevadores'],datasets:[{label:'Preventivo',data:[G.histPalas.filter(h=>/prev/i.test(h.tipo)).length,G.histCam.filter(h=>/prev/i.test(h.tipo)).length,G.histAut.filter(h=>/prev/i.test(h.tipo)).length],backgroundColor:C.blue,borderRadius:3},{label:'Correctivo',data:[G.histPalas.filter(h=>/corr/i.test(h.tipo)).length,G.histCam.filter(h=>/corr/i.test(h.tipo)).length,G.histAut.filter(h=>/corr/i.test(h.tipo)).length],backgroundColor:C.amber,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,scales:scalesDef,plugins:pluginDef}});}
+function buildChartSrvEstado(){
+  const el=document.getElementById('ch-srv-estado');if(!el)return;
+  if(G.charts['ch-srv-estado'])try{G.charts['ch-srv-estado'].destroy();}catch{}
+  const u=G.services.filter(s=>s.alertLevel==='urgente').length,a=G.services.filter(s=>s.alertLevel==='alerta').length,p=G.services.filter(s=>s.alertLevel==='planificar').length,ok=G.services.filter(s=>s.alertLevel==='ok').length;
+  G.charts['ch-srv-estado']=new Chart(el,{type:'doughnut',data:{labels:['OK (>150hs)','Planificar (75-150hs)','Alerta (50-75hs)','Urgente (<50hs)'],datasets:[{data:[ok,p,a,u],backgroundColor:[C.green,C.amber,C.orange,C.red],borderColor:'#0b1118',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:pluginDef}});
+}
+function buildChartSrvHoras(){
+  const el=document.getElementById('ch-srv-horas');if(!el)return;
+  if(G.charts['ch-srv-horas'])try{G.charts['ch-srv-horas'].destroy();}catch{}
+  const sorted=[...G.services].sort((a,b)=>a.hRest-b.hRest).slice(0,10);
+  G.charts['ch-srv-horas']=new Chart(el,{type:'bar',data:{labels:sorted.map(s=>s.maq.length>12?s.maq.substring(0,12)+'…':s.maq),datasets:[{label:'Horas restantes',data:sorted.map(s=>s.hRest),backgroundColor:sorted.map(s=>s.hRest<0?C.red:s.hRest<=50?C.amber:C.green),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',scales:{...scalesDef,x:{...scalesDef.x,ticks:{...scalesDef.x.ticks,callback:v=>v+' hs'}}},plugins:{...pluginDef,legend:{display:false}}}});
+}
+
+// ═══════════════════════════════════════════════════════
+//  CÁLCULOS KPI
+// ═══════════════════════════════════════════════════════
+function calcPrevPct(hist){if(!hist.length)return 0;return Math.round(hist.filter(h=>/prev/i.test(h.tipo)).length/hist.length*100);}
+function calcDias(ini,fin){if(!ini||!fin)return 0;try{const[di,mi,yi]=ini.split('/').map(Number);const[df,mf,yf]=fin.split('/').map(Number);const diff=Math.round((new Date(yf,mf-1,df)-new Date(yi,mi-1,di))/(86400000));return diff>0?diff:0;}catch{return 0;}}
+function calcMttoKPIs(hist){
+  if(!hist.length)return{mttr:0,mtbf:0,prevPct:0};
+  const correctivos=hist.filter(h=>/corr/i.test(h.tipo));
+  let totalDias=0,countDias=0;
+  correctivos.forEach(h=>{const d=calcDias(h.ini,h.fin);if(d>0){totalDias+=d;countDias++;}});
+  const mttr=countDias>0?totalDias/countDias:3.5;
+  const dates=hist.map(h=>{try{const[d,m,y]=h.ini.split('/').map(Number);return new Date(y,m-1,d);}catch{return null;}}).filter(Boolean);
+  let mtbf=28;
+  if(dates.length>1){const minD=Math.min(...dates.map(d=>d.getTime())),maxD=Math.max(...dates.map(d=>d.getTime()));const periodDays=Math.max(1,Math.round((maxD-minD)/86400000));mtbf=periodDays/(correctivos.length||1);}
+  return{mttr,mtbf,prevPct:calcPrevPct(hist)};
+}
+function dispColor(v){return v>=85?'var(--green)':v>=70?'var(--amber)':'var(--red)';}
 
 // ═══════════════════════════════════════════════════════
 //  UI HELPERS
@@ -1372,7 +2209,6 @@ function goTab(name,el){
   const pageEl = document.getElementById('page-'+name);
   if(pageEl) pageEl.classList.add('on');
   if(el) el.classList.add('on');
-  // Renderizar Gantt si se activa esa pestaña
   if(name === 'ganttflota') ganttRender();
 }
 
@@ -1384,15 +2220,31 @@ function updateClock(){
   if(ftr)ftr.textContent=`Actualizado: ${now.toLocaleDateString('es-AR')} ${t}`;
 }
 
-// Incluir aquí el resto del script del dashboard (funciones parseDisponibilidad, parseHistorial, etc.)
-// ... (Todo el script original debe permanecer exactamente igual hasta el final) ...
+async function detectSheets(){
+  setStatus('loading','🔍 Detectando hojas...');
+  const toTest=Object.entries(SHEET_NAMES);
+  const results=await Promise.allSettled(toTest.map(([,name])=>fetchSheet(name)));
+  let html=`<div style="grid-column:1/-1;background:rgba(0,170,255,0.06);border:1px solid rgba(0,170,255,0.2);border-radius:6px;padding:20px"><div style="color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;margin-bottom:14px">🔍 RESULTADO DE DETECCIÓN</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
+  let allOk=true;
+  toTest.forEach(([,name],i)=>{
+    const ok=results[i].status==='fulfilled'&&results[i].value.length>0;
+    if(!ok)allOk=false;
+    const rows=results[i].status==='fulfilled'?results[i].value.length:0;
+    html+=`<div style="padding:8px 12px;border-radius:4px;background:${ok?'rgba(0,230,118,0.08)':'rgba(255,61,61,0.08)'};border:1px solid ${ok?'rgba(0,230,118,0.2)':'rgba(255,61,61,0.2)'}"><span style="color:${ok?'var(--green)':'var(--red)'}">${ok?'✅':'❌'}</span><span style="color:var(--txt2);font-family:'JetBrains Mono',monospace;font-size:10px;margin-left:8px">${name}</span><span style="color:var(--txt3);font-family:'JetBrains Mono',monospace;font-size:9px;margin-left:8px">${rows>0?rows+' filas':results[i].status==='rejected'?'Error':'Vacía'}</span></div>`;
+  });
+  html+=`</div>${allOk?'<div style="color:var(--green);font-size:10px;margin-top:12px">✅ Todas las hojas detectadas. Hacé click en CONECTAR Y CARGAR.</div>':'<div style="color:var(--amber);font-size:10px;margin-top:12px">⚠️ Algunas hojas fallaron. Verificá nombres y permisos del Sheet.</div>'}</div>`;
+  document.getElementById('kpi-overview').innerHTML=html;
+  setStatus(allOk?'ok':'err',allOk?'✅ Hojas detectadas':'⚠️ Algunas hojas no responden');
+}
 
+setInterval(updateClock,1000);
+updateClock();
+window.addEventListener('load',()=>setTimeout(loadAllData,500));
 </script>
 
 <!-- ==================== GANTT FLOTA SCRIPTS ==================== -->
 <script>
 (function() {
-  // Namespace para evitar conflictos con el dashboard
   const MONTHS_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const CAT_COLORS = { Topadora:'#f59e0b', Pala:'#22c97a', Autoelevador:'#4e9eff', Camión:'#a78bfa' };
   let ganttViewDays = 365;
@@ -1415,8 +2267,20 @@ function updateClock(){
     {id:'atr2',name:'ATRON 2040S – HWC 507',sub:'MB OM926 LA BATEA',cat:'Camión',lastService:'2026-05-29',type:'km',workDays:[1,2,3,4,5,6],kmDay:{1:300,2:300,3:300,4:300,5:300,6:150},svcInt:15000,longInt:60000},
   ];
 
-  const defaultInsumos = { /* ... mismo objeto enorme de insumos ... */ };
-  // (Incluir aquí el objeto defaultInsumos completo)
+  const defaultInsumos = {
+    top1: { aceites:[{nombre:'Aceite motor',spec:'SAE 15W-40 / API CI-4 / Komatsu EO15W40',litros:23,frecuencia:'c/300 hs'},{nombre:'Aceite hidráulico (HST+hoja)',spec:'ISO VG 46 / Komatsu HO46',litros:101,frecuencia:'c/1.000 hs'},{nombre:'Aceite mandos finales (x2)',spec:'SAE 30 / API GL-4 / Komatsu TO30',litros:13,frecuencia:'c/1.000 hs'}], filtros:[{nombre:'Filtro aceite motor',codigo:'6735-51-5140 / P550428',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro combustible primario',codigo:'600-311-4610 / P550440',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro separador agua/comb.',codigo:'6732-71-6110 / P551329',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro aire primario',codigo:'600-185-4110 / P828889',qty:1,frecuencia:'c/500 hs'},{nombre:'Filtro aire seguridad',codigo:'600-185-4120 / P829333',qty:1,frecuencia:'c/1.500 hs'},{nombre:'Filtro hidráulico retorno',codigo:'21W-60-41121',qty:1,frecuencia:'c/500 hs'},{nombre:'Filtro transmisión / servo',codigo:'207-60-71141',qty:1,frecuencia:'c/500 hs'}] },
+    lon1: { aceites:[{nombre:'Aceite motor',spec:'SAE 15W-40 / API CF-4 / Fleetguard',litros:20,frecuencia:'c/300 hs'},{nombre:'Aceite transmisión',spec:'SAE 80W-90 / API GL-5',litros:46,frecuencia:'c/1.000 hs'},{nombre:'Aceite hidráulico',spec:'ISO VG 46 / HV 46',litros:270,frecuencia:'c/1.000 hs'},{nombre:'Aceite ejes (x2)',spec:'SAE 80W-90 / API GL-5',litros:56,frecuencia:'c/1.000 hs'}], filtros:[{nombre:'Filtro aceite motor',codigo:'Fleetguard LF9009 / Baldwin B2',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro combustible primario',codigo:'Fleetguard FF5488',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro combustible secundario',codigo:'Fleetguard FF5612',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro aire primario',codigo:'Donaldson P822768 / Fleetguard AH1144',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro aire seguridad',codigo:'Donaldson P822768 secundario',qty:1,frecuencia:'c/300 hs'}] },
+    lon2: { aceites:[{nombre:'Aceite motor',spec:'SAE 15W-40 / API CF-4 / Fleetguard',litros:20,frecuencia:'c/300 hs'},{nombre:'Aceite transmisión',spec:'SAE 80W-90 / API GL-5',litros:46,frecuencia:'c/1.000 hs'},{nombre:'Aceite hidráulico',spec:'ISO VG 46 / HV 46',litros:270,frecuencia:'c/1.000 hs'},{nombre:'Aceite ejes (x2)',spec:'SAE 80W-90 / API GL-5',litros:56,frecuencia:'c/1.000 hs'}], filtros:[{nombre:'Filtro aceite motor',codigo:'Fleetguard LF9009 / Baldwin B2',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro combustible primario',codigo:'Fleetguard FF5488',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro combustible secundario',codigo:'Fleetguard FF5612',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro aire primario',codigo:'Donaldson P822768 / Fleetguard AH1144',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro aire seguridad',codigo:'Donaldson P822768 secundario',qty:1,frecuencia:'c/300 hs'}] },
+    toy45: { aceites:[{nombre:'Aceite motor',spec:'SAE 15W-40 / API CG-4',litros:7.8,frecuencia:'c/300 hs'},{nombre:'Aceite transmisión + convertidor',spec:'ATF Dexron III',litros:15.5,frecuencia:'c/1.000 hs'},{nombre:'Aceite hidráulico',spec:'ISO VG 46 / Dexron III Toyota',litros:45,frecuencia:'c/1.000 hs'},{nombre:'Aceite diferencial',spec:'SAE 80W-90 / API GL-4/GL-5',litros:9.5,frecuencia:'c/1.000 hs'}], filtros:[{nombre:'Filtro aceite motor',codigo:'Toyota 04152-0L010',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro combustible',codigo:'Toyota 23390-0L010',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro aire',codigo:'Toyota 17801-0L020',qty:1,frecuencia:'c/300 hs'}] },
+    toy30: { aceites:[{nombre:'Aceite motor',spec:'SAE 15W-40 / API CG-4',litros:7.9,frecuencia:'c/300 hs'},{nombre:'Aceite transmisión + convertidor',spec:'ATF Dexron III',litros:15.5,frecuencia:'c/1.000 hs'},{nombre:'Aceite hidráulico',spec:'ISO VG 46 / Dexron III Toyota',litros:34,frecuencia:'c/1.000 hs'},{nombre:'Aceite diferencial',spec:'SAE 80W-90 / API GL-4/GL-5',litros:9.5,frecuencia:'c/1.000 hs'}], filtros:[{nombre:'Filtro aceite motor',codigo:'Toyota 04152-0L010 / Fram PH4967',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro combustible',codigo:'Toyota 23390-0L010',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro aire',codigo:'Toyota 17801-0L020',qty:1,frecuencia:'c/300 hs'}] },
+    doo1: { aceites:[{nombre:'Aceite motor',spec:'SAE 15W-40 / API CF-4',litros:20.5,frecuencia:'c/300 hs'},{nombre:'Aceite transmisión',spec:'ATF Dexron II/III',litros:11,frecuencia:'c/1.000 hs'},{nombre:'Aceite hidráulico',spec:'ISO VG 46 / HV 46',litros:45,frecuencia:'c/1.000 hs'}], filtros:[{nombre:'Filtro aceite motor',codigo:'Doosan 400500-00003A / Mann W940/31',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro combustible',codigo:'Doosan 400500-00140',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro aire',codigo:'Doosan 400500-00353',qty:1,frecuencia:'c/300 hs'}] },
+    doo2: { aceites:[{nombre:'Aceite motor',spec:'SAE 15W-40 / API CF-4',litros:20.5,frecuencia:'c/300 hs'},{nombre:'Aceite transmisión',spec:'ATF Dexron II/III',litros:11,frecuencia:'c/1.000 hs'},{nombre:'Aceite hidráulico',spec:'ISO VG 46 / HV 46',litros:45,frecuencia:'c/1.000 hs'}], filtros:[{nombre:'Filtro aceite motor',codigo:'Doosan 400500-00003A / Mann W940/31',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro combustible',codigo:'Doosan 400500-00140',qty:1,frecuencia:'c/300 hs'},{nombre:'Filtro aire',codigo:'Doosan 400500-00353',qty:1,frecuencia:'c/300 hs'}] },
+    ax1: { aceites:[{nombre:'Aceite motor',spec:'SAE 15W-40 / MB 228.3',litros:28.5,frecuencia:'c/15.000 km'},{nombre:'Aceite transmisión ZF 16S',spec:'ZF TE-ML05 / SAE 50',litros:18,frecuencia:'c/60.000 km'},{nombre:'Aceite ejes traseros (x2)',spec:'SAE 85W-140 / API GL-5',litros:24,frecuencia:'c/60.000 km'},{nombre:'Aceite dirección hidráulica',spec:'ATF Dexron III / ISO VG 32',litros:3.5,frecuencia:'c/60.000 km'}], filtros:[{nombre:'Filtro aceite motor',codigo:'MB A 541 180 00 09 / Mann HU 1213x',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro combustible primario',codigo:'MB A 541 090 00 52',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro combustible secundario',codigo:'MB A 541 090 01 52',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro aire',codigo:'MB A 941 094 00 01',qty:1,frecuencia:'c/15.000 km'}] },
+    ax2: { aceites:[{nombre:'Aceite motor',spec:'SAE 15W-40 / MB 228.3',litros:28.5,frecuencia:'c/15.000 km'},{nombre:'Aceite transmisión ZF 16S',spec:'ZF TE-ML05 / SAE 50',litros:18,frecuencia:'c/60.000 km'},{nombre:'Aceite ejes traseros (x2)',spec:'SAE 85W-140 / API GL-5',litros:24,frecuencia:'c/60.000 km'},{nombre:'Aceite dirección hidráulica',spec:'ATF Dexron III / ISO VG 32',litros:3.5,frecuencia:'c/60.000 km'}], filtros:[{nombre:'Filtro aceite motor',codigo:'MB A 541 180 00 09 / Mann HU 1213x',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro combustible primario',codigo:'MB A 541 090 00 52',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro combustible secundario',codigo:'MB A 541 090 01 52',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro aire',codigo:'MB A 941 094 00 01',qty:1,frecuencia:'c/15.000 km'}] },
+    atr1: { aceites:[{nombre:'Aceite motor',spec:'SAE 15W-40 / MB 228.3 / OM457 LA',litros:27,frecuencia:'c/15.000 km'},{nombre:'Aceite transmisión ZF 16S',spec:'ZF TE-ML05 / SAE 50',litros:18,frecuencia:'c/60.000 km'},{nombre:'Aceite diferencial trasero',spec:'SAE 85W-140 / API GL-5',litros:12,frecuencia:'c/60.000 km'},{nombre:'Aceite dirección hidráulica',spec:'ATF Dexron III / ISO VG 32',litros:3.5,frecuencia:'c/60.000 km'}], filtros:[{nombre:'Filtro aceite motor',codigo:'MB A 457 180 00 09 / Mann HU 1401/2x',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro combustible primario',codigo:'MB A 541 090 00 52',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro combustible secundario',codigo:'MB A 541 090 01 52',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro aire',codigo:'MB A 941 094 00 01',qty:1,frecuencia:'c/15.000 km'}] },
+    ax3: { aceites:[{nombre:'Aceite motor',spec:'SAE 15W-40 / MB 228.3',litros:28.5,frecuencia:'c/15.000 km'},{nombre:'Aceite transmisión ZF 16S',spec:'ZF TE-ML05 / SAE 50',litros:18,frecuencia:'c/60.000 km'},{nombre:'Aceite ejes traseros (x2)',spec:'SAE 85W-140 / API GL-5',litros:24,frecuencia:'c/60.000 km'},{nombre:'Aceite dirección hidráulica',spec:'ATF Dexron III / ISO VG 32',litros:3.5,frecuencia:'c/60.000 km'}], filtros:[{nombre:'Filtro aceite motor',codigo:'MB A 541 180 00 09 / Mann HU 1213x',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro combustible primario',codigo:'MB A 541 090 00 52',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro combustible secundario',codigo:'MB A 541 090 01 52',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro aire',codigo:'MB A 941 094 00 01',qty:1,frecuencia:'c/15.000 km'}] },
+    atr2: { aceites:[{nombre:'Aceite motor',spec:'SAE 15W-40 / MB 228.3',litros:28.5,frecuencia:'c/15.000 km'},{nombre:'Aceite transmisión ZF 16S',spec:'ZF TE-ML05 / SAE 50',litros:18,frecuencia:'c/60.000 km'},{nombre:'Aceite diferencial trasero',spec:'SAE 85W-140 / API GL-5',litros:12,frecuencia:'c/60.000 km'},{nombre:'Aceite dirección hidráulica',spec:'ATF Dexron III / ISO VG 32',litros:3.5,frecuencia:'c/60.000 km'}], filtros:[{nombre:'Filtro aceite motor',codigo:'MB A 541 180 00 09 / Mann HU 1213x',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro combustible primario',codigo:'MB A 541 090 00 52',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro combustible secundario',codigo:'MB A 541 090 01 52',qty:1,frecuencia:'c/15.000 km'},{nombre:'Filtro aire',codigo:'MB A 941 094 00 01',qty:1,frecuencia:'c/15.000 km'}] }
+  };
 
   let ganttOverrides = JSON.parse(localStorage.getItem('mp_gantt_v3')||'{}');
   let ganttInsumos = JSON.parse(localStorage.getItem('mp_insumos_v1')||JSON.stringify(defaultInsumos));
@@ -1424,19 +2288,16 @@ function updateClock(){
   function saveOverrides(){ localStorage.setItem('mp_gantt_v3', JSON.stringify(ganttOverrides)); }
   window.ganttSaveInsumos = function(){ localStorage.setItem('mp_insumos_v1', JSON.stringify(ganttInsumos)); alert('Cambios guardados correctamente.'); };
 
-  // Helpers de fecha
   function parseDate(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
   function fmtDate(d){ return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; }
   function fmtISO(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
   function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
   function daysBetween(a,b){ return Math.round((b-a)/86400000); }
-
   function daysUntilUnits(unit, fromDate, target){
     let d=new Date(fromDate), acc=0, days=0;
     while(acc<target){ d.setDate(d.getDate()+1); days++; const dow=d.getDay(); if(!unit.workDays.includes(dow)) continue; acc+=unit.type==='hours'?unit.rate:(unit.kmDay[dow]||0); }
     return days;
   }
-
   function getSchedule(unit){
     const END=addDays(ganttViewStart,366); const motor=[], longS=[];
     let cur=parseDate(unit.lastService), lcur=parseDate(unit.lastService);
@@ -1444,23 +2305,301 @@ function updateClock(){
     while(lcur<END){ lcur=addDays(lcur,daysUntilUnits(unit,lcur,unit.longInt)); longS.push(new Date(lcur)); }
     return{motor,longS};
   }
-
   function pct(d){ return Math.max(0,Math.min(100,daysBetween(ganttViewStart,d)/ganttViewDays*100)); }
   function getOvKey(uid,type,idx){ return `${uid}_${type}_${idx}`; }
   function getEffDate(uid,type,idx,orig){ const k=getOvKey(uid,type,idx); return ganttOverrides[k]?parseDate(ganttOverrides[k].date):orig; }
 
-  // Render principal
-  function ganttRender(){
-    renderGanttStats();
-    renderGanttSidebar();
-    renderGanttHeader();
-    renderGanttBody();
-    renderGanttResumen();
-    renderGanttInsumos();
+  function renderGanttStats(){
+    const END=addDays(ganttViewStart,ganttViewDays), today=new Date();
+    let totalMotor=0,totalLong=0,ovCount=0,overdueCount=0;
+    ganttUnits.forEach(u=>{ const{motor,longS}=getSchedule(u);
+      motor.forEach((d,i)=>{ if(d>=ganttViewStart&&d<=END){ totalMotor++; if(ganttOverrides[getOvKey(u.id,'motor',i)]) ovCount++; if(getEffDate(u.id,'motor',i,d)<today) overdueCount++; }});
+      longS.forEach((d,i)=>{ if(d>=ganttViewStart&&d<=END){ totalLong++; if(ganttOverrides[getOvKey(u.id,'long',i)]) ovCount++; }});
+    });
+    document.getElementById('ganttStatsGrid').innerHTML=`
+      <div class="gantt-stat-card"><div class="gantt-stat-label">Services motor / período</div><div class="gantt-stat-value">${totalMotor}</div><div class="gantt-stat-sub">${ganttViewDays} días proyectados</div></div>
+      <div class="gantt-stat-card"><div class="gantt-stat-label">Cambios fluidos largos</div><div class="gantt-stat-value">${totalLong}</div><div class="gantt-stat-sub">Transmisión · ejes · hidráulico</div></div>
+      <div class="gantt-stat-card"><div class="gantt-stat-label">Fechas modificadas</div><div class="gantt-stat-value" style="color:var(--gantt-amber)">${ovCount}</div><div class="gantt-stat-sub">Adelantos o retrasos</div></div>
+      <div class="gantt-stat-card"><div class="gantt-stat-label">Services vencidos</div><div class="gantt-stat-value" style="color:${overdueCount>0?'var(--gantt-red)':'var(--gantt-text)'}">${overdueCount}</div><div class="gantt-stat-sub">${overdueCount>0?'Requieren atención':'Al día'}</div></div>`;
   }
-  window.ganttRender = ganttRender;
 
-  // ... (resto de funciones del Gantt: renderGanttStats, renderGanttSidebar, etc.) ...
+  function renderGanttSidebar(){
+    const filtered=ganttActiveFilter==='all'?ganttUnits:ganttUnits.filter(u=>u.cat===ganttActiveFilter);
+    const today=new Date();
+    let html='';
+    filtered.forEach(u=>{
+      const{motor}=getSchedule(u);
+      const next=motor.find(d=>getEffDate(u.id,'motor',motor.indexOf(d),d)>=today);
+      const nextEff=next?getEffDate(u.id,'motor',motor.indexOf(next),next):null;
+      const dUntil=nextEff?daysBetween(today,nextEff):null;
+      const isActive=ganttEditKey&&ganttEditKey.startsWith(u.id);
+      html+=`<div class="gantt-unit-card ${isActive?'active':''}" onclick="ganttHighlightUnit('${u.id}')">
+        <div class="gantt-unit-card-header"><div class="gantt-unit-dot" style="background:${CAT_COLORS[u.cat]}"></div>
+        <div><div class="gantt-unit-name">${u.name}</div><div class="gantt-unit-sub">${u.sub}</div></div></div>
+        <div class="gantt-unit-meta"><span class="gantt-tag gantt-tag-green">${u.cat}</span><span class="gantt-tag gantt-tag-blue">${u.type==='hours'?u.svcInt+'hs':u.svcInt/1000+'k km'}</span></div>
+        ${nextEff?`<div class="gantt-unit-next">Próx. service: <span>${fmtDate(nextEff)}</span>${dUntil!==null?' · '+dUntil+'d':''}${dUntil!==null&&dUntil<=7?' <span class="gantt-overdue-badge">¡urgente!</span>':''}</div>`:''}
+      </div>`;
+    });
+    document.getElementById('ganttUnitList').innerHTML=html;
+  }
+
+  function renderGanttHeader(){
+    const h=document.getElementById('ganttHeader');
+    let html=`<div class="gantt-header-spacer"></div><div class="gantt-header-timeline">`;
+    const END=addDays(ganttViewStart,ganttViewDays);
+    for(let i=0;i<=13;i++){
+      const d=new Date(ganttViewStart.getFullYear(),ganttViewStart.getMonth()+i,1);
+      if(d>END) break;
+      const p=pct(d);
+      html+=`<div class="gantt-month-line" style="left:${p}%"></div>
+             <div class="gantt-month-label" style="left:${p}%">${MONTHS_ES[d.getMonth()]}${d.getFullYear()!==ganttViewStart.getFullYear()?' '+d.getFullYear():''}</div>`;
+    }
+    html+=`</div>`;
+    h.innerHTML=html;
+  }
+
+  function renderGanttBody(){
+    const filtered=ganttActiveFilter==='all'?ganttUnits:ganttUnits.filter(u=>u.cat===ganttActiveFilter);
+    const END=addDays(ganttViewStart,ganttViewDays), today=new Date();
+    let html='';
+    filtered.forEach(u=>{
+      const{motor,longS}=getSchedule(u);
+      const isHL=ganttEditKey&&ganttEditKey.startsWith(u.id);
+      html+=`<div class="gantt-row ${isHL?'highlight':''}">
+        <div class="gantt-row-label"><div class="gantt-row-name">${u.name}</div><div class="gantt-row-sub">${u.sub}</div></div>
+        <div class="gantt-timeline">
+          <div class="gantt-today-line" style="left:${pct(today)}%"></div>`;
+      motor.forEach((orig,i)=>{
+        if(orig<ganttViewStart||orig>END) return;
+        const k=getOvKey(u.id,'motor',i), eff=ganttOverrides[k]?parseDate(ganttOverrides[k].date):orig;
+        const mod=!!ganttOverrides[k], ov=eff<today;
+        const cls=`gantt-dot-motor${mod?' gantt-dot-modified':''}${ov&&!mod?' gantt-dot-overdue':''}`;
+        html+=`<div class="gantt-event-dot" style="left:calc(${pct(eff)}% - 10px)"
+          data-k="${k}" data-uid="${u.id}" data-type="motor" data-idx="${i}"
+          data-orig="${fmtISO(orig)}" data-eff="${fmtISO(eff)}" data-name="${u.name}" data-sub="${u.sub}"
+          onclick="ganttOpenEdit('${k}','${u.id}','motor',${i},'${fmtISO(orig)}','${fmtISO(eff)}','${u.name}','${u.sub}')"
+          onmouseenter="ganttShowTip(event,this)" onmouseleave="ganttHideTip()"><div class="${cls}">S</div></div>`;
+      });
+      longS.forEach((orig,i)=>{
+        if(orig<ganttViewStart||orig>END) return;
+        const k=getOvKey(u.id,'long',i), eff=ganttOverrides[k]?parseDate(ganttOverrides[k].date):orig;
+        const mod=!!ganttOverrides[k];
+        html+=`<div class="gantt-event-dot" style="left:calc(${pct(eff)}% - 10px)"
+          data-k="${k}" data-uid="${u.id}" data-type="long" data-idx="${i}"
+          data-orig="${fmtISO(orig)}" data-eff="${fmtISO(eff)}" data-name="${u.name}" data-sub="${u.sub}"
+          onclick="ganttOpenEdit('${k}','${u.id}','long',${i},'${fmtISO(orig)}','${fmtISO(eff)}','${u.name}','${u.sub}')"
+          onmouseenter="ganttShowTip(event,this)" onmouseleave="ganttHideTip()"><div class="gantt-dot-long${mod?' gantt-dot-modified':''}">F</div></div>`;
+      });
+      html+=`</div></div>`;
+    });
+    document.getElementById('ganttBody').innerHTML=html;
+  }
+
+  function renderGanttResumen(){
+    const aceiteMap={}, filtroMap={};
+    ganttUnits.forEach(u=>{
+      const ins=ganttInsumos[u.id]; if(!ins) return;
+      ins.aceites.forEach(a=>{
+        const key=a.spec.split('/')[0].trim();
+        aceiteMap[key]=(aceiteMap[key]||0)+a.litros;
+      });
+      ins.filtros.forEach(f=>{
+        const key=f.nombre;
+        filtroMap[key]=(filtroMap[key]||0)+f.qty;
+      });
+    });
+
+    const compraData=[
+      {tipo:'Aceite motor 15W40',reposicion:'1 tambor 205L / mes',marca:'YPF / Shell / Total',litros:247},
+      {tipo:'Aceite hidráulico ISO VG 46',reposicion:'1 tambor 205L / cada 2 meses',marca:'YPF / Shell / Total',litros:574},
+      {tipo:'Aceite 80W-90 / 85W-140',reposicion:'1 tambor 205L / cada 3 meses',marca:'YPF / Shell / Total',litros:189},
+      {tipo:'ATF Dexron III',reposicion:'Bidón 20L / mensual',marca:'YPF / Shell / Total',litros:null},
+      {tipo:'Grasa EP-2',reposicion:'1 tambor / cada 3 meses',marca:'YPF / Shell / Total',litros:null},
+      {tipo:'Líquido refrigerante',reposicion:'1 tambor 205L / cada 3 meses',marca:'Kriox',litros:240},
+    ];
+
+    let html=`
+    <div class="gantt-resumen-grid">
+      <div class="gantt-res-card">
+        <div class="gantt-res-card-title">Aceites por tipo (litros totales sistema)</div>`;
+    Object.entries(aceiteMap).slice(0,8).forEach(([k,v])=>{
+      html+=`<div class="gantt-res-row"><span class="gantt-res-key">${k}</span><span class="gantt-res-val">${parseFloat(v).toFixed(1)} L</span></div>`;
+    });
+    html+=`</div>
+      <div class="gantt-res-card">
+        <div class="gantt-res-card-title">Filtros totales por tipo</div>`;
+    Object.entries(filtroMap).slice(0,8).forEach(([k,v])=>{
+      html+=`<div class="gantt-res-row"><span class="gantt-res-key" style="font-size:10px">${k}</span><span class="gantt-res-val">${v} u.</span></div>`;
+    });
+    html+=`</div>
+      <div class="gantt-res-card">
+        <div class="gantt-res-card-title">Total mensual estimado</div>
+        <div class="gantt-res-row"><span class="gantt-res-key">Aceite motor</span><span class="gantt-res-val">247 L</span></div>
+        <div class="gantt-res-row"><span class="gantt-res-key">Aceite hidráulico</span><span class="gantt-res-val">574 L</span></div>
+        <div class="gantt-res-row"><span class="gantt-res-key">Trans. + ejes</span><span class="gantt-res-val">189 L</span></div>
+        <div class="gantt-res-row"><span class="gantt-res-key">Dirección</span><span class="gantt-res-val">10.5 L</span></div>
+        <div class="gantt-res-row"><span class="gantt-res-key">Reposición (7%)</span><span class="gantt-res-val">113 L</span></div>
+        <div class="gantt-res-row"><span class="gantt-res-key">Refrigerante</span><span class="gantt-res-val">240 L</span></div>
+        <div class="gantt-res-row" style="border-top:1px solid var(--gantt-border2);margin-top:4px;padding-top:6px">
+          <span class="gantt-res-key" style="font-weight:600;color:var(--gantt-text)">TOTAL</span>
+          <span class="gantt-res-val" style="font-size:16px;color:var(--gantt-mp-orange)">1.557 L</span>
+        </div>
+      </div>
+    </div>
+    <div class="ins-section">
+      <h3 style="font-size:13px;font-weight:600;margin-bottom:10px">Pedido de compra mensual recomendado</h3>
+      <table class="gantt-ins-table">
+        <thead><tr><th>Tipo de fluido</th><th>Reposición recomendada</th><th>Litros/mes</th><th>Marca recomendada</th></tr></thead>
+        <tbody>`;
+    compraData.forEach(r=>{
+      html+=`<tr><td>${r.tipo}</td><td>${r.reposicion}</td><td style="text-align:center"><span class="gantt-qty-badge">${r.litros?r.litros+' L':'—'}</span></td><td style="color:var(--gantt-text2)">${r.marca}</td></tr>`;
+    });
+    html+=`</tbody></table>
+      <div style="margin-top:10px;padding:10px 14px;background:var(--gantt-amber-bg);border:1px solid rgba(245,166,35,.25);border-radius:var(--gantt-radius);font-size:11px;color:var(--gantt-amber)">
+        ⚠ Stock de seguridad recomendado: +20% sobre el consumo mensual estimado. Capacidad de almacenamiento mínima: ~1.900 litros.
+      </div>
+    </div>`;
+
+    document.getElementById('ganttResumenContent').innerHTML=html;
+  }
+
+  function renderGanttInsumos(){
+    const filtered=ganttActiveFilter==='all'?ganttUnits:ganttUnits.filter(u=>u.cat===ganttActiveFilter);
+    let html='';
+    filtered.forEach(u=>{
+      const ins=ganttInsumos[u.id]; if(!ins) return;
+      html+=`<div class="ins-section" style="margin-bottom:24px">
+        <div class="gantt-unit-section-header"><div class="gantt-unit-dot" style="background:${CAT_COLORS[u.cat]};width:7px;height:7px;border-radius:50%"></div>${u.name} <span style="font-size:10px;color:var(--gantt-text3);font-weight:400">· ${u.sub}</span></div>
+        <table class="gantt-ins-table" style="margin-bottom:0">
+          <thead><tr><th style="width:30%">Aceite / Fluido</th><th style="width:35%">Especificación</th><th style="width:12%">Litros/service</th><th style="width:13%">Frecuencia</th><th style="width:10%"></th></tr></thead>
+          <tbody>`;
+      ins.aceites.forEach((a,ai)=>{
+        html+=`<tr>
+          <td><span class="gantt-editable" onclick="ganttEditCell(this,'${u.id}','aceites',${ai},'nombre')">${a.nombre}</span></td>
+          <td><span class="gantt-editable" onclick="ganttEditCell(this,'${u.id}','aceites',${ai},'spec')" style="font-family:var(--gantt-mono);font-size:10px">${a.spec}</span></td>
+          <td style="text-align:center"><span class="gantt-qty-badge gantt-editable" onclick="ganttEditCell(this,'${u.id}','aceites',${ai},'litros')">${a.litros} L</span></td>
+          <td><span class="gantt-freq-badge gantt-editable" onclick="ganttEditCell(this,'${u.id}','aceites',${ai},'frecuencia')">${a.frecuencia}</span></td>
+          <td><button class="gantt-btn-sm" style="padding:2px 7px;font-size:10px;color:var(--gantt-red)" onclick="ganttDeleteRow('${u.id}','aceites',${ai})">✕</button></td>
+        </tr>`;
+      });
+      html+=`</tbody></table>
+        <div style="margin:6px 0 12px 0;display:flex;gap:6px">
+          <button class="gantt-btn-sm" onclick="ganttAddRow('${u.id}','aceites')" style="font-size:10px">+ Añadir aceite</button>
+        </div>
+        <table class="gantt-ins-table" style="margin-bottom:0">
+          <thead><tr><th style="width:30%">Filtro</th><th style="width:40%">Código / Referencia</th><th style="width:10%">Qty</th><th style="width:15%">Frecuencia</th><th style="width:5%"></th></tr></thead>
+          <tbody>`;
+      ins.filtros.forEach((f,fi)=>{
+        html+=`<tr>
+          <td><span class="gantt-editable" onclick="ganttEditCell(this,'${u.id}','filtros',${fi},'nombre')">${f.nombre}</span></td>
+          <td><span class="gantt-editable" onclick="ganttEditCell(this,'${u.id}','filtros',${fi},'codigo')" style="font-family:var(--gantt-mono);font-size:10px">${f.codigo}</span></td>
+          <td style="text-align:center"><span class="gantt-qty-badge gantt-editable" onclick="ganttEditCell(this,'${u.id}','filtros',${fi},'qty')">${f.qty}</span></td>
+          <td><span class="gantt-freq-badge gantt-editable" onclick="ganttEditCell(this,'${u.id}','filtros',${fi},'frecuencia')">${f.frecuencia}</span></td>
+          <td><button class="gantt-btn-sm" style="padding:2px 7px;font-size:10px;color:var(--gantt-red)" onclick="ganttDeleteRow('${u.id}','filtros',${fi})">✕</button></td>
+        </tr>`;
+      });
+      html+=`</tbody></table>
+        <div style="margin:6px 0 20px 0;display:flex;gap:6px">
+          <button class="gantt-btn-sm" onclick="ganttAddRow('${u.id}','filtros')" style="font-size:10px">+ Añadir filtro</button>
+        </div>
+      </div>`;
+    });
+    document.getElementById('ganttInsumosContent').innerHTML=html;
+  }
+
+  // Edición de celdas
+  window.ganttEditCell = function(span, uid, section, idx, field){
+    if(span.querySelector('input')) return;
+    const val=ganttInsumos[uid][section][idx][field];
+    const inp=document.createElement('input');
+    inp.className='gantt-inline-edit'; inp.value=val; inp.type=(field==='litros'||field==='qty')?'number':'text';
+    span.innerHTML=''; span.appendChild(inp); inp.focus(); inp.select();
+    function commit(){ 
+      let v=inp.value.trim(); if(!v){ inp.focus(); return; }
+      if(field==='litros') v=parseFloat(v)||val;
+      if(field==='qty') v=parseInt(v)||val;
+      ganttInsumos[uid][section][idx][field]=v;
+      renderGanttInsumos();
+    }
+    inp.addEventListener('blur', commit);
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter') commit(); if(e.key==='Escape'){ renderGanttInsumos(); } });
+  };
+  window.ganttAddRow = function(uid, section){
+    if(section==='aceites') ganttInsumos[uid].aceites.push({nombre:'Nuevo fluido',spec:'Especificación',litros:0,frecuencia:'c/300 hs'});
+    else ganttInsumos[uid].filtros.push({nombre:'Nuevo filtro',codigo:'Código',qty:1,frecuencia:'c/300 hs'});
+    renderGanttInsumos();
+  };
+  window.ganttDeleteRow = function(uid, section, idx){
+    if(!confirm('¿Eliminar esta fila?')) return;
+    ganttInsumos[uid][section].splice(idx,1);
+    renderGanttInsumos();
+  };
+
+  // Tooltip y edición
+  window.ganttShowTip = function(e,el){
+    const k=el.dataset.k, ovr=ganttOverrides[k];
+    const uid=el.dataset.uid, type=el.dataset.type, idx=parseInt(el.dataset.idx);
+    const tLabel=type==='motor'?'Service de motor':'Cambio fluidos largos';
+    const orig=parseDate(el.dataset.orig), eff=parseDate(el.dataset.eff);
+    const diff=daysBetween(orig,eff);
+    const ins=ganttInsumos[uid];
+    let html=`<div class="gantt-tt-title">${el.dataset.name}</div>
+      <div class="gantt-tt-row"><span class="gantt-tt-key">Tipo</span><span class="gantt-tt-val" style="color:${type==='motor'?'var(--gantt-green)':'var(--gantt-blue)'}">${tLabel}</span></div>
+      <div class="gantt-tt-row"><span class="gantt-tt-key">Fecha original</span><span class="gantt-tt-val">${fmtDate(orig)}</span></div>`;
+    if(ovr){ html+=`<div class="gantt-tt-row"><span class="gantt-tt-key">Fecha efectiva</span><span class="gantt-tt-val" style="color:var(--gantt-amber)">${fmtDate(eff)}</span></div>
+      <div class="gantt-tt-row"><span class="gantt-tt-key">Variación</span><span class="gantt-tt-val" style="color:var(--gantt-amber)">${diff>0?'+'+diff:diff} días</span></div>`;
+      if(ovr.notes) html+=`<div style="font-size:10px;color:var(--gantt-amber);margin-top:5px">📝 ${ovr.notes}</div>`;
+    }
+    if(ins && type==='motor'){
+      html+=`<div class="gantt-tt-section">Insumos de este service</div>`;
+      ins.aceites.filter(a=>a.frecuencia.includes('300')||a.frecuencia.includes('15.000')).forEach(a=>{
+        html+=`<div class="gantt-tt-row"><span class="gantt-tt-key">${a.nombre}</span><span class="gantt-tt-val">${a.litros} L</span></div>`;
+      });
+      ins.filtros.filter(f=>f.frecuencia.includes('300')||f.frecuencia.includes('15.000')).forEach(f=>{
+        html+=`<div class="gantt-tt-row"><span class="gantt-tt-key">${f.nombre}</span><span class="gantt-tt-val">${f.qty} u · ${f.codigo.split('/')[0].trim()}</span></div>`;
+      });
+    }
+    html+=`<div style="font-size:10px;color:var(--gantt-text3);margin-top:6px">Clic para editar</div>`;
+    const tip=document.getElementById('gantt-tooltip');
+    tip.innerHTML=html; tip.style.display='block';
+    moveTip(e);
+  };
+  function moveTip(e){ const t=document.getElementById('gantt-tooltip'); t.style.left=Math.min(e.clientX+14,window.innerWidth-300)+'px'; t.style.top=Math.max(e.clientY-10,10)+'px'; }
+  window.ganttHideTip = function(){ document.getElementById('gantt-tooltip').style.display='none'; };
+  document.addEventListener('mousemove',e=>{ if(document.getElementById('gantt-tooltip').style.display==='block') moveTip(e); });
+
+  window.ganttOpenEdit = function(key,uid,type,idx,orig,eff,name,sub){
+    ganttEditKey=key;
+    document.getElementById('ganttEpTitle').textContent=type==='motor'?'Service de motor':'Cambio fluidos largos';
+    document.getElementById('ganttEpSub').textContent=name+' · '+sub;
+    document.getElementById('ganttEpUnit').value=name;
+    document.getElementById('ganttEpType').value=type==='motor'?'Service de motor (aceite + filtros)':'Cambio fluidos largos';
+    document.getElementById('ganttEpOrigDate').value=fmtDate(parseDate(orig));
+    document.getElementById('ganttEpNewDate').value=eff;
+    document.getElementById('ganttEpNotes').value=ganttOverrides[key]?.notes||'';
+    const hist=ganttOverrides[key]?.history||[];
+    document.getElementById('ganttEpHistory').innerHTML=hist.length?hist.map(h=>`<li class="gantt-history-item">${h}</li>`).join(''):'<li class="gantt-history-item" style="color:var(--txt3)">Sin modificaciones previas</li>';
+    document.getElementById('gantt-edit-panel').classList.add('open');
+    renderGanttSidebar();
+  };
+  window.ganttClosePanel = function(){ document.getElementById('gantt-edit-panel').classList.remove('open'); ganttEditKey=null; renderGanttSidebar(); };
+  window.ganttSaveEdit = function(){
+    if(!ganttEditKey) return;
+    const nd=document.getElementById('ganttEpNewDate').value, notes=document.getElementById('ganttEpNotes').value.trim();
+    if(!nd) return alert('Ingresá una fecha válida');
+    const prev=ganttOverrides[ganttEditKey];
+    const hist=prev?.history?[...prev.history]:[];
+    const ts=new Date().toLocaleString('es-AR');
+    if(prev?.date&&prev.date!==nd) hist.unshift(`${ts} · anterior: ${fmtDate(parseDate(prev.date))}`);
+    else if(!prev?.date) hist.unshift(`${ts} · primera modificación`);
+    ganttOverrides[ganttEditKey]={date:nd,notes,history:hist.slice(0,10)};
+    saveOverrides(); ganttRender();
+    document.getElementById('ganttEpHistory').innerHTML=ganttOverrides[ganttEditKey].history.map(h=>`<li class="gantt-history-item">${h}</li>`).join('');
+  };
+  window.ganttResetEdit = function(){
+    if(!ganttEditKey||!confirm('¿Restaurar fecha original?')) return;
+    delete ganttOverrides[ganttEditKey]; saveOverrides(); ganttClosePanel(); ganttRender();
+  };
 
   // Filtros y vista
   window.ganttFilterCat = function(cat, btn){
@@ -1475,11 +2614,47 @@ function updateClock(){
     ganttViewDays = v==='year'?365:v==='half'?183:92;
     ganttRender();
   };
+  window.ganttHighlightUnit = function(uid){ ganttEditKey=uid+'_hl'; renderGanttSidebar(); renderGanttBody(); };
 
-  // Panel de edición
-  window.ganttClosePanel = function(){ document.getElementById('gantt-edit-panel').classList.remove('open'); ganttEditKey=null; };
-  // ... resto de funciones de edición ...
-
+  function ganttRender(){
+    renderGanttStats();
+    renderGanttSidebar();
+    renderGanttHeader();
+    renderGanttBody();
+    renderGanttResumen();
+    renderGanttInsumos();
+    // Añadir botones de exportar/importar al Gantt
+    const controls=document.querySelector('#page-ganttflota .gantt-controls');
+    if(controls && !document.getElementById('gantt-export-btn')){
+      const btnExport=document.createElement('button');
+      btnExport.id='gantt-export-btn'; btnExport.className='gantt-btn-sm'; btnExport.textContent='⬇ Exportar';
+      btnExport.onclick=()=>{
+        const data={version:3,exported:new Date().toISOString(),overrides:ganttOverrides,insumos:ganttInsumos};
+        const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+        a.download=`flota_MP_gantt_${new Date().toISOString().slice(0,10)}.json`; a.click();
+      };
+      const btnImport=document.createElement('button');
+      btnImport.id='gantt-import-btn'; btnImport.className='gantt-btn-sm'; btnImport.textContent='⬆ Importar';
+      btnImport.onclick=()=>{ document.getElementById('gantt-import-file').click(); };
+      const fileInput=document.createElement('input');
+      fileInput.type='file'; fileInput.id='gantt-import-file'; fileInput.accept='.json'; fileInput.style.display='none';
+      fileInput.onchange=function(e){
+        const r=new FileReader(); r.onload=ev=>{
+          try{ const d=JSON.parse(ev.target.result);
+            if(d.overrides) ganttOverrides=d.overrides;
+            if(d.insumos) ganttInsumos=d.insumos;
+            saveOverrides(); ganttSaveInsumos(); ganttRender();
+            alert('Datos importados correctamente.');
+          } catch{ alert('Error al leer el archivo.'); }
+        };
+        r.readAsText(e.target.files[0]);
+      };
+      controls.appendChild(btnExport);
+      controls.appendChild(btnImport);
+      controls.appendChild(fileInput);
+    }
+  }
+  window.ganttRender = ganttRender;
 })();
 </script>
 
