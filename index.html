@@ -171,6 +171,58 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 .kcard,.ccard,.mcard,.tbl-wrap,.apanel,.ktype-card{animation:fadeUp 0.35s ease both;}
 .no-data{padding:32px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt3);letter-spacing:2px;}
 
+/* ============ MÓDULO PEDIDOS ============ */
+.ped-form-panel{background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:20px 24px;margin-bottom:24px;}
+.ped-form-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;}
+.ped-form-grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;}
+.ped-field{display:flex;flex-direction:column;gap:5px;}
+.ped-label{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--blue);letter-spacing:2px;text-transform:uppercase;}
+.ped-input{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--txt1);padding:7px 10px;border-radius:4px;transition:border-color 0.2s;}
+.ped-input:focus{outline:none;border-color:var(--blue);}
+.ped-select{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--txt1);padding:7px 10px;border-radius:4px;cursor:pointer;}
+.ped-select:focus{outline:none;border-color:var(--blue);}
+.ped-btn-add{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;padding:10px 24px;border-radius:4px;border:1px solid var(--blue);background:rgba(0,170,255,0.15);color:var(--blue);cursor:pointer;text-transform:uppercase;transition:all 0.2s;white-space:nowrap;}
+.ped-btn-add:hover{background:rgba(0,170,255,0.3);box-shadow:0 0 12px rgba(0,170,255,0.2);}
+.ped-btn-save{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;padding:8px 18px;border-radius:4px;border:1px solid var(--green);background:rgba(0,230,118,0.12);color:var(--green);cursor:pointer;text-transform:uppercase;transition:all 0.2s;}
+.ped-btn-save:hover{background:rgba(0,230,118,0.25);}
+.ped-btn-cancel{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;letter-spacing:1px;padding:8px 16px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--txt2);cursor:pointer;text-transform:uppercase;transition:all 0.2s;}
+.ped-btn-cancel:hover{border-color:var(--red);color:var(--red);}
+.ped-form-actions{display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:14px;margin-top:4px;}
+.ped-stars{display:flex;gap:3px;}
+.ped-star{font-size:18px;cursor:pointer;color:var(--txt3);transition:color 0.15s;line-height:1;}
+.ped-star.on{color:var(--amber);}
+.ped-star:hover{color:var(--amber);}
+.ped-badge-espera{font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:2px;white-space:nowrap;}
+.ped-espera-ok{background:rgba(0,230,118,0.1);color:var(--green);border:1px solid rgba(0,230,118,0.25);}
+.ped-espera-med{background:rgba(255,193,7,0.1);color:var(--amber);border:1px solid rgba(255,193,7,0.25);}
+.ped-espera-lento{background:rgba(255,61,61,0.1);color:var(--red);border:1px solid rgba(255,61,61,0.25);}
+.ped-espera-pend{background:rgba(106,146,176,0.1);color:var(--txt2);border:1px solid rgba(106,146,176,0.2);}
+.ped-tipo-badge{font-family:'JetBrains Mono',monospace;font-size:8px;padding:2px 7px;border-radius:2px;text-transform:uppercase;letter-spacing:1px;}
+.ped-tipo-repuesto{background:rgba(0,170,255,0.1);color:var(--blue);border:1px solid rgba(0,170,255,0.2);}
+.ped-tipo-insumo{background:rgba(0,229,204,0.1);color:var(--cyan);border:1px solid rgba(0,229,204,0.2);}
+.ped-tipo-herramienta{background:rgba(179,136,255,0.1);color:var(--purple);border:1px solid rgba(179,136,255,0.2);}
+.ped-tipo-consumible{background:rgba(255,193,7,0.1);color:var(--amber);border:1px solid rgba(255,193,7,0.25);}
+.ped-row-actions{display:flex;gap:6px;}
+.ped-btn-edit{font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 9px;border-radius:3px;border:1px solid var(--border2);background:transparent;color:var(--txt2);cursor:pointer;transition:all 0.15s;}
+.ped-btn-edit:hover{border-color:var(--blue);color:var(--blue);}
+.ped-btn-del{font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 9px;border-radius:3px;border:1px solid rgba(255,61,61,0.2);background:transparent;color:var(--red);cursor:pointer;transition:all 0.15s;opacity:0.6;}
+.ped-btn-del:hover{opacity:1;background:rgba(255,61,61,0.08);}
+.ped-completo-si{color:var(--green);font-size:14px;}
+.ped-completo-no{color:var(--amber);font-size:14px;}
+.ped-original-si{color:var(--green);font-size:11px;font-family:'JetBrains Mono',monospace;}
+.ped-original-no{color:var(--txt2);font-size:11px;font-family:'JetBrains Mono',monospace;}
+.ped-kpi-sheet-note{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3);letter-spacing:1px;padding:8px 14px;background:rgba(0,170,255,0.04);border:1px solid var(--border);border-radius:4px;margin-bottom:16px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;}
+.ped-sync-btn{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;padding:6px 14px;border-radius:4px;border:1px solid var(--cyan);background:rgba(0,229,204,0.06);color:var(--cyan);cursor:pointer;text-transform:uppercase;transition:all 0.2s;}
+.ped-sync-btn:hover{background:rgba(0,229,204,0.15);}
+.ped-prov-ranking{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:24px;}
+.ped-prov-card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:14px 16px;transition:border-color 0.2s;}
+.ped-prov-card:hover{border-color:var(--border2);}
+.ped-prov-name{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--txt1);margin-bottom:4px;}
+.ped-prov-stars-row{display:flex;gap:2px;margin-bottom:6px;align-items:center;}
+.ped-prov-stat{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3);margin-top:2px;}
+.ped-form-section-title{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;letter-spacing:2px;color:var(--txt2);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.ped-form-section-title::before{content:'';display:block;width:3px;height:14px;background:var(--blue);border-radius:2px;}
+
 /* ============ GANTT FLOTA (Integrado) ============ */
 #page-ganttflota.page {
   /* Se oculta por defecto con la clase .page (display:none) */
@@ -786,6 +838,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <div class="tab"     onclick="goTab('costos',this)">💰 COSTOS</div>
   <div class="tab"     onclick="goTab('viajes',this)">🚚 VIAJES</div>
   <div class="tab"     onclick="goTab('checklist',this)">📋 INSPECCIONES</div>
+  <div class="tab"     onclick="goTab('pedidos',this)">📦 PEDIDOS</div>
   <div class="tab"     onclick="goTab('ganttflota',this)">📅 GANTT FLOTA</div>
 </nav>
 
@@ -1139,6 +1192,216 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   </div>
 </div>
 
+<!-- ══════════════════════════ PEDIDOS ══════════════════════════ -->
+<div id="page-pedidos" class="page">
+
+  <!-- Nota de configuración Sheet -->
+  <div class="ped-kpi-sheet-note">
+    📋 Los pedidos se leen desde la hoja <b style="color:var(--txt2)">"PEDIDOS"</b> de tu Google Sheet. Revisá las instrucciones de configuración al pie de esta página.
+    <button class="ped-sync-btn" onclick="loadPedidos()">⟳ SINCRONIZAR AHORA</button>
+  </div>
+
+  <!-- KPIs -->
+  <div class="slabel">KPIs — GESTIÓN DE PEDIDOS</div>
+  <div class="kpi-row" id="kpi-pedidos"></div>
+
+  <!-- Formulario nuevo pedido -->
+  <div class="slabel">REGISTRAR NUEVO PEDIDO</div>
+  <div class="ped-form-panel" id="ped-form-panel">
+    <div class="ped-form-section-title">Datos del pedido</div>
+    <div class="ped-form-grid">
+      <div class="ped-field">
+        <label class="ped-label">N° Pedido Interno</label>
+        <input class="ped-input" id="pf-nro" placeholder="PED-2026-001">
+      </div>
+      <div class="ped-field">
+        <label class="ped-label">Fecha del Pedido</label>
+        <input class="ped-input" type="date" id="pf-fecha">
+      </div>
+      <div class="ped-field">
+        <label class="ped-label">Proveedor</label>
+        <input class="ped-input" id="pf-proveedor" placeholder="Nombre del proveedor" list="pf-provlist">
+        <datalist id="pf-provlist"></datalist>
+      </div>
+      <div class="ped-field">
+        <label class="ped-label">Urgencia</label>
+        <select class="ped-select" id="pf-urgencia">
+          <option value="Normal">Normal</option>
+          <option value="Urgente">🟠 Urgente</option>
+          <option value="Crítico">🔴 Crítico — Equipo parado</option>
+        </select>
+      </div>
+    </div>
+    <div class="ped-form-grid">
+      <div class="ped-field" style="grid-column:span 2">
+        <label class="ped-label">Descripción del Producto / Repuesto</label>
+        <input class="ped-input" id="pf-desc" placeholder="Ej: Filtro aceite motor Fleetguard LF9009">
+      </div>
+      <div class="ped-field">
+        <label class="ped-label">Para Máquina / Equipo</label>
+        <input class="ped-input" id="pf-maquina" placeholder="Ej: Lonking 01" list="pf-maqlist">
+        <datalist id="pf-maqlist">
+          <option value="Topadora Komatsu">
+          <option value="Lonking 01">
+          <option value="Lonking 02">
+          <option value="Toyota 45">
+          <option value="Toyota 30">
+          <option value="Doosan 40-01">
+          <option value="Doosan 40-02">
+          <option value="AXOR 2831 – TATU 052">
+          <option value="AXOR 2831 – TATU 365">
+          <option value="AXOR 2831 – TATU 319">
+          <option value="ATRON 1634S – NPO 265">
+          <option value="ATRON 2040S – HWC 507">
+          <option value="Flota general">
+        </datalist>
+      </div>
+      <div class="ped-field">
+        <label class="ped-label">Tipo de Producto</label>
+        <select class="ped-select" id="pf-tipo">
+          <option value="Repuesto">Repuesto</option>
+          <option value="Insumo">Insumo (aceite, filtro, grasa)</option>
+          <option value="Consumible">Consumible</option>
+          <option value="Herramienta">Herramienta</option>
+        </select>
+      </div>
+    </div>
+    <div class="ped-form-grid">
+      <div class="ped-field">
+        <label class="ped-label">Cant. Solicitada</label>
+        <input class="ped-input" type="number" id="pf-cant-sol" placeholder="0" min="1">
+      </div>
+      <div class="ped-field">
+        <label class="ped-label">Cant. Recibida</label>
+        <input class="ped-input" type="number" id="pf-cant-rec" placeholder="Vacío si pendiente" min="0">
+      </div>
+      <div class="ped-field">
+        <label class="ped-label">Fecha de Recepción</label>
+        <input class="ped-input" type="date" id="pf-fecha-rec">
+      </div>
+      <div class="ped-field">
+        <label class="ped-label">Estado del Pedido</label>
+        <select class="ped-select" id="pf-estado">
+          <option value="Pendiente">⏳ Pendiente</option>
+          <option value="En tránsito">🚚 En tránsito</option>
+          <option value="Recibido completo">✅ Recibido completo</option>
+          <option value="Recibido parcial">⚠️ Recibido parcial</option>
+          <option value="Rechazado">❌ Rechazado</option>
+        </select>
+      </div>
+    </div>
+    <div class="ped-form-grid">
+      <div class="ped-field">
+        <label class="ped-label">Marca Original</label>
+        <select class="ped-select" id="pf-original">
+          <option value="Original">✅ Original / OEM</option>
+          <option value="Genérico">🔄 Genérico / Aftermarket</option>
+          <option value="No aplica">— No aplica</option>
+        </select>
+      </div>
+      <div class="ped-field">
+        <label class="ped-label">Calidad del Proveedor</label>
+        <div class="ped-stars" id="pf-stars-container">
+          <span class="ped-star" data-v="1" onclick="pedSetStar(1)">★</span>
+          <span class="ped-star" data-v="2" onclick="pedSetStar(2)">★</span>
+          <span class="ped-star" data-v="3" onclick="pedSetStar(3)">★</span>
+          <span class="ped-star" data-v="4" onclick="pedSetStar(4)">★</span>
+          <span class="ped-star" data-v="5" onclick="pedSetStar(5)">★</span>
+        </div>
+      </div>
+      <div class="ped-field">
+        <label class="ped-label">N° OT Relacionada</label>
+        <input class="ped-input" id="pf-ot" placeholder="OT-2026-xxx (opcional)">
+      </div>
+      <div class="ped-field">
+        <label class="ped-label">Costo Total (ARS)</label>
+        <input class="ped-input" type="number" id="pf-costo" placeholder="0">
+      </div>
+    </div>
+    <div class="ped-form-grid-2">
+      <div class="ped-field">
+        <label class="ped-label">Observaciones de Calidad / Recepción</label>
+        <input class="ped-input" id="pf-obs" placeholder="Ej: Llegó con embalaje roto, marca diferente a la solicitada...">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label class="ped-label">Estado de edición</label>
+        <input class="ped-input" id="pf-edit-id" readonly placeholder="— nuevo pedido —" style="opacity:0.5">
+      </div>
+    </div>
+    <div class="ped-form-actions">
+      <button class="ped-btn-cancel" onclick="pedCancelEdit()">✕ CANCELAR</button>
+      <button class="ped-btn-save" onclick="pedGuardarSheet()">💾 GUARDAR EN SHEET</button>
+      <button class="ped-btn-add" onclick="pedAgregarLocal()">➕ AGREGAR A LA VISTA</button>
+    </div>
+  </div>
+
+  <!-- Tabla de pedidos -->
+  <div class="slabel">HISTORIAL DE PEDIDOS</div>
+  <div class="tbl-wrap" style="overflow-x:auto">
+    <div class="tbl-filters">
+      <button class="fbtn on"  onclick="filterPedidos('all',this)">TODOS</button>
+      <button class="fbtn"     onclick="filterPedidos('Pendiente',this)">⏳ PENDIENTES</button>
+      <button class="fbtn fa"  onclick="filterPedidos('En tránsito',this)">🚚 EN TRÁNSITO</button>
+      <button class="fbtn fg"  onclick="filterPedidos('Recibido completo',this)">✅ COMPLETOS</button>
+      <button class="fbtn fa"  onclick="filterPedidos('Recibido parcial',this)">⚠️ PARCIALES</button>
+      <button class="fbtn fr"  onclick="filterPedidos('Rechazado',this)">❌ RECHAZADOS</button>
+      <input class="fsearch" id="ped-search" placeholder="Buscar pedido, máquina, proveedor..." oninput="renderPedidosTable()">
+    </div>
+    <div style="min-width:1300px">
+      <table>
+        <thead>
+          <tr>
+            <th>N° PEDIDO</th>
+            <th>FECHA PED.</th>
+            <th>DESCRIPCIÓN</th>
+            <th>MÁQUINA</th>
+            <th>TIPO</th>
+            <th>PROVEEDOR</th>
+            <th>CANT. SOL.</th>
+            <th>CANT. REC.</th>
+            <th>TIEMPO ESPERA</th>
+            <th>COMPLETO</th>
+            <th>ESTADO</th>
+            <th>ORIG./GENÉR.</th>
+            <th>CALIDAD</th>
+            <th>COSTO ARS</th>
+            <th>OBS.</th>
+            <th>ACCIONES</th>
+          </tr>
+        </thead>
+        <tbody id="ped-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Análisis -->
+  <div class="slabel">ANÁLISIS DE PROVEEDORES</div>
+  <div class="charts2">
+    <div class="ccard"><div class="ctitle">Tiempo de Espera Promedio <span class="cbadge">DÍAS</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-espera"></canvas></div></div>
+    <div class="ccard"><div class="ctitle">Pedidos por Estado <span class="cbadge">DISTRIBUCIÓN</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-estado"></canvas></div></div>
+  </div>
+  <div class="charts2">
+    <div class="ccard"><div class="ctitle">Pedidos por Tipo de Producto <span class="cbadge">CANTIDAD</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-tipo"></canvas></div></div>
+    <div class="ccard"><div class="ctitle">Calificación Promedio por Proveedor <span class="cbadge">1-5</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-prov-star"></canvas></div></div>
+  </div>
+
+  <!-- Ranking proveedores -->
+  <div class="slabel">RANKING DE PROVEEDORES</div>
+  <div class="ped-prov-ranking" id="ped-prov-ranking"></div>
+
+  <!-- Instrucciones de configuración -->
+  <div class="slabel">CONFIGURACIÓN — CÓMO CONECTAR ESTA PESTAÑA A TU GOOGLE SHEET</div>
+  <div class="ccard" style="margin-bottom:24px;font-size:12px;line-height:1.8;color:var(--txt2)">
+    <p style="margin-bottom:10px"><b style="color:var(--txt1)">Paso 1 — Crear la hoja:</b> en tu Google Sheet (el mismo SHEET ID que usás arriba), creá una hoja nueva llamada exactamente <code style="color:var(--cyan)">PEDIDOS</code> con esta fila de encabezados en la fila 1:</p>
+    <p style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--blue);background:var(--bg1);padding:10px;border-radius:4px;margin-bottom:10px;overflow-x:auto;white-space:nowrap">
+      Nro Pedido | Fecha Pedido | Descripcion | Maquina | Tipo | Proveedor | Cant Solicitada | Cant Recibida | Fecha Recepcion | Estado | Original/Generico | Calidad | OT | Costo ARS | Urgencia | Observaciones
+    </p>
+    <p style="margin-bottom:10px"><b style="color:var(--txt1)">Paso 2 — Obtener el GID:</b> abrí esa hoja en el navegador, mirá la URL (termina en <code style="color:var(--cyan)">#gid=XXXXXXX</code>) y copiá ese número en el código, dentro del objeto <code style="color:var(--cyan)">SHEET_GIDS</code>, en la línea <code style="color:var(--cyan)">'PEDIDOS': 'GID_A_CONFIGURAR'</code>.</p>
+    <p style="margin-bottom:10px"><b style="color:var(--txt1)">Paso 3 — Lectura:</b> con eso ya alcanza para que esta pestaña <b style="color:var(--green)">lea</b> los pedidos que cargues manualmente en la hoja de Sheets (clic en "⟳ SINCRONIZAR AHORA").</p>
+    <p><b style="color:var(--txt1)">Paso 4 — Escritura (opcional):</b> para que el botón "💾 GUARDAR EN SHEET" escriba directamente desde el dashboard, hay que publicar un <b>Google Apps Script</b> como Web App vinculado a tu planilla y pegar esa URL en la constante <code style="color:var(--cyan)">PEDIDOS_WEBAPP_URL</code> del código. Si preferís, también podés seguir cargando los pedidos directamente en la hoja de Sheets y usar este dashboard solo para visualizar — funciona igual.</p>
+  </div>
+</div>
+
 <!-- ══════════════════════════ GANTT FLOTA (Integrado) ══════════════════════════ -->
 <div id="page-ganttflota" class="page">
   <div class="gantt-main-layout">
@@ -1227,7 +1490,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 </div>
 
 <footer class="ftr">
-  <div class="ftr-l">RODADOS v2.2 — Dashboard de Mantenimiento Vehicular · Cerámica MP</div>
+  <div class="ftr-l">RODADOS v2.3 — Dashboard de Mantenimiento Vehicular · Cerámica MP</div>
   <div class="ftr-r" id="ftr-date">—</div>
 </footer>
 </div><!-- /wrap -->
@@ -1252,6 +1515,7 @@ const SHEET_NAMES = {
   viajes:               'CONTROL VIAJES CAM',
   checklistPalas:       'CHECKLIST PALAS',
   checklistAut:         'CHECKLIST AUTOELEVADORES',
+  pedidos:               'PEDIDOS',
 };
 
 const SERVICES_SHEET_ID = '1JBqizva8iWP_FF_XpBlr3aAGrz3-JaXOwNiuPuybcxg';
@@ -1270,12 +1534,14 @@ const SHEET_GIDS = {
   'CONTROL VIAJES CAM':           '1170616663',
   'CHECKLIST PALAS':              '1743129799',
   'CHECKLIST AUTOELEVADORES':     '1958650087',
+  'PEDIDOS':                      'GID_A_CONFIGURAR',
 };
 
 let G = {
   fleet: [], histPalas: [], histCam: [], histAut: [],
   services: [], costos: [], viajes: [],
   checklistPalas: [], checklistAut: [],
+  pedidos: [],
   charts: {},
 };
 
@@ -1347,9 +1613,10 @@ async function loadAllData() {
     try { G.services = parseServices(await fetchExternalSheet(SERVICES_SHEET_ID, SERVICES_GID)); } catch(e) { G.services = []; console.warn('SERVICES:', e); }
     try { G.checklistPalas = parseChecklist(await fetchExternalSheet(SERVICES_SHEET_ID, '1743129799'), 'PALA'); } catch(e) { G.checklistPalas = []; console.warn('CHK PALAS:', e); }
     try { G.checklistAut   = parseChecklist(await fetchExternalSheet(SERVICES_SHEET_ID, '1958650087'), 'AUTOELEVADOR'); } catch(e) { G.checklistAut = []; console.warn('CHK AUT:', e); }
+    try { G.pedidos = parsePedidos(await fetchSheet(SHEET_NAMES.pedidos)); } catch(e) { G.pedidos = []; console.warn('PEDIDOS:', e); }
 
     const total = G.histPalas.length + G.histCam.length + G.histAut.length;
-    setStatus('ok', `✅ ${G.fleet.length} unidades · ${total} trabajos · ${G.services.length} services · ${G.checklistPalas.length+G.checklistAut.length} inspecciones`);
+    setStatus('ok', `✅ ${G.fleet.length} unidades · ${total} trabajos · ${G.services.length} services · ${G.checklistPalas.length+G.checklistAut.length} inspecciones · ${G.pedidos.length} pedidos`);
     renderAll();
   } catch(e) {
     setStatus('err','❌ ' + e.message);
@@ -1553,6 +1820,63 @@ function parseViajes(rows) {
   }
   return result;
 }
+
+// ── PEDIDOS PARSER ──
+// Columnas esperadas en hoja "PEDIDOS" (fila 1 = encabezados):
+// Nro Pedido | Fecha Pedido | Descripcion | Maquina | Tipo | Proveedor | Cant Solicitada |
+// Cant Recibida | Fecha Recepcion | Estado | Original/Generico | Calidad | OT | Costo ARS | Urgencia | Observaciones
+function parsePedidos(rows){
+  if(!rows || rows.length < 2) return [];
+  const headers = rows[0].map(h=>(h||'').trim().toUpperCase());
+  const fi = names => { for(const n of names){ const i = headers.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
+  const iNro    = fi(['NRO','N° PEDIDO','NUMERO','PEDIDO']);
+  const iFecha  = fi(['FECHA PEDIDO','FECHA PED']);
+  const iDesc   = fi(['DESCRIPCION','DESCRIPCI']);
+  const iMaq    = fi(['MAQUINA','MÁQUINA','EQUIPO']);
+  const iTipo   = fi(['TIPO']);
+  const iProv   = fi(['PROVEEDOR']);
+  const iCantS  = fi(['CANT SOLICITADA','CANT. SOL','SOLICITADA']);
+  const iCantR  = fi(['CANT RECIBIDA','CANT. REC','RECIBIDA']);
+  const iFechaR = fi(['FECHA RECEPCION','FECHA RECEPCIÓN','FECHA REC']);
+  const iEstado = fi(['ESTADO']);
+  const iOrig   = fi(['ORIGINAL','GENERICO','GENÉRICO']);
+  const iCalid  = fi(['CALIDAD']);
+  const iOT     = fi(['OT']);
+  const iCosto  = fi(['COSTO']);
+  const iUrg    = fi(['URGENCIA']);
+  const iObs    = fi(['OBSERVACION','OBSERVACI']);
+
+  const out = [];
+  for(let i=1;i<rows.length;i++){
+    const r = rows[i];
+    const nro = (r[iNro>=0?iNro:0]||'').trim();
+    if(!nro) continue;
+    const cantSol = parseFloat((r[iCantS]||'0').replace(',','.'))||0;
+    const cantRec = parseFloat((r[iCantR]||'0').replace(',','.'))||0;
+    const costo = parseFloat((r[iCosto]||'0').replace(/[^0-9.-]/g,''))||0;
+    const calidad = parseInt(r[iCalid])||0;
+    out.push({
+      rowIndex: i+1,
+      nro,
+      fecha: (r[iFecha]||'').trim(),
+      desc: (r[iDesc]||'').trim(),
+      maquina: (r[iMaq]||'').trim(),
+      tipo: (r[iTipo]||'Repuesto').trim(),
+      proveedor: (r[iProv]||'').trim(),
+      cantSol, cantRec,
+      fechaRec: (r[iFechaR]||'').trim(),
+      estado: (r[iEstado]||'Pendiente').trim(),
+      original: (r[iOrig]||'No aplica').trim(),
+      calidad,
+      ot: (r[iOT]||'').trim(),
+      costo,
+      urgencia: (r[iUrg]||'Normal').trim(),
+      obs: (r[iObs]||'').trim(),
+    });
+  }
+  return out;
+}
+
   // ═══════════════════════════════════════════════════════
 //  RENDER ALL
 // ═══════════════════════════════════════════════════════
@@ -1566,6 +1890,7 @@ function renderAll() {
   renderCostosPage();
   renderViajesPage();
   renderChecklistPage();
+  renderPedidosPage();
   renderFleetRows(G.fleet,'overview-fleet-tbody');
   updateClock();
 }
@@ -2109,6 +2434,356 @@ function renderTablaViajes(data){
 }
 function filterViajes(tipo,btn){viajesFilter=tipo;document.querySelectorAll('#page-viajes .fbtn').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');renderTablaViajes(G.viajes);}
 function searchViajes(){renderTablaViajes(G.viajes);}
+
+// ═══════════════════════════════════════════════════════
+//  PEDIDOS — Lectura/escritura Google Sheets
+// ═══════════════════════════════════════════════════════
+let pedFilter = 'all';
+let pedSelectedStar = 0;
+let pedEditRowIndex = null;
+
+// URL de Web App de Google Apps Script — pegá la tuya para habilitar el guardado directo desde acá
+const PEDIDOS_WEBAPP_URL = '';
+
+function pedSetStar(v){
+  pedSelectedStar = v;
+  document.querySelectorAll('#pf-stars-container .ped-star').forEach(s=>{
+    s.classList.toggle('on', parseInt(s.dataset.v) <= v);
+  });
+}
+
+async function loadPedidos(){
+  try{
+    const rows = await fetchSheet(SHEET_NAMES.pedidos);
+    G.pedidos = parsePedidos(rows);
+    renderPedidosPage();
+    setStatus('ok', `✅ ${G.pedidos.length} pedidos cargados`);
+  }catch(e){
+    console.warn('PEDIDOS:', e);
+    renderPedidosPage();
+    setStatus('err', '⚠️ No se pudo cargar hoja PEDIDOS — revisá el GID en SHEET_GIDS');
+  }
+}
+
+function pedParseFechaDMY(f){
+  if(!f) return null;
+  const s = f.trim();
+  if(s.includes('/')){ const p=s.split('/'); if(p.length<3) return null; return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0])); }
+  if(s.includes('-')){ const p=s.split('-'); if(p.length<3) return null; return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])); }
+  return null;
+}
+function pedDiasEspera(p){
+  const fi = pedParseFechaDMY(p.fecha);
+  if(!fi) return null;
+  const ff = pedParseFechaDMY(p.fechaRec) || new Date();
+  const diff = Math.round((ff - fi) / 86400000);
+  return diff >= 0 ? diff : null;
+}
+function pedEsperaBadge(p){
+  const dias = pedDiasEspera(p);
+  if(dias === null) return `<span class="ped-badge-espera ped-espera-pend">—</span>`;
+  const recibido = /recibido/i.test(p.estado);
+  let cls = 'ped-espera-ok';
+  if(dias > 15) cls = 'ped-espera-lento';
+  else if(dias > 7) cls = 'ped-espera-med';
+  return `<span class="ped-badge-espera ${cls}">${dias}d${recibido?'':' (en curso)'}</span>`;
+}
+
+function renderPedidosKPIs(){
+  const data = G.pedidos;
+  const el = document.getElementById('kpi-pedidos');
+  if(!el) return;
+  if(!data.length){ el.innerHTML = '<div style="grid-column:1/-1" class="no-data">Sin pedidos cargados. Registrá el primero abajo o conectá la hoja PEDIDOS.</div>'; return; }
+  const total = data.length;
+  const pendientes = data.filter(p=>p.estado==='Pendiente').length;
+  const transito = data.filter(p=>p.estado==='En tránsito').length;
+  const completos = data.filter(p=>p.estado==='Recibido completo').length;
+  const parciales = data.filter(p=>p.estado==='Recibido parcial').length;
+  const rechazados = data.filter(p=>p.estado==='Rechazado').length;
+  const esperas = data.map(p=>pedDiasEspera(p)).filter(d=>d!==null);
+  const esperaProm = esperas.length ? Math.round(esperas.reduce((a,b)=>a+b,0)/esperas.length) : 0;
+  const costoTotal = data.reduce((s,p)=>s+(p.costo||0),0);
+  const calidades = data.filter(p=>p.calidad>0).map(p=>p.calidad);
+  const calidadProm = calidades.length ? (calidades.reduce((a,b)=>a+b,0)/calidades.length).toFixed(1) : '—';
+  el.innerHTML =
+    kpiCard('TOTAL PEDIDOS', total, `${costoTotal>0?fmtARS(costoTotal):'—'}`, 'kc-b') +
+    kpiCard('⏳ PENDIENTES', pendientes, 'Sin confirmar', 'kc-a') +
+    kpiCard('🚚 EN TRÁNSITO', transito, 'En camino', 'kc-c') +
+    kpiCard('✅ COMPLETOS', completos, `${parciales} parciales · ${rechazados} rechazados`, 'kc-g') +
+    kpiCard('⏱️ ESPERA PROMEDIO', esperaProm+' días', 'Desde pedido a recepción', esperaProm>10?'kc-r':'kc-g') +
+    kpiCard('⭐ CALIDAD PROMEDIO', calidadProm, 'Proveedores evaluados', 'kc-p');
+}
+
+function filterPedidos(f, btn){
+  pedFilter = f;
+  if(btn){ btn.closest('.tbl-filters').querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
+  renderPedidosTable();
+}
+function renderPedidosTable(){
+  const tbody = document.getElementById('ped-tbody');
+  if(!tbody) return;
+  const search = (document.getElementById('ped-search')?.value||'').toLowerCase();
+  let filtered = G.pedidos.filter(p=>{
+    const mF = pedFilter==='all' || p.estado===pedFilter;
+    const mS = !search || p.nro.toLowerCase().includes(search) || p.maquina.toLowerCase().includes(search) ||
+               p.proveedor.toLowerCase().includes(search) || p.desc.toLowerCase().includes(search);
+    return mF && mS;
+  });
+  filtered = [...filtered].sort((a,b)=>{
+    const da = pedParseFechaDMY(a.fecha), db = pedParseFechaDMY(b.fecha);
+    return (db?db.getTime():0) - (da?da.getTime():0);
+  });
+  if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="16" class="no-data">Sin pedidos en esta categoría</td></tr>'; return; }
+
+  const tipoClsMap = {Repuesto:'ped-tipo-repuesto', Insumo:'ped-tipo-insumo', Herramienta:'ped-tipo-herramienta', Consumible:'ped-tipo-consumible'};
+  const estadoPillMap = {
+    'Pendiente':{cls:'p-a',lbl:'⏳ Pendiente'},
+    'En tránsito':{cls:'p-a',lbl:'🚚 En tránsito'},
+    'Recibido completo':{cls:'p-g',lbl:'✅ Completo'},
+    'Recibido parcial':{cls:'p-a',lbl:'⚠️ Parcial'},
+    'Rechazado':{cls:'p-r',lbl:'❌ Rechazado'},
+  };
+  tbody.innerHTML = filtered.map(p=>{
+    const tCls = tipoClsMap[p.tipo] || 'ped-tipo-repuesto';
+    const eMap = estadoPillMap[p.estado] || {cls:'p-a',lbl:p.estado};
+    const completo = p.cantRec >= p.cantSol && p.cantSol > 0;
+    const completoIco = p.cantSol===0 ? '—' : (completo ? '<span class="ped-completo-si">✅</span>' : (p.cantRec>0 ? '<span class="ped-completo-no">⚠️</span>' : '<span style="color:var(--txt3)">—</span>'));
+    const origCls = p.original==='Original' ? 'ped-original-si' : (p.original==='Genérico' ? 'ped-original-no' : '');
+    const origLbl = p.original==='Original' ? '✅ Original' : (p.original==='Genérico' ? '🔄 Genérico' : '—');
+    const stars = p.calidad>0 ? '⭐'.repeat(p.calidad)+'<span style="color:var(--txt3)">'+'☆'.repeat(5-p.calidad)+'</span>' : '<span style="color:var(--txt3)">— sin calificar</span>';
+    const urgIco = p.urgencia==='Crítico' ? '🔴 ' : (p.urgencia==='Urgente' ? '🟠 ' : '');
+    return `<tr>
+      <td><div class="uname" style="font-size:12px">${urgIco}${p.nro}</div></td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${p.fecha||'—'}</td>
+      <td class="obs" style="max-width:220px">${p.desc||'—'}</td>
+      <td><span class="stag">${p.maquina||'—'}</span></td>
+      <td><span class="ped-tipo-badge ${tCls}">${p.tipo}</span></td>
+      <td style="font-size:11px;color:var(--txt2)">${p.proveedor||'—'}</td>
+      <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px">${p.cantSol||'—'}</td>
+      <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:${p.cantRec>0?'var(--cyan)':'var(--txt3)'}">${p.cantRec||'—'}</td>
+      <td>${pedEsperaBadge(p)}</td>
+      <td style="text-align:center">${completoIco}</td>
+      <td><span class="pill ${eMap.cls}">${eMap.lbl}</span></td>
+      <td class="${origCls}">${origLbl}</td>
+      <td style="font-size:11px;white-space:nowrap">${stars}</td>
+      <td style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--blue)">${p.costo>0?fmtARS(p.costo):'—'}</td>
+      <td class="obs" style="max-width:180px">${p.obs||'<span class="obs-none">Sin observaciones</span>'}</td>
+      <td><div class="ped-row-actions">
+        <button class="ped-btn-edit" onclick="pedEditar(${p.rowIndex})">✎ Editar</button>
+        <button class="ped-btn-del" onclick="pedEliminar(${p.rowIndex})">✕</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function pedLeerForm(){
+  return {
+    nro: document.getElementById('pf-nro').value.trim(),
+    fecha: pedFechaDisplay(document.getElementById('pf-fecha').value),
+    desc: document.getElementById('pf-desc').value.trim(),
+    maquina: document.getElementById('pf-maquina').value.trim(),
+    tipo: document.getElementById('pf-tipo').value,
+    proveedor: document.getElementById('pf-proveedor').value.trim(),
+    cantSol: parseFloat(document.getElementById('pf-cant-sol').value)||0,
+    cantRec: parseFloat(document.getElementById('pf-cant-rec').value)||0,
+    fechaRec: pedFechaDisplay(document.getElementById('pf-fecha-rec').value),
+    estado: document.getElementById('pf-estado').value,
+    original: document.getElementById('pf-original').value,
+    calidad: pedSelectedStar,
+    ot: document.getElementById('pf-ot').value.trim(),
+    costo: parseFloat(document.getElementById('pf-costo').value)||0,
+    urgencia: document.getElementById('pf-urgencia').value,
+    obs: document.getElementById('pf-obs').value.trim(),
+  };
+}
+function pedFechaDisplay(isoVal){
+  if(!isoVal) return '';
+  const [y,m,d] = isoVal.split('-');
+  return `${d}/${m}/${y}`;
+}
+function pedLimpiarForm(){
+  ['pf-nro','pf-fecha','pf-proveedor','pf-desc','pf-maquina','pf-cant-sol','pf-cant-rec','pf-fecha-rec','pf-ot','pf-costo','pf-obs'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('pf-tipo').value='Repuesto';
+  document.getElementById('pf-estado').value='Pendiente';
+  document.getElementById('pf-original').value='No aplica';
+  document.getElementById('pf-urgencia').value='Normal';
+  document.getElementById('pf-edit-id').value='';
+  pedEditRowIndex = null;
+  pedSetStar(0);
+}
+function pedCancelEdit(){ pedLimpiarForm(); }
+
+function pedValidarForm(d){
+  if(!d.nro){ alert('Ingresá el N° de Pedido Interno.'); return false; }
+  if(!d.fecha){ alert('Ingresá la fecha del pedido.'); return false; }
+  if(!d.desc){ alert('Ingresá la descripción del producto.'); return false; }
+  if(!d.maquina){ alert('Indicá para qué máquina es el pedido.'); return false; }
+  return true;
+}
+
+function pedAgregarLocal(){
+  const d = pedLeerForm();
+  if(!pedValidarForm(d)) return;
+  if(pedEditRowIndex){
+    const idx = G.pedidos.findIndex(p=>p.rowIndex===pedEditRowIndex);
+    if(idx>=0) G.pedidos[idx] = {...G.pedidos[idx], ...d};
+  } else {
+    const maxRow = G.pedidos.reduce((m,p)=>Math.max(m,p.rowIndex),1);
+    G.pedidos.push({...d, rowIndex: maxRow+1});
+  }
+  renderPedidosPage();
+  pedLimpiarForm();
+  alert('Pedido agregado a la vista local. Para que quede guardado de forma permanente, cargalo también en la hoja PEDIDOS de tu Google Sheet (o configurá el guardado automático, ver instrucciones al pie de esta página).');
+}
+
+function pedEditar(rowIndex){
+  const p = G.pedidos.find(p=>p.rowIndex===rowIndex);
+  if(!p) return;
+  document.getElementById('pf-nro').value = p.nro;
+  document.getElementById('pf-fecha').value = pedISOFromDisplay(p.fecha);
+  document.getElementById('pf-desc').value = p.desc;
+  document.getElementById('pf-maquina').value = p.maquina;
+  document.getElementById('pf-tipo').value = p.tipo;
+  document.getElementById('pf-proveedor').value = p.proveedor;
+  document.getElementById('pf-cant-sol').value = p.cantSol || '';
+  document.getElementById('pf-cant-rec').value = p.cantRec || '';
+  document.getElementById('pf-fecha-rec').value = pedISOFromDisplay(p.fechaRec);
+  document.getElementById('pf-estado').value = p.estado;
+  document.getElementById('pf-original').value = p.original;
+  document.getElementById('pf-ot').value = p.ot;
+  document.getElementById('pf-costo').value = p.costo || '';
+  document.getElementById('pf-urgencia').value = p.urgencia;
+  document.getElementById('pf-obs').value = p.obs;
+  document.getElementById('pf-edit-id').value = 'Editando fila '+rowIndex;
+  pedSetStar(p.calidad||0);
+  pedEditRowIndex = rowIndex;
+  document.getElementById('ped-form-panel').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function pedISOFromDisplay(disp){
+  if(!disp) return '';
+  const p = disp.split('/');
+  if(p.length<3) return '';
+  return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+}
+
+function pedEliminar(rowIndex){
+  if(!confirm('¿Eliminar este pedido de la vista local? (No se borra del Sheet hasta sincronizar)')) return;
+  G.pedidos = G.pedidos.filter(p=>p.rowIndex!==rowIndex);
+  renderPedidosPage();
+}
+
+async function pedGuardarSheet(){
+  if(!PEDIDOS_WEBAPP_URL){
+    alert('⚠️ Falta configurar PEDIDOS_WEBAPP_URL.\n\nPara escribir en Google Sheets desde el navegador necesitás publicar un Google Apps Script como "Web App" vinculado a tu planilla, y pegar esa URL en la constante PEDIDOS_WEBAPP_URL del código (ver instrucciones al pie de esta página).\n\nMientras tanto, podés usar "AGREGAR A LA VISTA" para verlo localmente, y cargar los datos directamente en la hoja PEDIDOS de tu Google Sheet.');
+    return;
+  }
+  const d = pedLeerForm();
+  if(!pedValidarForm(d)) return;
+  try{
+    setStatus('loading','⏳ Guardando en Sheet...');
+    const payload = { action: pedEditRowIndex ? 'update' : 'append', rowIndex: pedEditRowIndex, data: d };
+    await fetch(PEDIDOS_WEBAPP_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(payload) });
+    setStatus('ok','✅ Pedido guardado. Sincronizando...');
+    pedLimpiarForm();
+    await loadPedidos();
+  }catch(e){
+    console.error(e);
+    setStatus('err','❌ Error al guardar: '+e.message);
+  }
+}
+
+function buildChartPedEspera(){
+  const porProv = {};
+  G.pedidos.forEach(p=>{
+    const d = pedDiasEspera(p);
+    if(d===null || !p.proveedor) return;
+    if(!porProv[p.proveedor]) porProv[p.proveedor] = [];
+    porProv[p.proveedor].push(d);
+  });
+  const labels = Object.keys(porProv);
+  const values = labels.map(k=>Math.round(porProv[k].reduce((a,b)=>a+b,0)/porProv[k].length));
+  mkChart('ch-ped-espera',{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:values.map(v=>v>15?C.red:v>7?C.amber:C.green),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+' días promedio'}}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:9},callback:v=>v+'d'},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
+}
+function buildChartPedEstado(){
+  const counts = {};
+  G.pedidos.forEach(p=>{counts[p.estado]=(counts[p.estado]||0)+1;});
+  const labels = Object.keys(counts);
+  const colorMap = {'Pendiente':C.amber,'En tránsito':C.blue,'Recibido completo':C.green,'Recibido parcial':C.orange,'Rechazado':C.red};
+  mkChart('ch-ped-estado',{type:'doughnut',data:{labels,datasets:[{data:labels.map(k=>counts[k]),backgroundColor:labels.map(l=>colorMap[l]||C.purple),borderColor:'#0b1118',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:pluginDef}});
+}
+function buildChartPedTipo(){
+  const counts = {};
+  G.pedidos.forEach(p=>{counts[p.tipo]=(counts[p.tipo]||0)+1;});
+  const labels = Object.keys(counts);
+  mkChart('ch-ped-tipo',{type:'bar',data:{labels,datasets:[{data:labels.map(k=>counts[k]),backgroundColor:'rgba(0,170,255,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:scalesDef}});
+}
+function buildChartPedProvStar(){
+  const porProv = {};
+  G.pedidos.forEach(p=>{
+    if(!p.proveedor || !p.calidad) return;
+    if(!porProv[p.proveedor]) porProv[p.proveedor]=[];
+    porProv[p.proveedor].push(p.calidad);
+  });
+  const labels = Object.keys(porProv);
+  const values = labels.map(k=>parseFloat((porProv[k].reduce((a,b)=>a+b,0)/porProv[k].length).toFixed(1)));
+  mkChart('ch-ped-prov-star',{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:values.map(v=>v>=4?C.green:v>=3?C.amber:C.red),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+' / 5'}}},scales:{x:{max:5,ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
+}
+function renderProveedorRanking(){
+  const el = document.getElementById('ped-prov-ranking');
+  if(!el) return;
+  const porProv = {};
+  G.pedidos.forEach(p=>{
+    if(!p.proveedor) return;
+    if(!porProv[p.proveedor]) porProv[p.proveedor] = {pedidos:0, calidadSum:0, calidadCount:0, esperaSum:0, esperaCount:0, originales:0, genericos:0};
+    const pr = porProv[p.proveedor];
+    pr.pedidos++;
+    if(p.calidad>0){ pr.calidadSum+=p.calidad; pr.calidadCount++; }
+    const d = pedDiasEspera(p);
+    if(d!==null){ pr.esperaSum+=d; pr.esperaCount++; }
+    if(p.original==='Original') pr.originales++;
+    if(p.original==='Genérico') pr.genericos++;
+  });
+  const list = Object.entries(porProv).map(([nombre,pr])=>({
+    nombre,
+    pedidos: pr.pedidos,
+    calidadProm: pr.calidadCount ? (pr.calidadSum/pr.calidadCount) : 0,
+    esperaProm: pr.esperaCount ? Math.round(pr.esperaSum/pr.esperaCount) : null,
+    originales: pr.originales, genericos: pr.genericos,
+  })).sort((a,b)=>b.calidadProm-a.calidadProm || b.pedidos-a.pedidos);
+
+  if(!list.length){ el.innerHTML = '<div class="no-data" style="grid-column:1/-1">Sin proveedores registrados aún</div>'; return; }
+
+  el.innerHTML = list.map(r=>{
+    const fullStars = Math.round(r.calidadProm);
+    const starsHtml = r.calidadProm>0
+      ? '<span style="color:var(--amber);font-size:14px">'+('★'.repeat(fullStars))+'</span><span style="color:var(--txt3);font-size:14px">'+('★'.repeat(5-fullStars))+'</span>'
+      : '<span style="color:var(--txt3);font-size:11px">Sin calificar</span>';
+    return `<div class="ped-prov-card">
+      <div class="ped-prov-name">${r.nombre}</div>
+      <div class="ped-prov-stars-row">${starsHtml} ${r.calidadProm>0?'<span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--txt2);margin-left:4px">'+r.calidadProm.toFixed(1)+'</span>':''}</div>
+      <div class="ped-prov-stat">📦 ${r.pedidos} pedido${r.pedidos!==1?'s':''}</div>
+      <div class="ped-prov-stat">⏱️ ${r.esperaProm!==null ? r.esperaProm+' días promedio' : 'Sin datos de espera'}</div>
+      <div class="ped-prov-stat">${r.originales>0?'✅ '+r.originales+' orig.':''} ${r.genericos>0?'🔄 '+r.genericos+' genér.':''}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderPedidosPage(){
+  renderPedidosKPIs();
+  renderPedidosTable();
+  buildChartPedEspera();
+  buildChartPedEstado();
+  buildChartPedTipo();
+  buildChartPedProvStar();
+  renderProveedorRanking();
+  const dl = document.getElementById('pf-provlist');
+  if(dl){
+    const provs = [...new Set(G.pedidos.map(p=>p.proveedor).filter(Boolean))];
+    dl.innerHTML = provs.map(p=>`<option value="${p}">`).join('');
+  }
+}
 
 // ═══════════════════════════════════════════════════════
 //  CHART HELPERS
