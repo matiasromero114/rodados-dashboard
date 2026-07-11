@@ -1197,142 +1197,21 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 
   <!-- Nota de configuración Sheet -->
   <div class="ped-kpi-sheet-note">
-    📋 Los pedidos se leen desde la hoja <b style="color:var(--txt2)">"PEDIDOS"</b> de tu Google Sheet. Revisá las instrucciones de configuración al pie de esta página.
-    <button class="ped-sync-btn" onclick="loadPedidos()">⟳ SINCRONIZAR AHORA</button>
+    📋 Datos de la hoja <b style="color:var(--cyan)">PEDIDOS</b> de tu Google Sheet — solo lectura. Cargá los pedidos directamente en el Sheet y sincronizá acá.
+    <span style="color:var(--txt3)">▸ Para conectar: abrí la hoja PEDIDOS en el navegador, copiá el número del GID de la URL y pegalo en el código en <code style="color:var(--blue)">'PEDIDOS': 'GID_A_CONFIGURAR'</code></span>
+    <button class="ped-sync-btn" onclick="loadPedidos()">⟳ SINCRONIZAR</button>
   </div>
 
   <!-- KPIs -->
   <div class="slabel">KPIs — GESTIÓN DE PEDIDOS</div>
   <div class="kpi-row" id="kpi-pedidos"></div>
 
-  <!-- Formulario nuevo pedido -->
-  <div class="slabel">REGISTRAR NUEVO PEDIDO</div>
-  <div class="ped-form-panel" id="ped-form-panel">
-    <div class="ped-form-section-title">Datos del pedido</div>
-    <div class="ped-form-grid">
-      <div class="ped-field">
-        <label class="ped-label">N° Pedido Interno</label>
-        <input class="ped-input" id="pf-nro" placeholder="PED-2026-001">
-      </div>
-      <div class="ped-field">
-        <label class="ped-label">Fecha del Pedido</label>
-        <input class="ped-input" type="date" id="pf-fecha">
-      </div>
-      <div class="ped-field">
-        <label class="ped-label">Proveedor</label>
-        <input class="ped-input" id="pf-proveedor" placeholder="Nombre del proveedor" list="pf-provlist">
-        <datalist id="pf-provlist"></datalist>
-      </div>
-      <div class="ped-field">
-        <label class="ped-label">Urgencia</label>
-        <select class="ped-select" id="pf-urgencia">
-          <option value="Normal">Normal</option>
-          <option value="Urgente">🟠 Urgente</option>
-          <option value="Crítico">🔴 Crítico — Equipo parado</option>
-        </select>
-      </div>
-    </div>
-    <div class="ped-form-grid">
-      <div class="ped-field" style="grid-column:span 2">
-        <label class="ped-label">Descripción del Producto / Repuesto</label>
-        <input class="ped-input" id="pf-desc" placeholder="Ej: Filtro aceite motor Fleetguard LF9009">
-      </div>
-      <div class="ped-field">
-        <label class="ped-label">Para Máquina / Equipo</label>
-        <input class="ped-input" id="pf-maquina" placeholder="Ej: Lonking 01" list="pf-maqlist">
-        <datalist id="pf-maqlist">
-          <option value="Topadora Komatsu">
-          <option value="Lonking 01">
-          <option value="Lonking 02">
-          <option value="Toyota 45">
-          <option value="Toyota 30">
-          <option value="Doosan 40-01">
-          <option value="Doosan 40-02">
-          <option value="AXOR 2831 – TATU 052">
-          <option value="AXOR 2831 – TATU 365">
-          <option value="AXOR 2831 – TATU 319">
-          <option value="ATRON 1634S – NPO 265">
-          <option value="ATRON 2040S – HWC 507">
-          <option value="Flota general">
-        </datalist>
-      </div>
-      <div class="ped-field">
-        <label class="ped-label">Tipo de Producto</label>
-        <select class="ped-select" id="pf-tipo">
-          <option value="Repuesto">Repuesto</option>
-          <option value="Insumo">Insumo (aceite, filtro, grasa)</option>
-          <option value="Consumible">Consumible</option>
-          <option value="Herramienta">Herramienta</option>
-        </select>
-      </div>
-    </div>
-    <div class="ped-form-grid">
-      <div class="ped-field">
-        <label class="ped-label">Cant. Solicitada</label>
-        <input class="ped-input" type="number" id="pf-cant-sol" placeholder="0" min="1">
-      </div>
-      <div class="ped-field">
-        <label class="ped-label">Cant. Recibida</label>
-        <input class="ped-input" type="number" id="pf-cant-rec" placeholder="Vacío si pendiente" min="0">
-      </div>
-      <div class="ped-field">
-        <label class="ped-label">Fecha de Recepción</label>
-        <input class="ped-input" type="date" id="pf-fecha-rec">
-      </div>
-      <div class="ped-field">
-        <label class="ped-label">Estado del Pedido</label>
-        <select class="ped-select" id="pf-estado">
-          <option value="Pendiente">⏳ Pendiente</option>
-          <option value="En tránsito">🚚 En tránsito</option>
-          <option value="Recibido completo">✅ Recibido completo</option>
-          <option value="Recibido parcial">⚠️ Recibido parcial</option>
-          <option value="Rechazado">❌ Rechazado</option>
-        </select>
-      </div>
-    </div>
-    <div class="ped-form-grid">
-      <div class="ped-field">
-        <label class="ped-label">Marca Original</label>
-        <select class="ped-select" id="pf-original">
-          <option value="Original">✅ Original / OEM</option>
-          <option value="Genérico">🔄 Genérico / Aftermarket</option>
-          <option value="No aplica">— No aplica</option>
-        </select>
-      </div>
-      <div class="ped-field">
-        <label class="ped-label">Calidad del Proveedor</label>
-        <div class="ped-stars" id="pf-stars-container">
-          <span class="ped-star" data-v="1" onclick="pedSetStar(1)">★</span>
-          <span class="ped-star" data-v="2" onclick="pedSetStar(2)">★</span>
-          <span class="ped-star" data-v="3" onclick="pedSetStar(3)">★</span>
-          <span class="ped-star" data-v="4" onclick="pedSetStar(4)">★</span>
-          <span class="ped-star" data-v="5" onclick="pedSetStar(5)">★</span>
-        </div>
-      </div>
-      <div class="ped-field">
-        <label class="ped-label">N° OT Relacionada</label>
-        <input class="ped-input" id="pf-ot" placeholder="OT-2026-xxx (opcional)">
-      </div>
-      <div class="ped-field">
-        <label class="ped-label">Costo Total (ARS)</label>
-        <input class="ped-input" type="number" id="pf-costo" placeholder="0">
-      </div>
-    </div>
-    <div class="ped-form-grid-2">
-      <div class="ped-field">
-        <label class="ped-label">Observaciones de Calidad / Recepción</label>
-        <input class="ped-input" id="pf-obs" placeholder="Ej: Llegó con embalaje roto, marca diferente a la solicitada...">
-      </div>
-      <div style="display:flex;flex-direction:column;gap:5px">
-        <label class="ped-label">Estado de edición</label>
-        <input class="ped-input" id="pf-edit-id" readonly placeholder="— nuevo pedido —" style="opacity:0.5">
-      </div>
-    </div>
-    <div class="ped-form-actions">
-      <button class="ped-btn-cancel" onclick="pedCancelEdit()">✕ CANCELAR</button>
-      <button class="ped-btn-save" onclick="pedGuardarSheet()">💾 GUARDAR EN SHEET</button>
-      <button class="ped-btn-add" onclick="pedAgregarLocal()">➕ AGREGAR A LA VISTA</button>
-    </div>
+  <!-- Buscador rápido por N° interno -->
+  <div class="slabel">BÚSQUEDA RÁPIDA POR N° INTERNO</div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <input class="ped-input" id="ped-nro-search" placeholder="Ej: PC - 7636" style="width:200px" oninput="pedFiltrarPorNro(this.value)">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3)">Filtra todos los ítems de un pedido por su número interno</span>
+    <button class="ped-btn-cancel" style="margin-left:auto" onclick="document.getElementById('ped-nro-search').value='';pedFiltrarPorNro('')">✕ LIMPIAR</button>
   </div>
 
   <!-- Tabla de pedidos -->
@@ -1347,26 +1226,22 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
       <button class="fbtn fr"  onclick="filterPedidos('Rechazado',this)">❌ RECHAZADOS</button>
       <input class="fsearch" id="ped-search" placeholder="Buscar pedido, máquina, proveedor..." oninput="renderPedidosTable()">
     </div>
-    <div style="min-width:1300px">
+    <div style="min-width:1200px">
       <table>
         <thead>
           <tr>
-            <th>N° PEDIDO</th>
+            <th>N° INTERNO</th>
             <th>FECHA PED.</th>
-            <th>DESCRIPCIÓN</th>
-            <th>MÁQUINA</th>
+            <th>DESCRIPCIÓN PEDIDO</th>
+            <th>ÍTEM / PRODUCTO</th>
+            <th>MÁQUINA / EQUIPO</th>
             <th>TIPO</th>
             <th>PROVEEDOR</th>
-            <th>CANT. SOL.</th>
-            <th>CANT. REC.</th>
+            <th>CANT.</th>
+            <th>URGENCIA</th>
             <th>TIEMPO ESPERA</th>
-            <th>COMPLETO</th>
+            <th>FECHA RECEP.</th>
             <th>ESTADO</th>
-            <th>ORIG./GENÉR.</th>
-            <th>CALIDAD</th>
-            <th>COSTO ARS</th>
-            <th>OBS.</th>
-            <th>ACCIONES</th>
           </tr>
         </thead>
         <tbody id="ped-tbody"></tbody>
@@ -1381,8 +1256,8 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     <div class="ccard"><div class="ctitle">Pedidos por Estado <span class="cbadge">DISTRIBUCIÓN</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-estado"></canvas></div></div>
   </div>
   <div class="charts2">
-    <div class="ccard"><div class="ctitle">Pedidos por Tipo de Producto <span class="cbadge">CANTIDAD</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-tipo"></canvas></div></div>
-    <div class="ccard"><div class="ctitle">Calificación Promedio por Proveedor <span class="cbadge">1-5</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-prov-star"></canvas></div></div>
+    <div class="ccard"><div class="ctitle">Ítems por Tipo de Producto <span class="cbadge">CANTIDAD</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-tipo"></canvas></div></div>
+    <div class="ccard"><div class="ctitle">Ítems por Proveedor <span class="cbadge">TOP 10</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-prov-star"></canvas></div></div>
   </div>
 
   <!-- Ranking proveedores -->
@@ -1390,15 +1265,10 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <div class="ped-prov-ranking" id="ped-prov-ranking"></div>
 
   <!-- Instrucciones de configuración -->
-  <div class="slabel">CONFIGURACIÓN — CÓMO CONECTAR ESTA PESTAÑA A TU GOOGLE SHEET</div>
+  <div class="slabel">CÓMO CONECTAR AL SHEET</div>
   <div class="ccard" style="margin-bottom:24px;font-size:12px;line-height:1.8;color:var(--txt2)">
-    <p style="margin-bottom:10px"><b style="color:var(--txt1)">Paso 1 — Crear la hoja:</b> en tu Google Sheet (el mismo SHEET ID que usás arriba), creá una hoja nueva llamada exactamente <code style="color:var(--cyan)">PEDIDOS</code> con esta fila de encabezados en la fila 1:</p>
-    <p style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--blue);background:var(--bg1);padding:10px;border-radius:4px;margin-bottom:10px;overflow-x:auto;white-space:nowrap">
-      Nro Pedido | Fecha Pedido | Descripcion | Maquina | Tipo | Proveedor | Cant Solicitada | Cant Recibida | Fecha Recepcion | Estado | Original/Generico | Calidad | OT | Costo ARS | Urgencia | Observaciones
-    </p>
-    <p style="margin-bottom:10px"><b style="color:var(--txt1)">Paso 2 — Obtener el GID:</b> abrí esa hoja en el navegador, mirá la URL (termina en <code style="color:var(--cyan)">#gid=XXXXXXX</code>) y copiá ese número en el código, dentro del objeto <code style="color:var(--cyan)">SHEET_GIDS</code>, en la línea <code style="color:var(--cyan)">'PEDIDOS': 'GID_A_CONFIGURAR'</code>.</p>
-    <p style="margin-bottom:10px"><b style="color:var(--txt1)">Paso 3 — Lectura:</b> con eso ya alcanza para que esta pestaña <b style="color:var(--green)">lea</b> los pedidos que cargues manualmente en la hoja de Sheets (clic en "⟳ SINCRONIZAR AHORA").</p>
-    <p><b style="color:var(--txt1)">Paso 4 — Escritura (opcional):</b> para que el botón "💾 GUARDAR EN SHEET" escriba directamente desde el dashboard, hay que publicar un <b>Google Apps Script</b> como Web App vinculado a tu planilla y pegar esa URL en la constante <code style="color:var(--cyan)">PEDIDOS_WEBAPP_URL</code> del código. Si preferís, también podés seguir cargando los pedidos directamente en la hoja de Sheets y usar este dashboard solo para visualizar — funciona igual.</p>
+    <p><b style="color:var(--txt1)">Un solo paso:</b> abrí la hoja <b style="color:var(--cyan)">PEDIDOS</b> en el navegador, mirá la URL — termina en <code style="color:var(--cyan)">#gid=XXXXXXX</code>. Copiá ese número y pegalo en el código del dashboard, en el objeto <code style="color:var(--cyan)">SHEET_GIDS</code>, reemplazando <code style="color:var(--amber)">'GID_A_CONFIGURAR'</code> por ese número. Guardá el archivo y recargá. Listo.</p>
+    <p style="margin-top:8px">Las columnas del sheet que se leen son: <code style="color:var(--blue);font-size:10px">Nº INTERNO · FECHA PEDIDO · FECHA RECEPCION · DESCRIPCION · MAQUINA/EQUIPO · DESCRIPCION ITEM · CANTIDAD · URGENCIA · ESTADO · TIPO PRODUCTO · PROVEEDOR</code></p>
   </div>
 </div>
 
@@ -1515,7 +1385,7 @@ const SHEET_NAMES = {
   viajes:               'CONTROL VIAJES CAM',
   checklistPalas:       'CHECKLIST PALAS',
   checklistAut:         'CHECKLIST AUTOELEVADORES',
-  pedidos:               'PEDIDOS',
+  pedidos:               'PEDIDOS',   // nombre exacto de tu hoja en el Sheet
 };
 
 const SERVICES_SHEET_ID = '1JBqizva8iWP_FF_XpBlr3aAGrz3-JaXOwNiuPuybcxg';
@@ -1534,7 +1404,7 @@ const SHEET_GIDS = {
   'CONTROL VIAJES CAM':           '1170616663',
   'CHECKLIST PALAS':              '1743129799',
   'CHECKLIST AUTOELEVADORES':     '1958650087',
-  'PEDIDOS':                      '1563471949',
+  'PEDIDOS':                      'GID_A_CONFIGURAR',
 };
 
 let G = {
@@ -1822,56 +1692,96 @@ function parseViajes(rows) {
 }
 
 // ── PEDIDOS PARSER ──
-// Columnas esperadas en hoja "PEDIDOS" (fila 1 = encabezados):
-// Nro Pedido | Fecha Pedido | Descripcion | Maquina | Tipo | Proveedor | Cant Solicitada |
-// Cant Recibida | Fecha Recepcion | Estado | Original/Generico | Calidad | OT | Costo ARS | Urgencia | Observaciones
+// Columnas reales del sheet PEDIDOS:
+// Col 0: Nº INTERNO | Col 1: FECHA PEDIDO | Col 2: FECHA RECEPCION | Col 3: DESCRIPCION
+// Col 4: MAQUINA/EQUIPO | Col 5: DESCRIPCION ITEM | Col 6: CANTIDAD
+// Col 7: URGENCIA | Col 8: ESTADO | Col 9: TIPO PRODUCTO | Col 10: PROVEEDOR
 function parsePedidos(rows){
   if(!rows || rows.length < 2) return [];
-  const headers = rows[0].map(h=>(h||'').trim().toUpperCase());
+  const headers = rows[0].map(h=>(h||'').replace(/\n/g,' ').trim().toUpperCase());
   const fi = names => { for(const n of names){ const i = headers.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
-  const iNro    = fi(['NRO','N° PEDIDO','NUMERO','PEDIDO']);
-  const iFecha  = fi(['FECHA PEDIDO','FECHA PED']);
-  const iDesc   = fi(['DESCRIPCION','DESCRIPCI']);
-  const iMaq    = fi(['MAQUINA','MÁQUINA','EQUIPO']);
-  const iTipo   = fi(['TIPO']);
-  const iProv   = fi(['PROVEEDOR']);
-  const iCantS  = fi(['CANT SOLICITADA','CANT. SOL','SOLICITADA']);
-  const iCantR  = fi(['CANT RECIBIDA','CANT. REC','RECIBIDA']);
-  const iFechaR = fi(['FECHA RECEPCION','FECHA RECEPCIÓN','FECHA REC']);
-  const iEstado = fi(['ESTADO']);
-  const iOrig   = fi(['ORIGINAL','GENERICO','GENÉRICO']);
-  const iCalid  = fi(['CALIDAD']);
-  const iOT     = fi(['OT']);
-  const iCosto  = fi(['COSTO']);
-  const iUrg    = fi(['URGENCIA']);
-  const iObs    = fi(['OBSERVACION','OBSERVACI']);
+
+  // mapeo por nombre de columna, con fallback posicional
+  const iNro    = fi(['INTERNO','NRO','PEDIDO']);            // 0
+  const iFecha  = fi(['FECHA PEDIDO','FECHA PED']);           // 1
+  const iFechaR = fi(['FECHA RECEPCION','RECEPCION']);        // 2
+  const iDescPed= fi(['DESCRIPCION']) !== -1 ? fi(['DESCRIPCION']) : 3; // 3 — descripcion del pedido
+  const iMaq    = fi(['MAQUINA','EQUIPO']);                   // 4
+  const iItem   = fi(['DESCRIPCION ITEM','ITEM']);            // 5 — descripción del ítem específico
+  const iCant   = fi(['CANTIDAD','CANT']);                    // 6
+  const iUrg    = fi(['URGENCIA']);                           // 7
+  const iEstado = fi(['ESTADO']);                             // 8
+  const iTipo   = fi(['TIPO PRODUCTO','TIPO']);               // 9
+  const iProv   = fi(['PROVEEDOR']);                          // 10
+
+  // Si hay dos columnas que matchean DESCRIPCION, la primera es del pedido (col 3) y la segunda es del ítem (col 5)
+  // Forzamos posicional como fallback seguro
+  const colNro    = iNro    >= 0 ? iNro    : 0;
+  const colFecha  = iFecha  >= 0 ? iFecha  : 1;
+  const colFechaR = iFechaR >= 0 ? iFechaR : 2;
+  const colDescPed= 3;
+  const colMaq    = iMaq    >= 0 ? iMaq    : 4;
+  const colItem   = iItem   >= 0 ? iItem   : 5;
+  const colCant   = iCant   >= 0 ? iCant   : 6;
+  const colUrg    = iUrg    >= 0 ? iUrg    : 7;
+  const colEstado = iEstado >= 0 ? iEstado : 8;
+  const colTipo   = iTipo   >= 0 ? iTipo   : 9;
+  const colProv   = iProv   >= 0 ? iProv   : 10;
+
+  // Normalizar urgencia al formato visual
+  function normUrg(raw){
+    const u = (raw||'').trim().toUpperCase();
+    if(u.includes('CRIT')) return 'Crítico';
+    if(u.includes('ALT'))  return 'Urgente';
+    if(u.includes('MED'))  return 'Normal';
+    return 'Normal';
+  }
+  // Determinar estado: si tiene fecha recepción → recibido, si no → pendiente
+  function normEstado(raw, fechaRec){
+    const s = (raw||'').trim();
+    if(s) return s;
+    return fechaRec ? 'Recibido completo' : 'Pendiente';
+  }
+  // Derivar tipo de producto desde descripción si la columna está vacía
+  function normTipo(raw, desc){
+    if(raw && raw.trim()) return raw.trim();
+    const d = (desc||'').toUpperCase();
+    if(/ACEITE|GRASA|FLUIDO|HIDRAUL/.test(d)) return 'Insumo';
+    if(/FILTRO|CORREA|RODAMIENTO|RETEN|BULON|ARANDELA|VALVULA|MANGUERA|FARO|LAMPARA|BATERIA/.test(d)) return 'Repuesto';
+    if(/MANO DE OBRA|REPARACION|INSTALACION|SERVICE/.test(d)) return 'Servicio';
+    return 'Repuesto';
+  }
 
   const out = [];
-  for(let i=1;i<rows.length;i++){
+  for(let i=1; i<rows.length; i++){
     const r = rows[i];
-    const nro = (r[iNro>=0?iNro:0]||'').trim();
+    const nro = (r[colNro]||'').trim();
     if(!nro) continue;
-    const cantSol = parseFloat((r[iCantS]||'0').replace(',','.'))||0;
-    const cantRec = parseFloat((r[iCantR]||'0').replace(',','.'))||0;
-    const costo = parseFloat((r[iCosto]||'0').replace(/[^0-9.-]/g,''))||0;
-    const calidad = parseInt(r[iCalid])||0;
+    const fechaRec = (r[colFechaR]||'').trim();
+    const descItem = (r[colItem]||'').trim();
+    const descPed  = (r[colDescPed]||'').trim();
+    const urgRaw   = (r[colUrg]||'').trim();
+    const cant     = parseFloat((r[colCant]||'0').replace(',','.'))||0;
     out.push({
       rowIndex: i+1,
       nro,
-      fecha: (r[iFecha]||'').trim(),
-      desc: (r[iDesc]||'').trim(),
-      maquina: (r[iMaq]||'').trim(),
-      tipo: (r[iTipo]||'Repuesto').trim(),
-      proveedor: (r[iProv]||'').trim(),
-      cantSol, cantRec,
-      fechaRec: (r[iFechaR]||'').trim(),
-      estado: (r[iEstado]||'Pendiente').trim(),
-      original: (r[iOrig]||'No aplica').trim(),
-      calidad,
-      ot: (r[iOT]||'').trim(),
-      costo,
-      urgencia: (r[iUrg]||'Normal').trim(),
-      obs: (r[iObs]||'').trim(),
+      fecha:    (r[colFecha]||'').trim(),
+      fechaRec,
+      descPed,                          // descripcion general del pedido
+      desc:     descItem || descPed,    // lo que se muestra en tabla: ítem específico
+      maquina:  (r[colMaq]||'').trim(),
+      tipo:     normTipo(r[colTipo], descItem),
+      proveedor:(r[colProv]||'').trim(),
+      cantSol:  cant,
+      cantRec:  fechaRec ? cant : 0,    // si llegó, asumimos completo salvo que haya campo
+      estado:   normEstado(r[colEstado], fechaRec),
+      urgencia: normUrg(urgRaw),
+      urgRaw,                           // para mostrar el texto original
+      original: 'No aplica',
+      calidad:  0,
+      ot:       '',
+      costo:    0,
+      obs:      '',
     });
   }
   return out;
@@ -2445,11 +2355,17 @@ let pedEditRowIndex = null;
 // URL de Web App de Google Apps Script — pegá la tuya para habilitar el guardado directo desde acá
 const PEDIDOS_WEBAPP_URL = '';
 
-function pedSetStar(v){
-  pedSelectedStar = v;
-  document.querySelectorAll('#pf-stars-container .ped-star').forEach(s=>{
-    s.classList.toggle('on', parseInt(s.dataset.v) <= v);
-  });
+function pedSetStar(v){ pedSelectedStar = v; } // kept for compat
+
+function pedFiltrarPorNro(val){
+  const v = val.trim().toUpperCase();
+  // Si hay un valor, forzamos filtro por ese nro
+  if(v){
+    const filtered = G.pedidos.filter(p=>p.nro.toUpperCase().includes(v));
+    renderPedidosTableDirect(filtered);
+  } else {
+    renderPedidosTable();
+  }
 }
 
 async function loadPedidos(){
@@ -2493,25 +2409,24 @@ function renderPedidosKPIs(){
   const data = G.pedidos;
   const el = document.getElementById('kpi-pedidos');
   if(!el) return;
-  if(!data.length){ el.innerHTML = '<div style="grid-column:1/-1" class="no-data">Sin pedidos cargados. Registrá el primero abajo o conectá la hoja PEDIDOS.</div>'; return; }
-  const total = data.length;
-  const pendientes = data.filter(p=>p.estado==='Pendiente').length;
-  const transito = data.filter(p=>p.estado==='En tránsito').length;
-  const completos = data.filter(p=>p.estado==='Recibido completo').length;
-  const parciales = data.filter(p=>p.estado==='Recibido parcial').length;
-  const rechazados = data.filter(p=>p.estado==='Rechazado').length;
-  const esperas = data.map(p=>pedDiasEspera(p)).filter(d=>d!==null);
+  if(!data.length){ el.innerHTML = '<div style="grid-column:1/-1" class="no-data">Sin pedidos cargados. Sincronizá la hoja PEDIDOS.</div>'; return; }
+  const totalItems = data.length;
+  // Pedidos únicos por N° interno
+  const nrosUnicos = new Set(data.map(p=>p.nro)).size;
+  const pendientes = data.filter(p=>/pendiente/i.test(p.estado)).length;
+  const recibidos  = data.filter(p=>/recibido/i.test(p.estado)).length;
+  const criticos   = data.filter(p=>p.urgencia==='Crítico').length;
+  const urgentes   = data.filter(p=>p.urgencia==='Urgente').length;
+  const proveedores = new Set(data.map(p=>p.proveedor).filter(Boolean)).size;
+  const esperas = data.map(p=>pedDiasEspera(p)).filter(d=>d!==null&&d>0);
   const esperaProm = esperas.length ? Math.round(esperas.reduce((a,b)=>a+b,0)/esperas.length) : 0;
-  const costoTotal = data.reduce((s,p)=>s+(p.costo||0),0);
-  const calidades = data.filter(p=>p.calidad>0).map(p=>p.calidad);
-  const calidadProm = calidades.length ? (calidades.reduce((a,b)=>a+b,0)/calidades.length).toFixed(1) : '—';
   el.innerHTML =
-    kpiCard('TOTAL PEDIDOS', total, `${costoTotal>0?fmtARS(costoTotal):'—'}`, 'kc-b') +
-    kpiCard('⏳ PENDIENTES', pendientes, 'Sin confirmar', 'kc-a') +
-    kpiCard('🚚 EN TRÁNSITO', transito, 'En camino', 'kc-c') +
-    kpiCard('✅ COMPLETOS', completos, `${parciales} parciales · ${rechazados} rechazados`, 'kc-g') +
-    kpiCard('⏱️ ESPERA PROMEDIO', esperaProm+' días', 'Desde pedido a recepción', esperaProm>10?'kc-r':'kc-g') +
-    kpiCard('⭐ CALIDAD PROMEDIO', calidadProm, 'Proveedores evaluados', 'kc-p');
+    kpiCard('N° INTERNOS ÚNICOS', nrosUnicos, totalItems+' ítems en total', 'kc-b') +
+    kpiCard('⏳ PENDIENTES DE RECEPCIÓN', pendientes, 'Sin fecha de recepción', 'kc-a') +
+    kpiCard('✅ ÍTEMS RECIBIDOS', recibidos, 'Con fecha de recepción', 'kc-g') +
+    kpiCard('🔴 CRÍTICOS / 🟠 URGENTES', criticos+' / '+urgentes, 'Por nivel de urgencia', 'kc-r') +
+    kpiCard('⏱️ ESPERA PROMEDIO', esperaProm ? esperaProm+' días' : '—', 'Pedido → recepción', esperaProm>10?'kc-r':'kc-c') +
+    kpiCard('🏭 PROVEEDORES', proveedores, 'Distintos en el período', 'kc-p');
 }
 
 function filterPedidos(f, btn){
@@ -2533,47 +2448,55 @@ function renderPedidosTable(){
     const da = pedParseFechaDMY(a.fecha), db = pedParseFechaDMY(b.fecha);
     return (db?db.getTime():0) - (da?da.getTime():0);
   });
-  if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="16" class="no-data">Sin pedidos en esta categoría</td></tr>'; return; }
+  if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="12" class="no-data">Sin pedidos en esta categoría</td></tr>'; return; }
 
-  const tipoClsMap = {Repuesto:'ped-tipo-repuesto', Insumo:'ped-tipo-insumo', Herramienta:'ped-tipo-herramienta', Consumible:'ped-tipo-consumible'};
+  const tipoClsMap = {Repuesto:'ped-tipo-repuesto', Insumo:'ped-tipo-insumo', Herramienta:'ped-tipo-herramienta', Consumible:'ped-tipo-consumible', Servicio:'ped-tipo-consumible'};
   const estadoPillMap = {
     'Pendiente':{cls:'p-a',lbl:'⏳ Pendiente'},
     'En tránsito':{cls:'p-a',lbl:'🚚 En tránsito'},
-    'Recibido completo':{cls:'p-g',lbl:'✅ Completo'},
+    'Recibido completo':{cls:'p-g',lbl:'✅ Recibido'},
     'Recibido parcial':{cls:'p-a',lbl:'⚠️ Parcial'},
     'Rechazado':{cls:'p-r',lbl:'❌ Rechazado'},
   };
+  // Urgencia: mapear texto original del sheet (BAJO/MEDIO/ALTO/CRITICO)
+  function urgBadge(p){
+    const u = (p.urgRaw||p.urgencia||'').trim().toUpperCase();
+    if(u.includes('CRIT')) return `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:2px;background:rgba(255,61,61,0.12);color:var(--red);border:1px solid rgba(255,61,61,0.3)">🔴 CRÍTICO</span>`;
+    if(u.includes('ALT'))  return `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:2px;background:rgba(255,110,64,0.12);color:var(--orange);border:1px solid rgba(255,110,64,0.3)">🟠 ALTO</span>`;
+    if(u.includes('MED'))  return `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:2px;background:rgba(255,193,7,0.1);color:var(--amber);border:1px solid rgba(255,193,7,0.25)">🟡 MEDIO</span>`;
+    return `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:2px;background:rgba(106,146,176,0.08);color:var(--txt2);border:1px solid var(--border)">⬇ BAJO</span>`;
+  }
   tbody.innerHTML = filtered.map(p=>{
     const tCls = tipoClsMap[p.tipo] || 'ped-tipo-repuesto';
     const eMap = estadoPillMap[p.estado] || {cls:'p-a',lbl:p.estado};
-    const completo = p.cantRec >= p.cantSol && p.cantSol > 0;
-    const completoIco = p.cantSol===0 ? '—' : (completo ? '<span class="ped-completo-si">✅</span>' : (p.cantRec>0 ? '<span class="ped-completo-no">⚠️</span>' : '<span style="color:var(--txt3)">—</span>'));
-    const origCls = p.original==='Original' ? 'ped-original-si' : (p.original==='Genérico' ? 'ped-original-no' : '');
-    const origLbl = p.original==='Original' ? '✅ Original' : (p.original==='Genérico' ? '🔄 Genérico' : '—');
-    const stars = p.calidad>0 ? '⭐'.repeat(p.calidad)+'<span style="color:var(--txt3)">'+'☆'.repeat(5-p.calidad)+'</span>' : '<span style="color:var(--txt3)">— sin calificar</span>';
-    const urgIco = p.urgencia==='Crítico' ? '🔴 ' : (p.urgencia==='Urgente' ? '🟠 ' : '');
+    // Truncar descripción del pedido para que no ocupe demasiado
+    const descPedShort = p.descPed && p.descPed.length > 60 ? p.descPed.substring(0,58)+'…' : (p.descPed||'—');
     return `<tr>
-      <td><div class="uname" style="font-size:12px">${urgIco}${p.nro}</div></td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${p.fecha||'—'}</td>
-      <td class="obs" style="max-width:220px">${p.desc||'—'}</td>
-      <td><span class="stag">${p.maquina||'—'}</span></td>
+      <td><div class="uname" style="font-size:12px;letter-spacing:0.5px">${p.nro}</div></td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2);white-space:nowrap">${p.fecha||'—'}</td>
+      <td class="obs" style="max-width:200px;font-size:10px;color:var(--txt3)" title="${p.descPed||''}">${descPedShort}</td>
+      <td class="obs" style="max-width:240px;font-size:11px;color:var(--txt1)">${p.desc||'—'}</td>
+      <td><span class="stag" style="font-size:8px">${p.maquina||'—'}</span></td>
       <td><span class="ped-tipo-badge ${tCls}">${p.tipo}</span></td>
-      <td style="font-size:11px;color:var(--txt2)">${p.proveedor||'—'}</td>
-      <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px">${p.cantSol||'—'}</td>
-      <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:${p.cantRec>0?'var(--cyan)':'var(--txt3)'}">${p.cantRec||'—'}</td>
+      <td style="font-size:10px;color:var(--txt2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.proveedor||''}">${p.proveedor||'<span style="color:var(--txt3);font-style:italic">Sin asignar</span>'}</td>
+      <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--cyan)">${p.cantSol||'—'}</td>
+      <td>${urgBadge(p)}</td>
       <td>${pedEsperaBadge(p)}</td>
-      <td style="text-align:center">${completoIco}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${p.fechaRec?'var(--green)':'var(--txt3)'};white-space:nowrap">${p.fechaRec||'—'}</td>
       <td><span class="pill ${eMap.cls}">${eMap.lbl}</span></td>
-      <td class="${origCls}">${origLbl}</td>
-      <td style="font-size:11px;white-space:nowrap">${stars}</td>
-      <td style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--blue)">${p.costo>0?fmtARS(p.costo):'—'}</td>
-      <td class="obs" style="max-width:180px">${p.obs||'<span class="obs-none">Sin observaciones</span>'}</td>
-      <td><div class="ped-row-actions">
-        <button class="ped-btn-edit" onclick="pedEditar(${p.rowIndex})">✎ Editar</button>
-        <button class="ped-btn-del" onclick="pedEliminar(${p.rowIndex})">✕</button>
-      </div></td>
     </tr>`;
   }).join('');
+}
+
+// Renderiza directamente con un array ya filtrado (para búsqueda por N° interno)
+function renderPedidosTableDirect(data){
+  const tbody = document.getElementById('ped-tbody');
+  if(!tbody) return;
+  // reusar la misma lógica de render con datos pre-filtrados
+  const backup = G.pedidos;
+  G.pedidos = data;
+  renderPedidosTable();
+  G.pedidos = backup;
 }
 
 function pedLeerForm(){
@@ -2707,65 +2630,68 @@ function buildChartPedEspera(){
   mkChart('ch-ped-espera',{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:values.map(v=>v>15?C.red:v>7?C.amber:C.green),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+' días promedio'}}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:9},callback:v=>v+'d'},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
 }
 function buildChartPedEstado(){
-  const counts = {};
-  G.pedidos.forEach(p=>{counts[p.estado]=(counts[p.estado]||0)+1;});
-  const labels = Object.keys(counts);
-  const colorMap = {'Pendiente':C.amber,'En tránsito':C.blue,'Recibido completo':C.green,'Recibido parcial':C.orange,'Rechazado':C.red};
-  mkChart('ch-ped-estado',{type:'doughnut',data:{labels,datasets:[{data:labels.map(k=>counts[k]),backgroundColor:labels.map(l=>colorMap[l]||C.purple),borderColor:'#0b1118',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:pluginDef}});
+  // Estado: recibido vs pendiente (derivado de fecha recepción)
+  const recibidos = G.pedidos.filter(p=>p.fechaRec).length;
+  const pendientes = G.pedidos.filter(p=>!p.fechaRec).length;
+  mkChart('ch-ped-estado',{type:'doughnut',data:{labels:['Recibidos','Pendientes de recepción'],datasets:[{data:[recibidos,pendientes],backgroundColor:[C.green,C.amber],borderColor:'#0b1118',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:pluginDef}});
 }
 function buildChartPedTipo(){
+  // Ítems por tipo derivado
   const counts = {};
   G.pedidos.forEach(p=>{counts[p.tipo]=(counts[p.tipo]||0)+1;});
-  const labels = Object.keys(counts);
-  mkChart('ch-ped-tipo',{type:'bar',data:{labels,datasets:[{data:labels.map(k=>counts[k]),backgroundColor:'rgba(0,170,255,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:scalesDef}});
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const COLORS=['rgba(0,170,255,0.7)','rgba(0,229,204,0.7)','rgba(255,193,7,0.7)','rgba(179,136,255,0.7)'];
+  mkChart('ch-ped-tipo',{type:'bar',data:{labels:sorted.map(e=>e[0]),datasets:[{data:sorted.map(e=>e[1]),backgroundColor:COLORS,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>v}},scales:scalesDef}});
 }
 function buildChartPedProvStar(){
-  const porProv = {};
+  // Pedidos por proveedor (cantidad de ítems)
+  const counts = {};
   G.pedidos.forEach(p=>{
-    if(!p.proveedor || !p.calidad) return;
-    if(!porProv[p.proveedor]) porProv[p.proveedor]=[];
-    porProv[p.proveedor].push(p.calidad);
+    if(!p.proveedor) return;
+    counts[p.proveedor]=(counts[p.proveedor]||0)+1;
   });
-  const labels = Object.keys(porProv);
-  const values = labels.map(k=>parseFloat((porProv[k].reduce((a,b)=>a+b,0)/porProv[k].length).toFixed(1)));
-  mkChart('ch-ped-prov-star',{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:values.map(v=>v>=4?C.green:v>=3?C.amber:C.red),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+' / 5'}}},scales:{x:{max:5,ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  mkChart('ch-ped-prov-star',{type:'bar',data:{labels:sorted.map(e=>e[0].length>25?e[0].substring(0,23)+'…':e[0]),datasets:[{data:sorted.map(e=>e[1]),backgroundColor:'rgba(0,170,255,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>v+' ítems'}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
 }
 function renderProveedorRanking(){
   const el = document.getElementById('ped-prov-ranking');
   if(!el) return;
   const porProv = {};
   G.pedidos.forEach(p=>{
-    if(!p.proveedor) return;
-    if(!porProv[p.proveedor]) porProv[p.proveedor] = {pedidos:0, calidadSum:0, calidadCount:0, esperaSum:0, esperaCount:0, originales:0, genericos:0};
-    const pr = porProv[p.proveedor];
-    pr.pedidos++;
-    if(p.calidad>0){ pr.calidadSum+=p.calidad; pr.calidadCount++; }
-    const d = pedDiasEspera(p);
-    if(d!==null){ pr.esperaSum+=d; pr.esperaCount++; }
-    if(p.original==='Original') pr.originales++;
-    if(p.original==='Genérico') pr.genericos++;
+    const nombre = p.proveedor || '— Sin asignar';
+    if(!porProv[nombre]) porProv[nombre] = {items:0, nrosSet:new Set(), urgCrit:0, urgAlto:0, recibidos:0, pendientes:0};
+    const pr = porProv[nombre];
+    pr.items++;
+    pr.nrosSet.add(p.nro);
+    if(p.urgencia==='Crítico') pr.urgCrit++;
+    if(p.urgencia==='Urgente') pr.urgAlto++;
+    if(p.fechaRec) pr.recibidos++; else pr.pendientes++;
   });
   const list = Object.entries(porProv).map(([nombre,pr])=>({
     nombre,
-    pedidos: pr.pedidos,
-    calidadProm: pr.calidadCount ? (pr.calidadSum/pr.calidadCount) : 0,
-    esperaProm: pr.esperaCount ? Math.round(pr.esperaSum/pr.esperaCount) : null,
-    originales: pr.originales, genericos: pr.genericos,
-  })).sort((a,b)=>b.calidadProm-a.calidadProm || b.pedidos-a.pedidos);
+    items: pr.items,
+    pedidos: pr.nrosSet.size,
+    urgCrit: pr.urgCrit,
+    urgAlto: pr.urgAlto,
+    recibidos: pr.recibidos,
+    pendientes: pr.pendientes,
+  })).sort((a,b)=>b.items-a.items);
 
-  if(!list.length){ el.innerHTML = '<div class="no-data" style="grid-column:1/-1">Sin proveedores registrados aún</div>'; return; }
+  if(!list.length){ el.innerHTML = '<div class="no-data" style="grid-column:1/-1">Sin proveedores</div>'; return; }
 
+  const maxItems = list[0].items;
   el.innerHTML = list.map(r=>{
-    const fullStars = Math.round(r.calidadProm);
-    const starsHtml = r.calidadProm>0
-      ? '<span style="color:var(--amber);font-size:14px">'+('★'.repeat(fullStars))+'</span><span style="color:var(--txt3);font-size:14px">'+('★'.repeat(5-fullStars))+'</span>'
-      : '<span style="color:var(--txt3);font-size:11px">Sin calificar</span>';
-    return `<div class="ped-prov-card">
-      <div class="ped-prov-name">${r.nombre}</div>
-      <div class="ped-prov-stars-row">${starsHtml} ${r.calidadProm>0?'<span style="font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--txt2);margin-left:4px">'+r.calidadProm.toFixed(1)+'</span>':''}</div>
-      <div class="ped-prov-stat">📦 ${r.pedidos} pedido${r.pedidos!==1?'s':''}</div>
-      <div class="ped-prov-stat">⏱️ ${r.esperaProm!==null ? r.esperaProm+' días promedio' : 'Sin datos de espera'}</div>
-      <div class="ped-prov-stat">${r.originales>0?'✅ '+r.originales+' orig.':''} ${r.genericos>0?'🔄 '+r.genericos+' genér.':''}</div>
+    const pct = Math.round(r.items/maxItems*100);
+    const sinAsignar = r.nombre==='— Sin asignar';
+    return `<div class="ped-prov-card" style="${sinAsignar?'opacity:0.6':''}">
+      <div class="ped-prov-name" style="font-size:11px">${r.nombre}</div>
+      <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin:5px 0 6px">
+        <div style="width:${pct}%;height:100%;background:var(--blue);border-radius:2px"></div>
+      </div>
+      <div class="ped-prov-stat">📦 ${r.pedidos} pedido${r.pedidos!==1?'s':''} · ${r.items} ítems</div>
+      ${r.urgCrit>0?`<div class="ped-prov-stat" style="color:var(--red)">🔴 ${r.urgCrit} crítico${r.urgCrit>1?'s':''}</div>`:''}
+      ${r.urgAlto>0?`<div class="ped-prov-stat" style="color:var(--orange)">🟠 ${r.urgAlto} urgente${r.urgAlto>1?'s':''}</div>`:''}
+      <div class="ped-prov-stat">${r.recibidos>0?'✅ '+r.recibidos+' recibidos':''} ${r.pendientes>0?'⏳ '+r.pendientes+' pendientes':''}</div>
     </div>`;
   }).join('');
 }
