@@ -1608,6 +1608,15 @@ function parseChecklist(rows, tipo) {
   return result;
 }
 
+// Unidades que se leen por ODÓMETRO (kilómetros) en lugar de HORÓMETRO (horas).
+// Si en el futuro hay que sumar/sacar unidades, solo hay que tocar esta lista.
+const SERVICES_UNIDADES_KM = [
+  'AXOR 2831/48 6X4 CAB/EXT 2012',
+  'AXOR 2831/48 6X4 CAB/EXT',
+  'AXOR 2040 S',
+  'IVECO STRALIS',
+];
+
 function parseServices(rows) {
   if (!rows.length) return [];
   let hdrIdx = rows.findIndex(r=>r.some(c=>/MAQUINA|MÁQUINA|EQUIPO/i.test(c)));
@@ -1624,17 +1633,44 @@ function parseServices(rows) {
   const iEst  = headers.findIndex(h=>/ESTADO/.test(h));
   const iFecha= headers.findIndex(h=>/FECHA PLANIFICADA/.test(h));
   const iAct  = headers.findIndex(h=>/ULTIMA ACTUALIZACION|ÚLTIMA ACTUALIZACIÓN/.test(h));
+  const iObs  = headers.findIndex(h=>/OBSERVACION/.test(h));
   const services = [];
   for (let i=hdrIdx+1;i<rows.length;i++) {
     const r=rows[i];
     const maq=(r[iMaq>=0?iMaq:0]||'').trim();
     if (!maq) continue;
+
+    const maqUp = maq.toUpperCase();
+    const obsRaw = (r[iObs>=0?iObs:10]||'').trim().toUpperCase();
+    // Prioridad: 1) nombre de unidad conocido, 2) columna OBSERVACION del sheet, 3) por defecto horómetro
+    const esKm = SERVICES_UNIDADES_KM.some(u=>maqUp.includes(u.toUpperCase())) || /ODOMETRO/.test(obsRaw);
+    const tipoMedicion = esKm ? 'ODOMETRO' : 'HOROMETRO';
+    const unidad = esKm ? 'km' : 'hs';
+
+    const hActNum  = parseFloat((r[iHAct>=0?iHAct:4]||'0').replace(',','.').replace(/[^0-9.\-]/g,''))||0;
+    const hAntNum  = parseFloat((r[iHAnt>=0?iHAnt:5]||'0').replace(',','.').replace(/[^0-9.\-]/g,''))||0;
+    const hProxNum = parseFloat((r[iHProx>=0?iHProx:6]||'0').replace(',','.').replace(/[^0-9.\-]/g,''))||0;
     const hRest=parseFloat((r[iHRest>=0?iHRest:7]||'0').replace(',','.').replace(/[^0-9.\-]/g,''))||0;
+
+    // Intervalo real del service (próximo - anterior). Si no se puede calcular, se usa un valor típico.
+    const intervaloCalc = hProxNum - hAntNum;
+    const intervalo = intervaloCalc > 0 ? intervaloCalc : (esKm ? 13000 : 300);
+
     let alertLevel='ok';
-    if (hRest<50) alertLevel='urgente';
-    else if (hRest<=75) alertLevel='alerta';
-    else if (hRest<=150) alertLevel='planificar';
-    services.push({ maq, modelo:(r[iMod>=0?iMod:1]||'').trim(), sector:(r[iSect>=0?iSect:2]||'').trim(), prop:(r[iProp>=0?iProp:3]||'').trim(), hAct:(r[iHAct>=0?iHAct:4]||'').trim(), hAnt:(r[iHAnt>=0?iHAnt:5]||'').trim(), hProx:(r[iHProx>=0?iHProx:6]||'').trim(), hRest, estado:(r[iEst>=0?iEst:8]||'').trim(), fecha:(r[iFecha>=0?iFecha:9]||'').trim(), actuali:(r[iAct>=0?iAct:10]||'').trim(), alertLevel });
+    if (esKm) {
+      // Para unidades por kilómetro los umbrales se calculan como % del intervalo de service,
+      // porque un valor fijo como "50" no tiene sentido en una escala de miles de km.
+      if (hRest < intervalo*0.05) alertLevel='urgente';
+      else if (hRest <= intervalo*0.10) alertLevel='alerta';
+      else if (hRest <= intervalo*0.20) alertLevel='planificar';
+    } else {
+      // Umbrales originales en horas, sin cambios, para no alterar el comportamiento existente.
+      if (hRest<50) alertLevel='urgente';
+      else if (hRest<=75) alertLevel='alerta';
+      else if (hRest<=150) alertLevel='planificar';
+    }
+
+    services.push({ maq, modelo:(r[iMod>=0?iMod:1]||'').trim(), sector:(r[iSect>=0?iSect:2]||'').trim(), prop:(r[iProp>=0?iProp:3]||'').trim(), hAct:(r[iHAct>=0?iHAct:4]||'').trim(), hAnt:(r[iHAnt>=0?iHAnt:5]||'').trim(), hProx:(r[iHProx>=0?iHProx:6]||'').trim(), hRest, estado:(r[iEst>=0?iEst:8]||'').trim(), fecha:(r[iFecha>=0?iFecha:9]||'').trim(), actuali:(r[iAct>=0?iAct:10]||'').trim(), alertLevel, tipoMedicion, unidad, intervalo });
   }
   return services;
 }
@@ -1937,8 +1973,10 @@ function renderServicesTable() {
   const am={urgente:{cls:'p-r',lbl:'🔴 URGENTE',color:'var(--red)'},alerta:{cls:'p-a',lbl:'🟠 ALERTA',color:'var(--orange)'},planificar:{cls:'p-a',lbl:'🟡 PLANIFICAR',color:'var(--amber)'},ok:{cls:'p-g',lbl:'✅ OK',color:'var(--green)'}};
   tbody.innerHTML=filtered.map(s=>{
     const a=am[s.alertLevel]||am.ok;
-    const pct=s.hRest>0?Math.min(Math.round(s.hRest/300*100),100):0;
-    return`<tr><td><div class="uname">${s.maq}</div></td><td><div class="umodel">${s.modelo||'—'}</div></td><td><span class="stag">${s.sector||'—'}</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${s.prop||'—'}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)">${s.hAct||'—'} hs</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2)">${s.hAnt||'—'} hs</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2)">${s.hProx||'—'} hs</td><td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:${a.color}">${s.hRest>0?s.hRest:'⚠️ '+Math.abs(s.hRest)} hs</span><div style="margin-top:3px;height:3px;background:var(--border);border-radius:2px;width:80px"><div style="height:100%;background:${a.color};width:${pct}%;border-radius:2px"></div></div></td><td><span class="pill ${a.cls}">${a.lbl}</span></td><td style="font-size:10px;color:var(--txt2)">${s.fecha||'—'}</td><td style="font-size:9px;color:var(--txt3)">${s.actuali||'—'}</td></tr>`;
+    const unidad = s.unidad || 'hs'; // fallback por compatibilidad si algún registro no trae unidad
+    const intervalo = s.intervalo || 300;
+    const pct=s.hRest>0?Math.min(Math.round(s.hRest/intervalo*100),100):0;
+    return`<tr><td><div class="uname">${s.maq}</div></td><td><div class="umodel">${s.modelo||'—'}</div></td><td><span class="stag">${s.sector||'—'}</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${s.prop||'—'}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)">${s.hAct||'—'} ${unidad}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2)">${s.hAnt||'—'} ${unidad}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2)">${s.hProx||'—'} ${unidad}</td><td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:${a.color}">${s.hRest>0?s.hRest:'⚠️ '+Math.abs(s.hRest)} ${unidad}</span><div style="margin-top:3px;height:3px;background:var(--border);border-radius:2px;width:80px"><div style="height:100%;background:${a.color};width:${pct}%;border-radius:2px"></div></div></td><td><span class="pill ${a.cls}">${a.lbl}</span></td><td style="font-size:10px;color:var(--txt2)">${s.fecha||'—'}</td><td style="font-size:9px;color:var(--txt3)">${s.actuali||'—'}</td></tr>`;
   }).join('');
 }
 
