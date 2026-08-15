@@ -1027,6 +1027,54 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     <div class="ccard"><div class="ctitle">Estado de Services <span class="cbadge">DISTRIBUCIÓN</span></div><div class="ch"><canvas id="ch-srv-estado"></canvas></div></div>
     <div class="ccard"><div class="ctitle">Horas Restantes por Unidad <span class="cbadge">HS</span></div><div class="ch"><canvas id="ch-srv-horas"></canvas></div></div>
   </div>
+
+  <!-- ══════ CONTROL DE INSUMOS (Aceites y Lubricantes) ══════ -->
+  <div class="slabel">CONTROL DE INSUMOS — ACEITES Y LUBRICANTES</div>
+  <div class="kpi-row" id="kpi-insumos"></div>
+
+  <div class="slabel">⚠️ ALERTAS DE POSIBLE FALLA MECÁNICA</div>
+  <div id="insumos-alertas" style="margin-bottom:24px"></div>
+
+  <div class="charts2">
+    <div class="ccard"><div class="ctitle">Service vs Reposición <span class="cbadge">% LITROS</span></div><div class="ch" style="height:220px"><canvas id="ch-insumos-motivo"></canvas></div></div>
+    <div class="ccard"><div class="ctitle">Stock Actual por Insumo <span class="cbadge">% CAPACIDAD</span></div><div class="ch" style="height:220px"><canvas id="ch-insumos-stock"></canvas></div></div>
+  </div>
+  <div class="charts2">
+    <div class="ccard"><div class="ctitle">Litros Retirados por Insumo <span class="cbadge">TOTAL PERÍODO</span></div><div class="ch" style="height:220px"><canvas id="ch-insumos-tipo"></canvas></div></div>
+    <div class="ccard"><div class="ctitle">Litros Retirados por Máquina <span class="cbadge">TOTAL PERÍODO</span></div><div class="ch" style="height:220px"><canvas id="ch-insumos-maquina"></canvas></div></div>
+  </div>
+
+  <div class="slabel">STOCK POR INSUMO</div>
+  <div class="tbl-wrap" style="margin-bottom:24px">
+     <div class="hist-hdr" style="grid-template-columns:2fr 1fr 1fr 1fr 1.4fr">
+       <span>INSUMO</span><span style="text-align:center">CAPACIDAD</span><span style="text-align:right">STOCK ACTUAL</span><span style="text-align:right">% RESTANTE</span><span style="text-align:right">DÍAS EST. RESTANTES</span>
+     </div>
+     <div id="tabla-insumos-stock"></div>
+  </div>
+
+  <div class="slabel">CONSUMO POR MÁQUINA</div>
+  <div class="tbl-wrap" style="margin-bottom:24px">
+     <div class="hist-hdr" style="grid-template-columns:2fr 1fr 1fr 1fr 1.4fr">
+       <span>MÁQUINA</span><span style="text-align:center">EVENTOS</span><span style="text-align:right">SERVICE (L)</span><span style="text-align:right">REPOSICIÓN (L)</span><span style="text-align:right">TOTAL RETIRADO</span>
+     </div>
+     <div id="tabla-insumos-maquina"></div>
+  </div>
+
+  <div class="slabel">DETALLE DE MOVIMIENTOS DE INSUMOS</div>
+  <div class="tbl-wrap" style="margin-bottom:24px">
+    <div class="tbl-filters">
+      <button class="fbtn on" onclick="filterInsumos('all',this)">TODOS</button>
+      <button class="fbtn fg" onclick="filterInsumos('Service',this)">🔧 SERVICE</button>
+      <button class="fbtn fa" onclick="filterInsumos('Reposicion',this)">🔁 REPOSICIÓN</button>
+      <input class="fsearch" id="insumos-search" placeholder="Buscar insumo, máquina..." oninput="searchInsumos(this.value)">
+    </div>
+    <div class="hist-hdr"><span>FECHA</span><span>INSUMO</span><span>MÁQUINA</span><span>MOTIVO</span><span style="text-align:right">RETIRADO / STOCK</span></div>
+    <div id="tabla-insumos-detalle"></div>
+  </div>
+
+  <div class="ped-kpi-sheet-note">
+    📌 Esta sección lee la hoja <b style="color:var(--cyan)">CONTROL INSUMOS</b> del mismo Google Sheet. Para conectarla: abrí esa hoja en el navegador, copiá el número que aparece al final de la URL después de <code style="color:var(--cyan)">#gid=</code>, y pegalo en el código del dashboard dentro de <code style="color:var(--cyan)">SHEET_GIDS['CONTROL INSUMOS']</code>, reemplazando <code style="color:var(--amber)">'GID_A_CONFIGURAR'</code>. Columnas esperadas: <code style="color:var(--blue);font-size:9px">INSUMO · CANTIDAD INICIAL [L] · CANTIDAD RETIRADA [L] · MAQUINA · FECHA · MOTIVO · CANTIDAD ACTUAL</code>
+  </div>
 </div>
 
 <!-- ══════════════════════════ COSTOS ══════════════════════════ -->
@@ -1353,7 +1401,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 </div>
 
 <footer class="ftr">
-  <div class="ftr-l">RODADOS v2.3 — Dashboard de Mantenimiento Vehicular · Cerámica MP</div>
+  <div class="ftr-l">RODADOS v2.4 — Dashboard de Mantenimiento Vehicular · Cerámica MP</div>
   <div class="ftr-r" id="ftr-date">—</div>
 </footer>
 </div><!-- /wrap -->
@@ -1379,6 +1427,7 @@ const SHEET_NAMES = {
   checklistPalas:       'CHECKLIST PALAS',
   checklistAut:         'CHECKLIST AUTOELEVADORES',
   pedidos:               'PEDIDOS',   // nombre exacto de tu hoja en el Sheet
+  controlInsumos:        'CONTROL INSUMOS', // nombre exacto de tu hoja en el Sheet
 };
 
 const SERVICES_SHEET_ID = '1JBqizva8iWP_FF_XpBlr3aAGrz3-JaXOwNiuPuybcxg';
@@ -1398,6 +1447,7 @@ const SHEET_GIDS = {
   'CHECKLIST PALAS':              '1743129799',
   'CHECKLIST AUTOELEVADORES':     '1958650087',
   'PEDIDOS':                      '1563471949',
+  'CONTROL INSUMOS':              'GID_A_CONFIGURAR', // ⚠️ pegá acá el GID real de la hoja CONTROL INSUMOS
 };
 
 let G = {
@@ -1405,6 +1455,7 @@ let G = {
   services: [], costos: [], viajes: [],
   checklistPalas: [], checklistAut: [],
   pedidos: [],
+  insumos: [],
   charts: {},
 };
 
@@ -1477,9 +1528,10 @@ async function loadAllData() {
     try { G.checklistPalas = parseChecklist(await fetchExternalSheet(SERVICES_SHEET_ID, '1743129799'), 'PALA'); } catch(e) { G.checklistPalas = []; console.warn('CHK PALAS:', e); }
     try { G.checklistAut   = parseChecklist(await fetchExternalSheet(SERVICES_SHEET_ID, '1958650087'), 'AUTOELEVADOR'); } catch(e) { G.checklistAut = []; console.warn('CHK AUT:', e); }
     try { G.pedidos = parsePedidos(await fetchSheet(SHEET_NAMES.pedidos)); } catch(e) { G.pedidos = []; console.warn('PEDIDOS:', e); }
+    try { G.insumos = parseControlInsumos(await fetchSheet(SHEET_NAMES.controlInsumos)); } catch(e) { G.insumos = []; console.warn('CONTROL INSUMOS:', e); }
 
     const total = G.histPalas.length + G.histCam.length + G.histAut.length;
-    setStatus('ok', `✅ ${G.fleet.length} unidades · ${total} trabajos · ${G.services.length} services · ${G.checklistPalas.length+G.checklistAut.length} inspecciones · ${G.pedidos.length} pedidos`);
+    setStatus('ok', `✅ ${G.fleet.length} unidades · ${total} trabajos · ${G.services.length} services · ${G.checklistPalas.length+G.checklistAut.length} inspecciones · ${G.pedidos.length} pedidos · ${G.insumos.length} mov. insumos`);
     renderAll();
   } catch(e) {
     setStatus('err','❌ ' + e.message);
@@ -1816,6 +1868,45 @@ function parsePedidos(rows){
   return out;
 }
 
+// ── CONTROL DE INSUMOS PARSER ──
+// Columnas reales del sheet CONTROL INSUMOS:
+// INSUMO · CANTIDAD INICIAL [L] · CANTIDAD RETIRADA [L] · MAQUINA · FECHA · MOTIVO (Service/Reposicion) · CANTIDAD ACTUAL
+function parseControlInsumos(rows) {
+  if (!rows || rows.length < 2) return [];
+  const headers = rows[0].map(h=>(h||'').trim().toUpperCase());
+  const fi = names => { for(const n of names){ const i = headers.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
+
+  const iInsumo  = fi(['INSUMO']);
+  const iCantIni = fi(['CANTIDAD INICIAL']);
+  const iCantRet = fi(['CANTIDAD RETIRADA']);
+  const iMaquina = fi(['MAQUINA','MÁQUINA']);
+  const iFecha   = fi(['FECHA']);
+  const iMotivo  = fi(['MOTIVO']);
+  const iCantAct = fi(['CANTIDAD ACTUAL']);
+  const iObs     = fi(['OBSERVACION']);
+
+  const out = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const insumo  = (r[iInsumo>=0?iInsumo:0]||'').trim();
+    const maquina = (r[iMaquina>=0?iMaquina:4]||'').trim();
+    // Filas de cierre de stock / vacías sin insumo o máquina asociada se descartan
+    if (!insumo || !maquina) continue;
+    const cantIni = parseFloat((r[iCantIni>=0?iCantIni:2]||'0').replace(',','.'))||0;
+    const cantRet = parseFloat((r[iCantRet>=0?iCantRet:3]||'0').replace(',','.'))||0;
+    const cantAct = parseFloat((r[iCantAct>=0?iCantAct:7]||'0').replace(',','.'))||0;
+    const motivoRaw = (r[iMotivo>=0?iMotivo:6]||'').trim();
+    const motivo = /service/i.test(motivoRaw) ? 'Service' : /reposic/i.test(motivoRaw) ? 'Reposicion' : (motivoRaw || 'Reposicion');
+    out.push({
+      insumo, cantIni, cantRet, maquina,
+      fecha: (r[iFecha>=0?iFecha:5]||'').trim(),
+      motivo, cantAct,
+      obs: (r[iObs>=0?iObs:9]||'').trim(),
+    });
+  }
+  return out;
+}
+
   // ═══════════════════════════════════════════════════════
 //  RENDER ALL
 // ═══════════════════════════════════════════════════════
@@ -1826,6 +1917,7 @@ function renderAll() {
   renderHistorial('aut',  G.histAut);
   renderKPIPage();
   renderServicesPage();
+  renderInsumosPage();
   renderCostosPage();
   renderViajesPage();
   renderChecklistPage();
@@ -1978,6 +2070,229 @@ function renderServicesTable() {
     const pct=s.hRest>0?Math.min(Math.round(s.hRest/intervalo*100),100):0;
     return`<tr><td><div class="uname">${s.maq}</div></td><td><div class="umodel">${s.modelo||'—'}</div></td><td><span class="stag">${s.sector||'—'}</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${s.prop||'—'}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)">${s.hAct||'—'} ${unidad}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2)">${s.hAnt||'—'} ${unidad}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2)">${s.hProx||'—'} ${unidad}</td><td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:${a.color}">${s.hRest>0?s.hRest:'⚠️ '+Math.abs(s.hRest)} ${unidad}</span><div style="margin-top:3px;height:3px;background:var(--border);border-radius:2px;width:80px"><div style="height:100%;background:${a.color};width:${pct}%;border-radius:2px"></div></div></td><td><span class="pill ${a.cls}">${a.lbl}</span></td><td style="font-size:10px;color:var(--txt2)">${s.fecha||'—'}</td><td style="font-size:9px;color:var(--txt3)">${s.actuali||'—'}</td></tr>`;
   }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+//  CONTROL DE INSUMOS — RENDER
+// ══════════════════════════════════════════════════════
+function insParseFecha(f){
+  if(!f) return null;
+  const p=(f||'').trim().split('/');
+  if(p.length<3) return null;
+  const d=parseInt(p[0],10), m=parseInt(p[1],10), y=parseInt(p[2],10);
+  if(isNaN(d)||isNaN(m)||isNaN(y)) return null;
+  return new Date(y,m-1,d);
+}
+
+function insBuildStockSummary(data){
+  const map={};
+  data.forEach(r=>{
+    if(!map[r.insumo]) map[r.insumo]={insumo:r.insumo, capacidad:0, retiradoTotal:0, eventos:0, ultimaFecha:'', primeraFecha:'', actual:0, _ultima:null, _primera:null};
+    const m=map[r.insumo];
+    m.capacidad = Math.max(m.capacidad, r.cantIni);
+    m.retiradoTotal += r.cantRet;
+    m.eventos++;
+    const fd = insParseFecha(r.fecha);
+    if(fd && (!m._ultima || fd>m._ultima)){ m._ultima=fd; m.ultimaFecha=r.fecha; m.actual=r.cantAct; }
+    if(fd && (!m._primera || fd<m._primera)){ m._primera=fd; m.primeraFecha=r.fecha; }
+  });
+  return Object.values(map).map(m=>{
+    const dias = (m._ultima && m._primera) ? Math.max(1,Math.round((m._ultima-m._primera)/86400000)) : 1;
+    const tasaDiaria = m.retiradoTotal/dias;
+    const pctRestante = m.capacidad>0 ? Math.round(m.actual/m.capacidad*100) : 0;
+    const diasRestantes = tasaDiaria>0 ? Math.round(m.actual/tasaDiaria) : null;
+    return {...m, dias, tasaDiaria, pctRestante, diasRestantes};
+  }).sort((a,b)=>a.pctRestante-b.pctRestante);
+}
+
+function insDetectAnomalias(data){
+  const byKey={};
+  data.forEach(r=>{
+    const key=r.maquina+'|'+r.insumo;
+    if(!byKey[key]) byKey[key]=[];
+    byKey[key].push(r);
+  });
+  const porMaquina={};
+  function pushAlert(maquina,insumo,detalle){
+    if(!porMaquina[maquina]) porMaquina[maquina]=[];
+    porMaquina[maquina].push({insumo,detalle});
+  }
+  Object.entries(byKey).forEach(([key,evts])=>{
+    if(evts.length<2) return;
+    const sorted=[...evts].sort((a,b)=>{const da=insParseFecha(a.fecha),db=insParseFecha(b.fecha);return (da?da.getTime():0)-(db?db.getTime():0);});
+    const [maquina,insumo]=key.split('|');
+    const reposiciones=sorted.filter(e=>e.motivo==='Reposicion');
+    for(let i=1;i<reposiciones.length;i++){
+      const d1=insParseFecha(reposiciones[i-1].fecha), d2=insParseFecha(reposiciones[i].fecha);
+      if(d1&&d2){
+        const dif=Math.round((d2-d1)/86400000);
+        if(dif<=15){
+          pushAlert(maquina,insumo,`Reposiciones seguidas: ${reposiciones[i-1].cantRet}L (${reposiciones[i-1].fecha}) y ${reposiciones[i].cantRet}L (${reposiciones[i].fecha}) — solo ${dif} días de diferencia. Posible fuga o desgaste.`);
+        }
+      }
+    }
+    const services=sorted.filter(e=>e.motivo==='Service');
+    services.forEach(s=>{
+      const ds=insParseFecha(s.fecha);
+      reposiciones.forEach(r=>{
+        const dr=insParseFecha(r.fecha);
+        if(ds&&dr&&dr>ds){
+          const dif=Math.round((dr-ds)/86400000);
+          if(dif>0&&dif<=10){
+            pushAlert(maquina,insumo,`Se repuso ${r.cantRet}L solo ${dif} días después del Service (${s.fecha}). Revisar estanqueidad.`);
+          }
+        }
+      });
+    });
+  });
+  return porMaquina;
+}
+
+function renderInsumosAlertas(porMaquina){
+  const el=document.getElementById('insumos-alertas'); if(!el) return;
+  const keys=Object.keys(porMaquina);
+  if(!keys.length){ el.innerHTML='<div class="no-data" style="padding:16px;background:rgba(0,230,118,0.05);border:1px solid rgba(0,230,118,0.15);border-radius:6px">✅ Sin patrones anómalos de consumo detectados</div>'; return; }
+  el.innerHTML = keys.map(m=>{
+    const items = porMaquina[m];
+    return `<div class="alert-card" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div class="aunit" style="font-size:14px;font-weight:700">🔴 <b>${m}</b> — Revisión mecánica recomendada</div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;background:rgba(255,61,61,0.12);color:var(--red);border:1px solid rgba(255,61,61,0.3);border-radius:3px">${items.length} evento${items.length>1?'s':''} sospechosos</span>
+      </div>
+      <div style="margin-top:8px;font-size:11px;line-height:1.7;color:var(--txt2)">
+        ${items.map(i=>`• <span style="color:var(--txt1)">${i.insumo}</span> — ${i.detalle}`).join('<br>')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderInsumosKPIs(data,stock){
+  const el=document.getElementById('kpi-insumos'); if(!el) return;
+  if(!data.length){ el.innerHTML='<div style="grid-column:1/-1" class="no-data">Sin datos de insumos cargados. Conectá la hoja CONTROL INSUMOS.</div>'; return; }
+  const totalRetirado=data.reduce((s,r)=>s+r.cantRet,0);
+  const totalService=data.filter(r=>r.motivo==='Service').reduce((s,r)=>s+r.cantRet,0);
+  const totalRepos=totalRetirado-totalService;
+  const pctService=totalRetirado>0?Math.round(totalService/totalRetirado*100):0;
+  const critico=stock.filter(s=>s.pctRestante<=30).length;
+  const maquinasSet=new Set(data.map(r=>r.maquina)).size;
+  el.innerHTML =
+    kpiCard('LITROS RETIRADOS (TOTAL)', totalRetirado.toFixed(0)+' L', data.length+' movimientos', 'kc-b') +
+    kpiCard('% SERVICE (PROGRAMADO)', pctService+'%', totalService.toFixed(0)+' L de mtto. planificado', 'kc-g') +
+    kpiCard('% REPOSICIÓN (NO PROGRAMADA)', (100-pctService)+'%', totalRepos.toFixed(0)+' L fuera de plan', pctService<50?'kc-r':'kc-a') +
+    kpiCard('INSUMOS EN STOCK CRÍTICO', critico, '≤30% de capacidad', critico>0?'kc-r':'kc-g') +
+    kpiCard('TIPOS DE INSUMO', stock.length, 'Monitoreados', 'kc-c') +
+    kpiCard('MÁQUINAS CON MOVIMIENTOS', maquinasSet, 'En el período', 'kc-p');
+}
+
+function buildChartInsumosMotivo(data){
+  const service=data.filter(r=>r.motivo==='Service').reduce((s,r)=>s+r.cantRet,0);
+  const repos=data.filter(r=>r.motivo==='Reposicion').reduce((s,r)=>s+r.cantRet,0);
+  mkChart('ch-insumos-motivo',{type:'doughnut',data:{labels:['Service (programado)','Reposición (no programada)'],datasets:[{data:[service,repos],backgroundColor:[C.green,C.amber],borderColor:'#0b1118',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{...pluginDef,datalabels:{display:true,color:'#fff',font:{size:11,weight:'bold'},formatter:(v,ctx)=>{const s=ctx.dataset.data.reduce((a,b)=>a+b,0);return s>0?Math.round(v/s*100)+'%':'';}}}}});
+}
+
+function buildChartInsumosStock(stock){
+  const labels=stock.map(s=>s.insumo);
+  const values=stock.map(s=>s.pctRestante);
+  mkChart('ch-insumos-stock',{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:values.map(v=>v<=30?C.red:v<=60?C.amber:C.green),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+'% de capacidad'}},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>v+'%'}},scales:{x:{max:100,ticks:{color:C.txt,font:{family:C.font,size:9},callback:v=>v+'%'},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
+}
+
+function buildChartInsumosTipo(data){
+  const counts={};
+  data.forEach(r=>{counts[r.insumo]=(counts[r.insumo]||0)+r.cantRet;});
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  mkChart('ch-insumos-tipo',{type:'bar',data:{labels:sorted.map(e=>e[0]),datasets:[{data:sorted.map(e=>Math.round(e[1])),backgroundColor:'rgba(0,170,255,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>v+'L'}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
+}
+
+function insBuildPorMaquina(data){
+  const map={};
+  data.forEach(r=>{
+    if(!map[r.maquina]) map[r.maquina]={maquina:r.maquina,eventos:0,service:0,reposicion:0};
+    map[r.maquina].eventos++;
+    if(r.motivo==='Service') map[r.maquina].service+=r.cantRet; else map[r.maquina].reposicion+=r.cantRet;
+  });
+  return Object.values(map).map(m=>({...m,total:m.service+m.reposicion})).sort((a,b)=>b.total-a.total);
+}
+
+function buildChartInsumosMaquina(data){
+  const list=insBuildPorMaquina(data);
+  mkChart('ch-insumos-maquina',{type:'bar',data:{labels:list.map(r=>r.maquina),datasets:[{data:list.map(r=>Math.round(r.total)),backgroundColor:'rgba(255,110,64,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>v+'L'}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
+}
+
+function renderInsumosStockTabla(stock){
+  const el=document.getElementById('tabla-insumos-stock'); if(!el) return;
+  if(!stock.length){ el.innerHTML='<div class="no-data">Sin datos.</div>'; return; }
+  el.innerHTML=stock.map(s=>{
+    const color=s.pctRestante<=30?'var(--red)':s.pctRestante<=60?'var(--amber)':'var(--green)';
+    return `<div class="hist-row" style="grid-template-columns:2fr 1fr 1fr 1fr 1.4fr">
+      <div><div class="uname" style="font-size:12px">${s.insumo}</div><div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:3px"><div style="width:${s.pctRestante}%;height:100%;background:${color};border-radius:2px"></div></div></div>
+      <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2)">${s.capacidad} L</div>
+      <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:${color}">${s.actual} L</div>
+      <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:${color}">${s.pctRestante}%</div>
+      <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${s.diasRestantes!==null?s.diasRestantes+' días':'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderInsumosPorMaquina(data){
+  const el=document.getElementById('tabla-insumos-maquina'); if(!el) return;
+  const list=insBuildPorMaquina(data);
+  if(!list.length){ el.innerHTML='<div class="no-data">Sin datos.</div>'; return; }
+  const maxT=list[0].total||1;
+  el.innerHTML=list.map(r=>{
+    const pct=Math.round(r.total/maxT*100);
+    return `<div class="hist-row" style="grid-template-columns:2fr 1fr 1fr 1fr 1.4fr">
+      <div><div class="uname" style="font-size:12px">${r.maquina}</div><div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:3px"><div style="width:${pct}%;height:100%;background:var(--blue);border-radius:2px"></div></div></div>
+      <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)">${r.eventos}</div>
+      <div style="text-align:right;color:var(--green);font-size:12px;font-weight:600">${r.service.toFixed(0)} L</div>
+      <div style="text-align:right;color:var(--amber);font-size:12px;font-weight:600">${r.reposicion.toFixed(0)} L</div>
+      <div style="text-align:right;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--blue)">${r.total.toFixed(0)} L</div>
+    </div>`;
+  }).join('');
+}
+
+let insumosFilter='all', insumosSearch='';
+function filterInsumos(f,btn){
+  insumosFilter=f;
+  if(btn){ btn.closest('.tbl-filters').querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
+  renderInsumosDetalle(G.insumos);
+}
+function searchInsumos(val){
+  insumosSearch=(val||'').toLowerCase();
+  renderInsumosDetalle(G.insumos);
+}
+function renderInsumosDetalle(data){
+  const el=document.getElementById('tabla-insumos-detalle'); if(!el) return;
+  let filtered=data||[];
+  if(insumosFilter!=='all') filtered=filtered.filter(r=>r.motivo===insumosFilter);
+  if(insumosSearch) filtered=filtered.filter(r=>r.insumo.toLowerCase().includes(insumosSearch)||r.maquina.toLowerCase().includes(insumosSearch));
+  filtered=[...filtered].sort((a,b)=>{const da=insParseFecha(a.fecha),db=insParseFecha(b.fecha);return (db?db.getTime():0)-(da?da.getTime():0);});
+  if(!filtered.length){ el.innerHTML='<div class="no-data">Sin movimientos.</div>'; return; }
+  el.innerHTML=filtered.map(r=>{
+    const isService=r.motivo==='Service';
+    return `<div class="hist-row">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${r.fecha}</div>
+      <div><div class="uname" style="font-size:12px">${r.insumo}</div></div>
+      <div style="font-size:11px;color:var(--txt2)">${r.maquina}</div>
+      <div><span class="htag ${isService?'htag-p':'htag-c'}">${isService?'SERVICE':'REPOSICIÓN'}</span></div>
+      <div style="text-align:right"><span style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:var(--red)">-${r.cantRet}L</span><span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3);margin-left:6px">stock: ${r.cantAct}L</span></div>
+    </div>`;
+  }).join('');
+}
+
+function renderInsumosPage(){
+  const data=G.insumos||[];
+  const stock=insBuildStockSummary(data);
+  renderInsumosKPIs(data,stock);
+  renderInsumosAlertas(insDetectAnomalias(data));
+  if(data.length){
+    buildChartInsumosMotivo(data);
+    buildChartInsumosStock(stock);
+    buildChartInsumosTipo(data);
+    buildChartInsumosMaquina(data);
+  }
+  renderInsumosStockTabla(stock);
+  renderInsumosPorMaquina(data);
+  renderInsumosDetalle(data);
 }
 
 // ══════════════════════════════════════════════════════
