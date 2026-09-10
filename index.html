@@ -835,8 +835,8 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <div class="tab"     onclick="goTab('autoel',this)">🏗️ AUTOELEVADORES</div>
   <div class="tab"     onclick="goTab('kpis',this)">📈 KPIs</div>
   <div class="tab"     onclick="goTab('services',this)">🔧 SERVICES</div>
-  <div class="tab"     onclick="goTab('costos',this)">💰 COSTOS</div>
-  <div class="tab"     onclick="goTab('viajes',this)">🚚 VIAJES</div>
+  <div class="tab" style="display:none" onclick="goTab('costos',this)">💰 COSTOS</div>
+  <div class="tab" style="display:none" onclick="goTab('viajes',this)">🚚 VIAJES</div>
   <div class="tab"     onclick="goTab('checklist',this)">📋 INSPECCIONES</div>
   <div class="tab"     onclick="goTab('pedidos',this)">📦 PEDIDOS</div>
   <div class="tab"     onclick="goTab('ganttflota',this)">📅 GANTT FLOTA</div>
@@ -1247,7 +1247,22 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <div class="slabel">KPIs — GESTIÓN DE PEDIDOS</div>
   <div class="kpi-row" id="kpi-pedidos"></div>
 
-  <!-- Buscador rápido por N° interno -->
+ 
+  <!-- Análisis -->
+  <div class="slabel">ANÁLISIS DE PROVEEDORES</div>
+  <div class="charts2">
+    <div class="ccard"><div class="ctitle">Tiempo de Espera Promedio <span class="cbadge">DÍAS</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-espera"></canvas></div></div>
+    <div class="ccard"><div class="ctitle">Pedidos por Estado <span class="cbadge">DISTRIBUCIÓN</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-estado"></canvas></div></div>
+  </div>
+  <div class="charts2">
+    <div class="ccard"><div class="ctitle">Ítems por Tipo de Producto <span class="cbadge">CANTIDAD</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-tipo"></canvas></div></div>
+    <div class="ccard"><div class="ctitle">Ítems por Proveedor <span class="cbadge">TOP 10</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-prov-star"></canvas></div></div>
+  </div>
+
+  <!-- Ranking proveedores -->
+  <div class="slabel">RANKING DE PROVEEDORES</div>
+  <div class="ped-prov-ranking" id="ped-prov-ranking"></div>
+ <!-- Buscador rápido por N° interno -->
   <div class="slabel">BÚSQUEDA RÁPIDA POR N° INTERNO</div>
   <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
     <input class="ped-input" id="ped-nro-search" placeholder="Ej: PC - 7636" style="width:200px" oninput="pedFiltrarPorNro(this.value)">
@@ -1289,21 +1304,6 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
       </table>
     </div>
   </div>
-
-  <!-- Análisis -->
-  <div class="slabel">ANÁLISIS DE PROVEEDORES</div>
-  <div class="charts2">
-    <div class="ccard"><div class="ctitle">Tiempo de Espera Promedio <span class="cbadge">DÍAS</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-espera"></canvas></div></div>
-    <div class="ccard"><div class="ctitle">Pedidos por Estado <span class="cbadge">DISTRIBUCIÓN</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-estado"></canvas></div></div>
-  </div>
-  <div class="charts2">
-    <div class="ccard"><div class="ctitle">Ítems por Tipo de Producto <span class="cbadge">CANTIDAD</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-tipo"></canvas></div></div>
-    <div class="ccard"><div class="ctitle">Ítems por Proveedor <span class="cbadge">TOP 10</span></div><div class="ch" style="height:220px"><canvas id="ch-ped-prov-star"></canvas></div></div>
-  </div>
-
-  <!-- Ranking proveedores -->
-  <div class="slabel">RANKING DE PROVEEDORES</div>
-  <div class="ped-prov-ranking" id="ped-prov-ranking"></div>
 
   <!-- Instrucciones de configuración -->
   <div class="slabel">CÓMO CONECTAR AL SHEET</div>
