@@ -1498,7 +1498,7 @@ const SHEET_GIDS = {
   'CHECKLIST AUTOELEVADORES':     '1958650087',
   'PEDIDOS':                      '1563471949',
   'CONTROL INSUMOS':              '1493480228', 
-  'OT PROVEEDORES':               '1793052338',
+  'OT PROVEEDORES':               'GID_A_CONFIGURAR',
 };
 
 let G = {
@@ -3231,6 +3231,17 @@ function renderInformesPage(){
   renderInformesTable();
 }
 
+// Devuelve el HTML de la celda INFORME. Solo arma el link si el valor es
+// una URL real (empieza con http) — el CSV de Sheets no trae la URL de
+// celdas con fórmula =HYPERLINK(...), solo el texto visible, así que ese
+// caso se muestra como texto plano en vez de armar un link roto.
+function infLinkCell(informe){
+  if (!informe) return '<span style="color:var(--txt3);font-style:italic;font-size:10px">Sin PDF</span>';
+  const esUrl = /^https?:\/\//i.test(informe.trim());
+  if (esUrl) return `<a class="inf-link" href="${informe.trim()}" target="_blank" rel="noopener">📄 Ver PDF</a>`;
+  return `<span style="color:var(--txt3);font-style:italic;font-size:10px" title="Fila antigua sin URL recuperable desde el CSV">⚠️ Sin link (dato viejo)</span>`;
+}
+
 function buildChartInformesEquipo(data){
   const counts = {PALA:0, CAMION:0, AUTOELEVADOR:0, OTRO:0};
   data.forEach(i=>{ if(counts[i.equipoTipo]===undefined) counts[i.equipoTipo]=0; counts[i.equipoTipo]++; });
@@ -3293,7 +3304,7 @@ function renderInformesTable(){
       <td style="font-size:11px;color:var(--txt2);max-width:220px">${i.falla||'—'}</td>
       <td style="font-size:11px;color:var(--txt2)">${i.responsable||'—'}</td>
       <td><span class="inf-origen-badge ${origenCls[i.origen]||'inf-origen-mecanico'}">${i.origen}</span></td>
-      <td>${i.informe?`<a class="inf-link" href="${i.informe.replace(/^=HYPERLINK\("([^"]+)".*$/,'$1')}" target="_blank" rel="noopener">📄 Ver PDF</a>`:'<span style="color:var(--txt3);font-style:italic;font-size:10px">Sin PDF</span>'}</td>
+      <td>${infLinkCell(i.informe)}</td>
     </tr>`;
   }).join('');
 }
