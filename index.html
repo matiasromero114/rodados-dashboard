@@ -223,6 +223,14 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 .ped-form-section-title{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;letter-spacing:2px;color:var(--txt2);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
 .ped-form-section-title::before{content:'';display:block;width:3px;height:14px;background:var(--blue);border-radius:2px;}
 
+/* ============ MÓDULO INFORMES ============ */
+.inf-origen-badge{font-family:'JetBrains Mono',monospace;font-size:8px;padding:3px 8px;border-radius:2px;text-transform:uppercase;letter-spacing:1px;white-space:nowrap;}
+.inf-origen-mecanico{background:rgba(0,170,255,0.1);color:var(--blue);border:1px solid rgba(0,170,255,0.2);}
+.inf-origen-propio{background:rgba(0,229,204,0.1);color:var(--cyan);border:1px solid rgba(0,229,204,0.2);}
+.inf-origen-externo{background:rgba(179,136,255,0.1);color:var(--purple);border:1px solid rgba(179,136,255,0.25);}
+.inf-link{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;color:var(--blue);text-decoration:none;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:3px;background:rgba(0,170,255,0.08);border:1px solid rgba(0,170,255,0.2);transition:all 0.2s;}
+.inf-link:hover{background:rgba(0,170,255,0.18);border-color:var(--blue);}
+
 /* ============ GANTT FLOTA (Integrado) ============ */
 #page-ganttflota.page {
   /* Se oculta por defecto con la clase .page (display:none) */
@@ -839,6 +847,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <div class="tab" style="display:none" onclick="goTab('viajes',this)">🚚 VIAJES</div>
   <div class="tab"     onclick="goTab('checklist',this)">📋 INSPECCIONES</div>
   <div class="tab"     onclick="goTab('pedidos',this)">📦 PEDIDOS</div>
+  <div class="tab"     onclick="goTab('informes',this)">🗂️ INFORMES</div>
   <div class="tab"     onclick="goTab('ganttflota',this)">📅 GANTT FLOTA</div>
 </nav>
 
@@ -1313,6 +1322,46 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   </div>
 </div>
 
+<!-- ══════════════════════════ INFORMES ══════════════════════════ -->
+<div id="page-informes" class="page">
+  <div class="slabel">KPIs — INFORMES Y ÓRDENES DE TRABAJO</div>
+  <div class="kpi-row" id="kpi-informes"></div>
+
+  <div class="slabel">POR TIPO DE EQUIPO</div>
+  <div class="charts2">
+    <div class="ccard"><div class="ctitle">Informes por Equipo <span class="cbadge">CANTIDAD</span></div><div class="ch" style="height:220px"><canvas id="ch-inf-equipo"></canvas></div></div>
+    <div class="ccard"><div class="ctitle">Origen del Trabajo <span class="cbadge">DISTRIBUCIÓN</span></div><div class="ch" style="height:220px"><canvas id="ch-inf-origen"></canvas></div></div>
+  </div>
+
+  <div class="slabel">LISTADO DE INFORMES</div>
+  <div class="tbl-wrap" style="overflow-x:auto">
+    <div class="tbl-filters">
+      <button class="fbtn on" onclick="filterInformes('all',this)">TODOS</button>
+      <button class="fbtn"    onclick="filterInformes('PALA',this)">🦾 PALAS</button>
+      <button class="fbtn"    onclick="filterInformes('CAMION',this)">🚛 CAMIONES</button>
+      <button class="fbtn"    onclick="filterInformes('AUTOELEVADOR',this)">🏗️ AUTOEL.</button>
+      <button class="fbtn"    onclick="filterInformesOrigen('Interno (mecánico)',this)">🔧 MECÁNICOS</button>
+      <button class="fbtn"    onclick="filterInformesOrigen('Proveedor externo',this)">🏭 PROVEEDORES</button>
+      <input class="fsearch" id="inf-search" placeholder="Buscar equipo, falla, responsable..." oninput="searchInformes(this.value)">
+    </div>
+    <div style="min-width:900px">
+      <table>
+        <thead>
+          <tr>
+            <th>FECHA</th><th>EQUIPO</th><th>MODELO</th><th>TIPO MTTO</th>
+            <th>FALLA / REQUERIMIENTO</th><th>RESPONSABLE</th><th>ORIGEN</th><th>INFORME</th>
+          </tr>
+        </thead>
+        <tbody id="informes-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="ped-kpi-sheet-note">
+    📌 Esta sección combina dos fuentes: la columna <b style="color:var(--cyan)">INFORME</b> de las hojas MANTENIMIENTO PALAS/CAMIONES/AUTOELEVADORES (fotos de mecánicos propios), y la hoja <b style="color:var(--cyan)">OT PROVEEDORES</b> (órdenes de trabajo de terceros y mecánicos con OT formal). Para conectar esta última: abrí la hoja OT PROVEEDORES, copiá el número después de <code style="color:var(--cyan)">#gid=</code> en la URL, y pegalo en <code style="color:var(--cyan)">SHEET_GIDS['OT PROVEEDORES']</code>, reemplazando <code style="color:var(--amber)">'GID_A_CONFIGURAR'</code>.
+  </div>
+</div>
+
 <!-- ══════════════════════════ GANTT FLOTA (Integrado) ══════════════════════════ -->
 <div id="page-ganttflota" class="page">
   <div class="gantt-main-layout">
@@ -1401,7 +1450,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 </div>
 
 <footer class="ftr">
-  <div class="ftr-l">RODADOS v2.4 — Dashboard de Mantenimiento Vehicular · Cerámica MP</div>
+  <div class="ftr-l">RODADOS v2.5 — Dashboard de Mantenimiento Vehicular · Cerámica MP</div>
   <div class="ftr-r" id="ftr-date">—</div>
 </footer>
 </div><!-- /wrap -->
@@ -1428,6 +1477,7 @@ const SHEET_NAMES = {
   checklistAut:         'CHECKLIST AUTOELEVADORES',
   pedidos:               'PEDIDOS',   // nombre exacto de tu hoja en el Sheet
   controlInsumos:        'CONTROL INSUMOS', // nombre exacto de tu hoja en el Sheet
+  otProveedores:          'OT PROVEEDORES', // nombre exacto de tu hoja en el Sheet
 };
 
 const SERVICES_SHEET_ID = '1JBqizva8iWP_FF_XpBlr3aAGrz3-JaXOwNiuPuybcxg';
@@ -1448,6 +1498,7 @@ const SHEET_GIDS = {
   'CHECKLIST AUTOELEVADORES':     '1958650087',
   'PEDIDOS':                      '1563471949',
   'CONTROL INSUMOS':              '1493480228', 
+  'OT PROVEEDORES':               'GID_A_CONFIGURAR',
 };
 
 let G = {
@@ -1456,6 +1507,8 @@ let G = {
   checklistPalas: [], checklistAut: [],
   pedidos: [],
   insumos: [],
+  otProveedores: [],
+  informes: [],
   charts: {},
 };
 
@@ -1529,9 +1582,12 @@ async function loadAllData() {
     try { G.checklistAut   = parseChecklist(await fetchExternalSheet(SERVICES_SHEET_ID, '1958650087'), 'AUTOELEVADOR'); } catch(e) { G.checklistAut = []; console.warn('CHK AUT:', e); }
     try { G.pedidos = parsePedidos(await fetchSheet(SHEET_NAMES.pedidos)); } catch(e) { G.pedidos = []; console.warn('PEDIDOS:', e); }
     try { G.insumos = parseControlInsumos(await fetchSheet(SHEET_NAMES.controlInsumos)); } catch(e) { G.insumos = []; console.warn('CONTROL INSUMOS:', e); }
+    try { G.otProveedores = parseOTProveedores(await fetchSheet(SHEET_NAMES.otProveedores)); } catch(e) { G.otProveedores = []; console.warn('OT PROVEEDORES:', e); }
+
+    G.informes = buildInformes();
 
     const total = G.histPalas.length + G.histCam.length + G.histAut.length;
-    setStatus('ok', `✅ ${G.fleet.length} unidades · ${total} trabajos · ${G.services.length} services · ${G.checklistPalas.length+G.checklistAut.length} inspecciones · ${G.pedidos.length} pedidos · ${G.insumos.length} mov. insumos`);
+    setStatus('ok', `✅ ${G.fleet.length} unidades · ${total} trabajos · ${G.services.length} services · ${G.checklistPalas.length+G.checklistAut.length} inspecciones · ${G.pedidos.length} pedidos · ${G.insumos.length} mov. insumos · ${G.informes.length} informes`);
     renderAll();
   } catch(e) {
     setStatus('err','❌ ' + e.message);
@@ -1586,6 +1642,8 @@ function parseDisponibilidad(rows) {
   const iDesc  = findIdx(['DESCRIPCION','DESCRIPCI'],iTipo===1?9:8);
   const iFalla = findIdx(['FALLA','REQUER'],1);
   const iResp  = findIdx(['RESPONSABLE','RESP'],3);
+  const iInforme = findIdx(['INFORME'],-1);
+  const iEstadoEq = findIdx(['ESTADO EQUIPO'],-1);
   const hist = [];
   for (let i = hdrIdx+1; i < rows.length; i++) {
     const r = rows[i];
@@ -1596,7 +1654,7 @@ function parseDisponibilidad(rows) {
     const tipo = (r[iTipo]||'').trim().toUpperCase();
     const tipoNorm = tipo.includes('PREV')?'Preventivo':tipo.includes('CORR')?'Correctivo':'';
     if (!tipoNorm) continue;
-    hist.push({ unit, tipo:tipoNorm, ini:(r[iIni]||'').trim(), fin:(r[iFin]||'').trim(), desc:(r[iDesc]||'').trim(), falla:(r[iFalla]||'').trim(), resp:(r[iResp]||'').trim() });
+    hist.push({ unit, tipo:tipoNorm, ini:(r[iIni]||'').trim(), fin:(r[iFin]||'').trim(), desc:(r[iDesc]||'').trim(), falla:(r[iFalla]||'').trim(), resp:(r[iResp]||'').trim(), informe:(iInforme>=0?(r[iInforme]||'').trim():''), estadoEquipo:(iEstadoEq>=0?(r[iEstadoEq]||'').trim():'') });
   }
   return hist;
 }
@@ -1907,6 +1965,90 @@ function parseControlInsumos(rows) {
   return out;
 }
 
+// ── OT PROVEEDORES PARSER ──
+// Columnas reales de la hoja OT PROVEEDORES (escritas por el doPost del generador de OT):
+// FECHA · EQUIPO · TIPO EQUIPO · UNIDAD NEGOCIO · N° OT · N° REMITO · ORIGEN · PROVEEDOR · RESPONSABLE · N PERSONAS · LUGAR · DESCRIPCION · INFORME
+function parseOTProveedores(rows) {
+  if (!rows || rows.length < 2) return [];
+  const headers = rows[0].map(h=>(h||'').trim().toUpperCase());
+  const fi = names => { for(const n of names){ const i = headers.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
+
+  const iFecha   = fi(['FECHA']);
+  const iEquipo  = fi(['EQUIPO']);
+  const iTipoEq  = fi(['TIPO EQUIPO']);
+  const iUnidad  = fi(['UNIDAD NEGOCIO']);
+  const iNOT     = fi(['N° OT','N OT','NOT']);
+  const iOrigen  = fi(['ORIGEN']);
+  const iProv    = fi(['PROVEEDOR']);
+  const iResp    = fi(['RESPONSABLE']);
+  const iDesc    = fi(['DESCRIPCION']);
+  const iInforme = fi(['INFORME']);
+
+  const out = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const equipo = (r[iEquipo>=0?iEquipo:1]||'').trim();
+    const informe = (r[iInforme>=0?iInforme:12]||'').trim();
+    if (!equipo || !informe) continue; // solo nos interesan las OT ligadas a un equipo de flota, con PDF ya cargado
+    out.push({
+      fecha:    (r[iFecha>=0?iFecha:0]||'').trim(),
+      equipo,
+      tipoEquipo: (r[iTipoEq>=0?iTipoEq:2]||'').trim(),
+      unidadNegocio: (r[iUnidad>=0?iUnidad:3]||'').trim(),
+      nOT:      (r[iNOT>=0?iNOT:4]||'').trim(),
+      origen:   (r[iOrigen>=0?iOrigen:6]||'').trim() || 'Proveedor externo',
+      proveedor:(r[iProv>=0?iProv:7]||'').trim(),
+      responsable:(r[iResp>=0?iResp:8]||'').trim(),
+      desc:     (r[iDesc>=0?iDesc:11]||'').trim(),
+      informe,
+    });
+  }
+  return out;
+}
+
+// ── UNIFICAR INFORMES (mecánicos propios + OT proveedores) ──
+function buildInformes() {
+  const out = [];
+
+  function tipoEquipoDesdeHoja(hojaKey) {
+    if (hojaKey === 'palas') return 'PALA';
+    if (hojaKey === 'cam')   return 'CAMION';
+    return 'AUTOELEVADOR';
+  }
+
+  [['palas', G.histPalas], ['cam', G.histCam], ['aut', G.histAut]].forEach(([key, hist]) => {
+    hist.forEach(h => {
+      if (!h.informe) return; // solo filas con PDF ya generado
+      out.push({
+        fecha: h.ini,
+        equipoTipo: tipoEquipoDesdeHoja(key),
+        modelo: h.unit,
+        tipoMtto: h.tipo,
+        falla: h.falla,
+        responsable: h.resp,
+        origen: 'Interno (mecánico)',
+        informe: h.informe,
+      });
+    });
+  });
+
+  (G.otProveedores||[]).forEach(ot => {
+    const tipoMap = { 'Pala cargadora/Topadora':'PALA', 'Camion':'CAMION', 'Autoelevador':'AUTOELEVADOR' };
+    out.push({
+      fecha: ot.fecha,
+      equipoTipo: tipoMap[ot.tipoEquipo] || 'OTRO',
+      modelo: ot.equipo,
+      tipoMtto: '',
+      falla: ot.desc,
+      responsable: ot.proveedor || ot.responsable,
+      origen: /proveedor/i.test(ot.origen) ? 'Proveedor externo' : 'Mecánico propio',
+      informe: ot.informe,
+    });
+  });
+
+  return out;
+}
+
   // ═══════════════════════════════════════════════════════
 //  RENDER ALL
 // ═══════════════════════════════════════════════════════
@@ -1922,6 +2064,7 @@ function renderAll() {
   renderViajesPage();
   renderChecklistPage();
   renderPedidosPage();
+  renderInformesPage();
   renderFleetRows(G.fleet,'overview-fleet-tbody');
   updateClock();
 }
@@ -3055,6 +3198,104 @@ function renderPedidosPage(){
     const provs = [...new Set(G.pedidos.map(p=>p.proveedor).filter(Boolean))];
     dl.innerHTML = provs.map(p=>`<option value="${p}">`).join('');
   }
+}
+
+// ═══════════════════════════════════════════════════════
+//  INFORMES — Fotos de mecánicos propios + OT de proveedores
+// ═══════════════════════════════════════════════════════
+let infFilter = 'all';
+let infFilterOrigen = 'all';
+let infSearch = '';
+
+function renderInformesPage(){
+  const data = G.informes || [];
+  const el = document.getElementById('kpi-informes');
+  if(!data.length){
+    if(el) el.innerHTML = '<div style="grid-column:1/-1" class="no-data">Sin informes disponibles todavía. Se van a ir sumando a medida que se generen PDFs desde el formulario o el generador de OT.</div>';
+  } else {
+    const totalPrev = data.filter(i=>i.tipoMtto==='Preventivo').length;
+    const totalCorr = data.filter(i=>i.tipoMtto==='Correctivo').length;
+    const totalInterno = data.filter(i=>i.origen==='Interno (mecánico)').length;
+    const totalExterno = data.filter(i=>i.origen!=='Interno (mecánico)').length;
+    const porEquipo = {};
+    data.forEach(i=>{ porEquipo[i.modelo]=(porEquipo[i.modelo]||0)+1; });
+    const topEquipo = Object.entries(porEquipo).sort((a,b)=>b[1]-a[1])[0];
+    if(el) el.innerHTML =
+      kpiCard('TOTAL INFORMES', data.length, 'Con PDF disponible', 'kc-b') +
+      kpiCard('PREVENTIVOS / CORRECTIVOS', totalPrev+' / '+totalCorr, 'Trabajos internos', 'kc-g') +
+      kpiCard('INTERNOS / EXTERNOS', totalInterno+' / '+totalExterno, 'Por origen', 'kc-c') +
+      kpiCard('EQUIPO CON MÁS INFORMES', topEquipo?topEquipo[0]:'—', topEquipo?topEquipo[1]+' informes':'', 'kc-p');
+  }
+  buildChartInformesEquipo(data);
+  buildChartInformesOrigen(data);
+  renderInformesTable();
+}
+
+function buildChartInformesEquipo(data){
+  const counts = {PALA:0, CAMION:0, AUTOELEVADOR:0, OTRO:0};
+  data.forEach(i=>{ if(counts[i.equipoTipo]===undefined) counts[i.equipoTipo]=0; counts[i.equipoTipo]++; });
+  const labels = Object.keys(counts).filter(k=>counts[k]>0);
+  const values = labels.map(k=>counts[k]);
+  mkChart('ch-inf-equipo',{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:'rgba(0,170,255,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>v}},scales:scalesDef}});
+}
+function buildChartInformesOrigen(data){
+  const interno = data.filter(i=>i.origen==='Interno (mecánico)').length;
+  const propio = data.filter(i=>i.origen==='Mecánico propio').length;
+  const externo = data.filter(i=>i.origen==='Proveedor externo').length;
+  mkChart('ch-inf-origen',{type:'doughnut',data:{labels:['Interno (mecánico)','Mecánico propio (OT)','Proveedor externo'],datasets:[{data:[interno,propio,externo],backgroundColor:[C.blue,C.cyan,C.purple],borderColor:'#0b1118',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:pluginDef}});
+}
+
+function filterInformes(tipo, btn){
+  infFilter = tipo;
+  infFilterOrigen = 'all';
+  document.querySelectorAll('#page-informes .fbtn').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  renderInformesTable();
+}
+function filterInformesOrigen(origen, btn){
+  infFilterOrigen = origen;
+  infFilter = 'all';
+  document.querySelectorAll('#page-informes .fbtn').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  renderInformesTable();
+}
+function searchInformes(val){
+  infSearch = (val||'').toLowerCase();
+  renderInformesTable();
+}
+
+function renderInformesTable(){
+  const tbody = document.getElementById('informes-tbody');
+  if(!tbody) return;
+  let filtered = G.informes || [];
+  if(infFilter!=='all') filtered = filtered.filter(i=>i.equipoTipo===infFilter);
+  if(infFilterOrigen!=='all') filtered = filtered.filter(i=>i.origen===infFilterOrigen);
+  if(infSearch) filtered = filtered.filter(i=>
+    (i.modelo||'').toLowerCase().includes(infSearch) ||
+    (i.falla||'').toLowerCase().includes(infSearch) ||
+    (i.responsable||'').toLowerCase().includes(infSearch));
+
+  function parseFechaDMY(f){ const p=(f||'').split('/'); if(p.length<3) return 0; return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0])).getTime(); }
+  filtered = [...filtered].sort((a,b)=>parseFechaDMY(b.fecha)-parseFechaDMY(a.fecha));
+
+  if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="8" class="no-data">Sin informes en esta categoría</td></tr>'; return; }
+
+  const equipoIco = {PALA:'🦾', CAMION:'🚛', AUTOELEVADOR:'🏗️', OTRO:'🔧'};
+  const origenCls = {'Interno (mecánico)':'inf-origen-mecanico','Mecánico propio':'inf-origen-propio','Proveedor externo':'inf-origen-externo'};
+
+  tbody.innerHTML = filtered.map(i=>{
+    const tipoBadge = i.tipoMtto ? `<span class="htag ${i.tipoMtto==='Preventivo'?'htag-p':'htag-c'}">${i.tipoMtto.toUpperCase()}</span>` : '<span style="color:var(--txt3)">—</span>';
+    return `<tr>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${i.fecha||'—'}</td>
+      <td>${equipoIco[i.equipoTipo]||'🔧'}</td>
+      <td><div class="uname" style="font-size:12px">${i.modelo||'—'}</div></td>
+      <td>${tipoBadge}</td>
+      <td style="font-size:11px;color:var(--txt2);max-width:220px">${i.falla||'—'}</td>
+      <td style="font-size:11px;color:var(--txt2)">${i.responsable||'—'}</td>
+      <td><span class="inf-origen-badge ${origenCls[i.origen]||'inf-origen-mecanico'}">${i.origen}</span></td>
+      <td>${i.informe?`<a class="inf-link" href="${i.informe.replace(/^=HYPERLINK\("([^"]+)".*$/,'$1')}" target="_blank" rel="noopener">📄 Ver PDF</a>`:'<span style="color:var(--txt3);font-style:italic;font-size:10px">Sin PDF</span>'}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════════════════════
