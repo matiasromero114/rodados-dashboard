@@ -1498,7 +1498,7 @@ const SHEET_GIDS = {
   'CHECKLIST AUTOELEVADORES':     '1958650087',
   'PEDIDOS':                      '1563471949',
   'CONTROL INSUMOS':              '1493480228', 
-  'OT PROVEEDORES':               '1793052338',
+  'OT PROVEEDORES':               'GID_A_CONFIGURAR',
 };
 
 let G = {
@@ -1968,6 +1968,16 @@ function parseControlInsumos(rows) {
 // ── OT PROVEEDORES PARSER ──
 // Columnas reales de la hoja OT PROVEEDORES (escritas por el doPost del generador de OT):
 // FECHA · EQUIPO · TIPO EQUIPO · UNIDAD NEGOCIO · N° OT · N° REMITO · ORIGEN · PROVEEDOR · RESPONSABLE · N PERSONAS · LUGAR · DESCRIPCION · INFORME
+function normalizarFechaDDMMYYYY(f) {
+  const s = (f||'').trim();
+  if (!s) return '';
+  // Ya viene como DD/MM/AAAA (o D/M/AAAA) — se deja tal cual
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) return s;
+  // Viene como AAAA-MM-DD (formato nativo de <input type="date">) — se convierte
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return s;
+}
 function parseOTProveedores(rows) {
   if (!rows || rows.length < 2) return [];
   const headers = rows[0].map(h=>(h||'').trim().toUpperCase());
@@ -1991,7 +2001,7 @@ function parseOTProveedores(rows) {
     const informe = (r[iInforme>=0?iInforme:12]||'').trim();
     if (!equipo || !informe) continue; // solo nos interesan las OT ligadas a un equipo de flota, con PDF ya cargado
     out.push({
-      fecha:    (r[iFecha>=0?iFecha:0]||'').trim(),
+      fecha:    normalizarFechaDDMMYYYY(r[iFecha>=0?iFecha:0]||''),
       equipo,
       tipoEquipo: (r[iTipoEq>=0?iTipoEq:2]||'').trim(),
       unidadNegocio: (r[iUnidad>=0?iUnidad:3]||'').trim(),
