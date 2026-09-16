@@ -1343,7 +1343,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
       <button class="fbtn"    onclick="filterInformes('PALA',this)">🦾 PALAS</button>
       <button class="fbtn"    onclick="filterInformes('CAMION',this)">🚛 CAMIONES</button>
       <button class="fbtn"    onclick="filterInformes('AUTOELEVADOR',this)">🏗️ AUTOEL.</button>
-      <button class="fbtn"    onclick="filterInformesOrigen('Interno (mecánico)',this)">🔧 MECÁNICOS</button>
+      <button class="fbtn"    onclick="filterInformesOrigen('Mecánicos propios',this)">🔧 MECÁNICOS</button>
       <button class="fbtn"    onclick="filterInformesOrigen('Proveedor externo',this)">🏭 PROVEEDORES</button>
       <input class="fsearch" id="inf-search" placeholder="Buscar equipo, falla, responsable..." oninput="searchInformes(this.value)">
     </div>
@@ -2039,7 +2039,7 @@ function buildInformes() {
         tipoMtto: h.tipo,
         falla: h.falla,
         responsable: h.resp,
-        origen: 'Interno (mecánico)',
+        origen: 'Mecánicos propios',
         informe: h.informe,
       });
     });
@@ -2054,7 +2054,7 @@ function buildInformes() {
       tipoMtto: '',
       falla: ot.desc,
       responsable: ot.proveedor || ot.responsable,
-      origen: /proveedor/i.test(ot.origen) ? 'Proveedor externo' : 'Mecánico propio',
+      origen: /proveedor/i.test(ot.origen) ? 'Proveedor externo' : 'Mecánicos propios',
       informe: ot.informe,
     });
   });
@@ -3228,8 +3228,8 @@ function renderInformesPage(){
   } else {
     const totalPrev = data.filter(i=>i.tipoMtto==='Preventivo').length;
     const totalCorr = data.filter(i=>i.tipoMtto==='Correctivo').length;
-    const totalInterno = data.filter(i=>i.origen==='Interno (mecánico)').length;
-    const totalExterno = data.filter(i=>i.origen!=='Interno (mecánico)').length;
+    const totalInterno = data.filter(i=>i.origen==='Mecánicos propios').length;
+    const totalExterno = data.filter(i=>i.origen!=='Mecánicos propios').length;
     const porEquipo = {};
     data.forEach(i=>{ porEquipo[i.modelo]=(porEquipo[i.modelo]||0)+1; });
     const topEquipo = Object.entries(porEquipo).sort((a,b)=>b[1]-a[1])[0];
@@ -3263,10 +3263,9 @@ function buildChartInformesEquipo(data){
   mkChart('ch-inf-equipo',{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:'rgba(0,170,255,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>v}},scales:scalesDef}});
 }
 function buildChartInformesOrigen(data){
-  const interno = data.filter(i=>i.origen==='Interno (mecánico)').length;
-  const propio = data.filter(i=>i.origen==='Mecánico propio').length;
+  const interno = data.filter(i=>i.origen==='Mecánicos propios').length;
   const externo = data.filter(i=>i.origen==='Proveedor externo').length;
-  mkChart('ch-inf-origen',{type:'doughnut',data:{labels:['Interno (mecánico)','Mecánico propio (OT)','Proveedor externo'],datasets:[{data:[interno,propio,externo],backgroundColor:[C.blue,C.cyan,C.purple],borderColor:'#0b1118',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:pluginDef}});
+  mkChart('ch-inf-origen',{type:'doughnut',data:{labels:['Mecánicos propios','Proveedor externo'],datasets:[{data:[interno,externo],backgroundColor:[C.blue,C.purple],borderColor:'#0b1118',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:pluginDef}});
 }
 
 function filterInformes(tipo, btn){
@@ -3305,7 +3304,7 @@ function renderInformesTable(){
   if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="8" class="no-data">Sin informes en esta categoría</td></tr>'; return; }
 
   const equipoIco = {PALA:'🦾', CAMION:'🚛', AUTOELEVADOR:'🏗️', OTRO:'🔧'};
-  const origenCls = {'Interno (mecánico)':'inf-origen-mecanico','Mecánico propio':'inf-origen-propio','Proveedor externo':'inf-origen-externo'};
+  const origenCls = {'Mecánicos propios':'inf-origen-mecanico', 'Proveedor externo':'inf-origen-externo'};
 
   tbody.innerHTML = filtered.map(i=>{
     const tipoBadge = i.tipoMtto ? `<span class="htag ${i.tipoMtto==='Preventivo'?'htag-p':'htag-c'}">${i.tipoMtto.toUpperCase()}</span>` : '<span style="color:var(--txt3)">—</span>';
