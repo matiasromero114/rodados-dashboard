@@ -825,11 +825,12 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     <div class="clock" id="clock">--:--:--</div>
     <button class="refresh-btn" onclick="loadAllData()">↻ ACTUALIZAR</button>
     <button class="refresh-btn" onclick="window.print()" style="background:rgba(255,80,80,0.08);border-color:#ff5050;color:#ff5050;">⬇ PDF</button>
+    <button class="refresh-btn" onclick="toggleCfgBar()" id="cfgToggleBtn" title="Configuración de conexión">⚙</button>
   </div>
   <div class="hdr-scan"></div>
 </header>
 
-<div class="cfg-bar">
+<div class="cfg-bar" id="cfgBar" style="display:none">
   <span class="cfg-label">SHEET ID:</span>
   <input class="cfg-input" id="sheetId"
     value="1QRqhWjayjGiTl0OXDHZNSzpJz4Oa-fXHZq0FFewmx-s"
@@ -1616,6 +1617,14 @@ async function loadAllData() {
     console.error(e);
   }
   document.getElementById('loading').classList.add('hide');
+}
+
+function toggleCfgBar(){
+  const bar = document.getElementById('cfgBar');
+  const btn = document.getElementById('cfgToggleBtn');
+  const abierta = bar.style.display !== 'none';
+  bar.style.display = abierta ? 'none' : 'flex';
+  if(btn) btn.style.color = abierta ? '' : 'var(--cyan)';
 }
 
 function setStatus(type, msg) {
