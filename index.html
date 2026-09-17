@@ -1008,6 +1008,25 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     <div class="ccard"><div class="ctitle">Prev. vs Correctivo Global <span class="cbadge">%</span></div><div class="ch"><canvas id="ch-prevCorr"></canvas></div></div>
     <div class="ccard"><div class="ctitle">Trabajos por Tipo de Equipo <span class="cbadge">TOTAL</span></div><div class="ch"><canvas id="ch-trabajos"></canvas></div></div>
   </div>
+
+  <div class="slabel">📋 BACKLOG DE MANTENIMIENTO</div>
+  <div class="kpi-row" id="kpi-backlog"></div>
+  <div class="charts2">
+    <div class="ccard"><div class="ctitle">Backlog por Equipo <span class="cbadge">PENDIENTES</span></div><div class="ch" style="height:240px"><canvas id="ch-backlog-equipo"></canvas></div></div>
+    <div class="ccard"><div class="ctitle">Backlog por Antigüedad <span class="cbadge">DÍAS DE ATRASO</span></div><div class="ch" style="height:240px"><canvas id="ch-backlog-atraso"></canvas></div></div>
+  </div>
+  <div class="tbl-wrap" style="margin-bottom:24px">
+    <div class="hist-hdr" style="grid-template-columns:1.6fr 1fr 1fr 1fr 2.4fr">
+      <span>EQUIPO</span><span>ESTADO</span><span>FECHA PLANIF.</span><span style="text-align:right">ATRASO</span><span>FALLA / REQUERIMIENTO</span>
+    </div>
+    <div id="tabla-backlog"></div>
+  </div>
+
+  <div class="slabel">⏱️ DISPONIBILIDAD HISTÓRICA (UPTIME) POR EQUIPO</div>
+  <div class="kpi-row" id="kpi-uptime"></div>
+  <div class="chart1">
+    <div class="ccard"><div class="ctitle">Uptime por Equipo <span class="cbadge">% DEL PERÍODO ANALIZADO</span></div><div class="ch-tall"><canvas id="ch-uptime-equipo"></canvas></div></div>
+  </div>
 </div>
 
 <!-- ══════════════════════════ SERVICES ══════════════════════════ -->
@@ -1501,7 +1520,7 @@ const SHEET_GIDS = {
   'CHECKLIST AUTOELEVADORES':     '1958650087',
   'PEDIDOS':                      '1563471949',
   'CONTROL INSUMOS':              '1493480228', 
-  'OT PROVEEDORES':               '1793052338',
+  'OT PROVEEDORES':               'GID_A_CONFIGURAR',
 };
 
 let G = {
@@ -1647,6 +1666,9 @@ function parseDisponibilidad(rows) {
   const iResp  = findIdx(['RESPONSABLE','RESP'],3);
   const iInforme = findIdx(['INFORME'],-1);
   const iEstadoEq = findIdx(['ESTADO EQUIPO'],-1);
+  // Coincidencia exacta (no por substring) para no confundir "ESTADO" con "ESTADO EQUIPO"
+  const iEstado = headers.findIndex(h=>h==='ESTADO');
+  const iFechaPlan = headers.findIndex(h=>h==='FECHA PLANIFICADA');
   const hist = [];
   for (let i = hdrIdx+1; i < rows.length; i++) {
     const r = rows[i];
@@ -1657,7 +1679,7 @@ function parseDisponibilidad(rows) {
     const tipo = (r[iTipo]||'').trim().toUpperCase();
     const tipoNorm = tipo.includes('PREV')?'Preventivo':tipo.includes('CORR')?'Correctivo':'';
     if (!tipoNorm) continue;
-    hist.push({ unit, tipo:tipoNorm, ini:(r[iIni]||'').trim(), fin:(r[iFin]||'').trim(), desc:(r[iDesc]||'').trim(), falla:(r[iFalla]||'').trim(), resp:(r[iResp]||'').trim(), informe:(iInforme>=0?(r[iInforme]||'').trim():''), estadoEquipo:(iEstadoEq>=0?(r[iEstadoEq]||'').trim():'') });
+    hist.push({ unit, tipo:tipoNorm, ini:(r[iIni]||'').trim(), fin:(r[iFin]||'').trim(), desc:(r[iDesc]||'').trim(), falla:(r[iFalla]||'').trim(), resp:(r[iResp]||'').trim(), informe:(iInforme>=0?(r[iInforme]||'').trim():''), estadoEquipo:(iEstadoEq>=0?(r[iEstadoEq]||'').trim():''), estado:(iEstado>=0?(r[iEstado]||'').trim():''), fechaPlan:(iFechaPlan>=0?(r[iFechaPlan]||'').trim():'') });
   }
   return hist;
 }
@@ -1996,6 +2018,7 @@ function parseOTProveedores(rows) {
   const iResp    = fi(['RESPONSABLE']);
   const iDesc    = fi(['DESCRIPCION']);
   const iInforme = fi(['INFORME']);
+  const iTipoMtto = fi(['TIPO MTTO']);
 
   const out = [];
   for (let i = 1; i < rows.length; i++) {
@@ -2014,6 +2037,7 @@ function parseOTProveedores(rows) {
       responsable:(r[iResp>=0?iResp:8]||'').trim(),
       desc:     (r[iDesc>=0?iDesc:11]||'').trim(),
       informe,
+      tipoMtto: (iTipoMtto>=0?(r[iTipoMtto]||'').trim():''),
     });
   }
   return out;
@@ -2051,7 +2075,7 @@ function buildInformes() {
       fecha: ot.fecha,
       equipoTipo: tipoMap[ot.tipoEquipo] || 'OTRO',
       modelo: ot.equipo,
-      tipoMtto: '',
+      tipoMtto: /prev/i.test(ot.tipoMtto) ? 'Preventivo' : /corr/i.test(ot.tipoMtto) ? 'Correctivo' : '',
       falla: ot.desc,
       responsable: ot.proveedor || ot.responsable,
       origen: /proveedor/i.test(ot.origen) ? 'Proveedor externo' : 'Mecánicos propios',
@@ -2193,6 +2217,148 @@ function renderKPIPage() {
     <div class="mcard"><span class="mcard-ico">🛑</span><div class="mcard-name">ÍNDICE DE PARADA</div><div class="mcard-val">${G.fleet.length>0?Math.round(G.fleet.filter(u=>u.status==='bad').length/G.fleet.length*100):0}%</div><div class="mcard-unit">Unidades no disponibles</div><div class="mbar"><div class="mbar-fill" style="width:${G.fleet.length>0?Math.round(G.fleet.filter(u=>u.status==='bad').length/G.fleet.length*100):0}%;background:linear-gradient(90deg,var(--red),var(--orange))"></div></div></div>
     <div class="mcard"><span class="mcard-ico">🔩</span><div class="mcard-name">PALAS — % PREVENTIVO</div><div class="mcard-val">${calcPrevPct(G.histPalas)}%</div><div class="mcard-unit">${G.histPalas.length} trabajos</div><div class="mbar"><div class="mbar-fill" style="width:${calcPrevPct(G.histPalas)}%;background:linear-gradient(90deg,var(--blue),var(--cyan))"></div></div></div>
     <div class="mcard"><span class="mcard-ico">🚛</span><div class="mcard-name">CAMIONES — % PREVENTIVO</div><div class="mcard-val">${calcPrevPct(G.histCam)}%</div><div class="mcard-unit">${G.histCam.length} trabajos</div><div class="mbar"><div class="mbar-fill" style="width:${calcPrevPct(G.histCam)}%;background:linear-gradient(90deg,var(--blue),var(--cyan))"></div></div></div>`;
+  renderBacklogPage();
+  renderUptimePage();
+}
+
+// ═══════════════════════════════════════════════════════
+//  BACKLOG DE MANTENIMIENTO
+// ═══════════════════════════════════════════════════════
+// Equipos que no pueden quedar parados — ajustar esta lista si cambia la operación.
+const EQUIPOS_CRITICOS = ['TOYOTA 30', 'DOOSAN 40-2'];
+function esEquipoCritico(unit){
+  const u=(unit||'').toUpperCase();
+  return EQUIPOS_CRITICOS.some(c=>u.includes(c));
+}
+function parseFechaDMYGenerico(f){
+  const p=(f||'').trim().split('/');
+  if(p.length<3) return null;
+  const d=new Date(parseInt(p[2],10),parseInt(p[1],10)-1,parseInt(p[0],10));
+  return isNaN(d.getTime())?null:d;
+}
+function calcBacklog(){
+  const allHist=[...G.histPalas,...G.histCam,...G.histAut];
+  // Solo se cuenta como backlog lo que tiene ESTADO cargado (columna del flujo de planificación).
+  // Las filas viejas sin ese dato se ignoran para no ensuciar el KPI con historial incompleto.
+  const conEstado = allHist.filter(h=>h.estado);
+  const pendientes = conEstado.filter(h=>!/finalizad/i.test(h.estado));
+  const hoy = new Date();
+  const conAtraso = pendientes.map(h=>{
+    const fp = parseFechaDMYGenerico(h.fechaPlan);
+    const atraso = fp ? Math.round((hoy-fp)/86400000) : null;
+    return {...h, atraso};
+  });
+  const atrasados = conAtraso.filter(h=>h.atraso!==null && h.atraso>0);
+  const criticos = conAtraso.filter(h=>esEquipoCritico(h.unit));
+  const avgAtraso = atrasados.length ? Math.round(atrasados.reduce((s,h)=>s+h.atraso,0)/atrasados.length) : 0;
+  const maxAtraso = atrasados.length ? Math.max(...atrasados.map(h=>h.atraso)) : 0;
+  return { pendientes:conAtraso, total:conAtraso.length, criticos:criticos.length, avgAtraso, maxAtraso, sinDatos: allHist.length - conEstado.length, totalConDatos: conEstado.length };
+}
+function renderBacklogPage(){
+  const b = calcBacklog();
+  const kpiEl = document.getElementById('kpi-backlog');
+  if(!kpiEl) return;
+  if(b.totalConDatos===0){
+    kpiEl.innerHTML = '<div style="grid-column:1/-1" class="no-data">No se detecta la columna ESTADO (Planificado/En curso/Finalizado/Reprogramado/Bloqueado) en las hojas de mantenimiento, así que no se puede calcular el backlog todavía.</div>';
+    const c1=document.getElementById('ch-backlog-equipo'), c2=document.getElementById('ch-backlog-atraso');
+    if(G.charts['ch-backlog-equipo'])try{G.charts['ch-backlog-equipo'].destroy();}catch{}
+    if(G.charts['ch-backlog-atraso'])try{G.charts['ch-backlog-atraso'].destroy();}catch{}
+    const tbl=document.getElementById('tabla-backlog'); if(tbl) tbl.innerHTML='';
+    return;
+  }
+  kpiEl.innerHTML =
+    kpiCard('BACKLOG TOTAL', b.total, 'Tareas no finalizadas', b.total>0?'kc-a':'kc-g') +
+    kpiCard('BACKLOG CRÍTICO', b.criticos, 'Equipos que no pueden parar', b.criticos>0?'kc-r':'kc-g') +
+    kpiCard('ATRASO PROMEDIO', b.avgAtraso+' días', 'De las tareas vencidas', b.avgAtraso>7?'kc-r':'kc-a') +
+    kpiCard('MAYOR ATRASO', b.maxAtraso+' días', 'La tarea más antigua del backlog', 'kc-p');
+  buildChartBacklogEquipo(b.pendientes);
+  buildChartBacklogAtraso(b.pendientes);
+  renderTablaBacklog(b.pendientes);
+}
+function buildChartBacklogEquipo(pendientes){
+  const counts={};
+  pendientes.forEach(h=>{counts[h.unit]=(counts[h.unit]||0)+1;});
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  mkChart('ch-backlog-equipo',{type:'bar',data:{labels:sorted.map(e=>e[0]),datasets:[{data:sorted.map(e=>e[1]),backgroundColor:'rgba(255,193,7,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>v}},scales:{x:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
+}
+function buildChartBacklogAtraso(pendientes){
+  const buckets=[
+    {label:'Sin fecha',test:h=>h.atraso===null},
+    {label:'A tiempo',test:h=>h.atraso!==null&&h.atraso<=0},
+    {label:'1-7 días',test:h=>h.atraso>0&&h.atraso<=7},
+    {label:'8-15 días',test:h=>h.atraso>7&&h.atraso<=15},
+    {label:'16-30 días',test:h=>h.atraso>15&&h.atraso<=30},
+    {label:'>30 días',test:h=>h.atraso>30},
+  ];
+  const values=buckets.map(b=>pendientes.filter(b.test).length);
+  const colors=[C.muted,C.green,C.amber,C.orange,C.red,'#b30000'];
+  mkChart('ch-backlog-atraso',{type:'bar',data:{labels:buckets.map(b=>b.label),datasets:[{data:values,backgroundColor:colors,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>v}},scales:scalesDef}});
+}
+function renderTablaBacklog(pendientes){
+  const el=document.getElementById('tabla-backlog'); if(!el) return;
+  if(!pendientes.length){ el.innerHTML='<div class="no-data">Sin backlog pendiente 🎉</div>'; return; }
+  const sorted=[...pendientes].sort((a,b)=>(b.atraso??-9999)-(a.atraso??-9999));
+  const estadoCls = e => /bloquead/i.test(e)?'p-r':/reprogramad/i.test(e)?'p-a':/curso/i.test(e)?'p-a':'p-a';
+  el.innerHTML=sorted.map(h=>{
+    const atrasoTxt = h.atraso===null?'—':h.atraso>0?`<span style="color:var(--red);font-weight:600">+${h.atraso}d</span>`:`<span style="color:var(--green)">${h.atraso}d</span>`;
+    return `<div class="hist-row" style="grid-template-columns:1.6fr 1fr 1fr 1fr 2.4fr">
+      <div><div class="uname" style="font-size:12px">${h.unit}${esEquipoCritico(h.unit)?' 🔴':''}</div></div>
+      <div><span class="pill ${estadoCls(h.estado)}">${h.estado.toUpperCase()}</span></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${h.fechaPlan||'—'}</div>
+      <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px">${atrasoTxt}</div>
+      <div style="font-size:11px;color:var(--txt2)">${h.falla||'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  UPTIME HISTÓRICO POR EQUIPO
+// ═══════════════════════════════════════════════════════
+function calcUptimePorEquipo(){
+  const allHist=[...G.histPalas,...G.histCam,...G.histAut];
+  const correctivos = allHist.filter(h=>/corr/i.test(h.tipo) && h.ini && h.fin);
+  const fechasIni = allHist.map(h=>parseFechaDMYGenerico(h.ini)).filter(Boolean);
+  if(!correctivos.length || !fechasIni.length) return { periodoDias:0, porEquipo:[] };
+  const minFecha = new Date(Math.min(...fechasIni.map(d=>d.getTime())));
+  const hoy = new Date();
+  const periodoDias = Math.max(1, Math.round((hoy-minFecha)/86400000));
+  const porUnidad = {};
+  correctivos.forEach(h=>{
+    const dias = calcDias(h.ini,h.fin);
+    if(!porUnidad[h.unit]) porUnidad[h.unit] = { unit:h.unit, diasParado:0, eventos:0 };
+    porUnidad[h.unit].diasParado += dias;
+    porUnidad[h.unit].eventos++;
+  });
+  const porEquipo = Object.values(porUnidad).map(u=>{
+    const diasParadoClamp = Math.min(u.diasParado, periodoDias);
+    const uptimePct = Math.round((1 - diasParadoClamp/periodoDias)*100);
+    return {...u, uptimePct};
+  }).sort((a,b)=>a.uptimePct-b.uptimePct);
+  return { periodoDias, porEquipo, minFecha };
+}
+function renderUptimePage(){
+  const u = calcUptimePorEquipo();
+  const el = document.getElementById('kpi-uptime');
+  if(!el) return;
+  if(!u.porEquipo.length){
+    el.innerHTML = '<div style="grid-column:1/-1" class="no-data">Sin correctivos con fecha de inicio y fin cargadas todavía para calcular uptime histórico por equipo.</div>';
+    if(G.charts['ch-uptime-equipo'])try{G.charts['ch-uptime-equipo'].destroy();}catch{}
+    return;
+  }
+  const promedio = Math.round(u.porEquipo.reduce((s,e)=>s+e.uptimePct,0)/u.porEquipo.length);
+  const peor = u.porEquipo[0];
+  const mejor = u.porEquipo[u.porEquipo.length-1];
+  el.innerHTML =
+    kpiCard('UPTIME PROMEDIO FLOTA', promedio+'%', 'Período analizado: '+u.periodoDias+' días', promedio>=85?'kc-g':promedio>=70?'kc-a':'kc-r') +
+    kpiCard('PEOR DISPONIBILIDAD', peor.uptimePct+'%', peor.unit, 'kc-r') +
+    kpiCard('MEJOR DISPONIBILIDAD', mejor.uptimePct+'%', mejor.unit, 'kc-g') +
+    kpiCard('EQUIPOS ANALIZADOS', u.porEquipo.length, 'Con correctivos con fecha inicio/fin', 'kc-c');
+  buildChartUptimeEquipo(u.porEquipo);
+}
+function buildChartUptimeEquipo(porEquipo){
+  const labels=porEquipo.map(e=>e.unit);
+  const values=porEquipo.map(e=>e.uptimePct);
+  mkChart('ch-uptime-equipo',{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:values.map(v=>v>=85?C.green:v>=70?C.amber:C.red),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+'% uptime histórico'}},datalabels:{anchor:'end',align:'end',color:C.txt,font:{size:9},formatter:v=>v+'%'}},scales:{x:{max:100,ticks:{color:C.txt,font:{family:C.font,size:9},callback:v=>v+'%'},grid:{color:C.grid}},y:{ticks:{color:C.txt,font:{family:C.font,size:9}},grid:{display:false}}}}});
 }
 
 // ── SERVICES ──
