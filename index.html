@@ -1372,7 +1372,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
         <thead>
           <tr>
             <th>FECHA</th><th>EQUIPO</th><th>MODELO</th><th>TIPO MTTO</th>
-            <th>FALLA / REQUERIMIENTO</th><th>RESPONSABLE</th><th>ORIGEN</th><th>INFORME</th>
+            <th>FALLA / REQUERIMIENTO</th><th>RESPONSABLE</th><th>ORIGEN</th><th>N° COMPRA</th><th>INFORME</th>
           </tr>
         </thead>
         <tbody id="informes-tbody"></tbody>
@@ -2028,6 +2028,7 @@ function parseOTProveedores(rows) {
   const iDesc    = fi(['DESCRIPCION']);
   const iInforme = fi(['INFORME']);
   const iTipoMtto = fi(['TIPO MTTO', 'TIPO DE MANTENIMIENTO']);
+  const iNCompra  = fi(['N COMPRA', 'N° COMPRA', 'NUMERO DE COMPRA']);
 
   const out = [];
   for (let i = 1; i < rows.length; i++) {
@@ -2047,6 +2048,7 @@ function parseOTProveedores(rows) {
       desc:     (r[iDesc>=0?iDesc:11]||'').trim(),
       informe,
       tipoMtto: (iTipoMtto>=0?(r[iTipoMtto]||'').trim():''),
+      nCompra:  (iNCompra>=0?(r[iNCompra]||'').trim():''),
     });
   }
   return out;
@@ -2074,6 +2076,7 @@ function buildInformes() {
         responsable: h.resp,
         origen: 'Mecánicos propios',
         informe: h.informe,
+        nCompra: '',
       });
     });
   });
@@ -2089,6 +2092,7 @@ function buildInformes() {
       responsable: ot.proveedor || ot.responsable,
       origen: /proveedor/i.test(ot.origen) ? 'Proveedor externo' : 'Mecánicos propios',
       informe: ot.informe,
+      nCompra: ot.nCompra,
     });
   });
 
@@ -3476,7 +3480,7 @@ function renderInformesTable(){
   function parseFechaDMY(f){ const p=(f||'').split('/'); if(p.length<3) return 0; return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0])).getTime(); }
   filtered = [...filtered].sort((a,b)=>parseFechaDMY(b.fecha)-parseFechaDMY(a.fecha));
 
-  if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="8" class="no-data">Sin informes en esta categoría</td></tr>'; return; }
+  if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="9" class="no-data">Sin informes en esta categoría</td></tr>'; return; }
 
   const equipoIco = {PALA:'🦾', CAMION:'🚛', AUTOELEVADOR:'🏗️', OTRO:'🔧'};
   const origenCls = {'Mecánicos propios':'inf-origen-mecanico', 'Proveedor externo':'inf-origen-externo'};
@@ -3491,6 +3495,7 @@ function renderInformesTable(){
       <td style="font-size:11px;color:var(--txt2);max-width:220px">${i.falla||'—'}</td>
       <td style="font-size:11px;color:var(--txt2)">${i.responsable||'—'}</td>
       <td><span class="inf-origen-badge ${origenCls[i.origen]||'inf-origen-mecanico'}">${i.origen}</span></td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)">${i.nCompra||'—'}</td>
       <td>${infLinkCell(i.informe)}</td>
     </tr>`;
   }).join('');
