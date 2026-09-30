@@ -245,6 +245,9 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 .inf-origen-externo{background:rgba(179,136,255,0.1);color:var(--purple);border:1px solid rgba(179,136,255,0.25);}
 .inf-link{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;color:var(--blue);text-decoration:none;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:3px;background:rgba(0,170,255,0.08);border:1px solid rgba(0,170,255,0.2);transition:all 0.2s;}
 .inf-link:hover{background:rgba(0,170,255,0.18);border-color:var(--blue);}
+.inf-ncompra-input{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--cyan);padding:5px 8px;border-radius:4px;width:100px;transition:border-color 0.2s;}
+.inf-ncompra-input:focus{outline:none;border-color:var(--blue);}
+.inf-ncompra-input::placeholder{color:var(--txt3);}
 
 /* ============ GANTT FLOTA (Integrado) ============ */
 #page-ganttflota.page {
@@ -1702,7 +1705,7 @@ function parseDisponibilidad(rows) {
     const tipo = (r[iTipo]||'').trim().toUpperCase();
     const tipoNorm = tipo.includes('PREV')?'Preventivo':tipo.includes('CORR')?'Correctivo':'';
     if (!tipoNorm) continue;
-    hist.push({ unit, tipo:tipoNorm, ini:(r[iIni]||'').trim(), fin:(r[iFin]||'').trim(), desc:(r[iDesc]||'').trim(), falla:(r[iFalla]||'').trim(), resp:(r[iResp]||'').trim(), informe:(iInforme>=0?(r[iInforme]||'').trim():''), estadoEquipo:(iEstadoEq>=0?(r[iEstadoEq]||'').trim():''), estado:(iEstado>=0?(r[iEstado]||'').trim():''), fechaPlan:(iFechaPlan>=0?(r[iFechaPlan]||'').trim():'') });
+    hist.push({ unit, tipo:tipoNorm, ini:(r[iIni]||'').trim(), fin:(r[iFin]||'').trim(), desc:(r[iDesc]||'').trim(), falla:(r[iFalla]||'').trim(), resp:(r[iResp]||'').trim(), informe:(iInforme>=0?(r[iInforme]||'').trim():''), estadoEquipo:(iEstadoEq>=0?(r[iEstadoEq]||'').trim():''), estado:(iEstado>=0?(r[iEstado]||'').trim():''), fechaPlan:(iFechaPlan>=0?(r[iFechaPlan]||'').trim():''), fila:i+1 });
   }
   return hist;
 }
@@ -2063,6 +2066,7 @@ function parseOTProveedores(rows) {
       informe,
       tipoMtto: (iTipoMtto>=0?(r[iTipoMtto]||'').trim():''),
       nCompra:  (iNCompra>=0?(r[iNCompra]||'').trim():''),
+      fila: i+1,
     });
   }
   return out;
@@ -2077,6 +2081,7 @@ function buildInformes() {
     if (hojaKey === 'cam')   return 'CAMION';
     return 'AUTOELEVADOR';
   }
+  const hojaSheetName = { palas: SHEET_NAMES.mttoPalas, cam: SHEET_NAMES.mttoCamiones, aut: SHEET_NAMES.mttoAutoelevadores };
 
   [['palas', G.histPalas], ['cam', G.histCam], ['aut', G.histAut]].forEach(([key, hist]) => {
     hist.forEach(h => {
@@ -2091,6 +2096,8 @@ function buildInformes() {
         origen: 'Mecánicos propios',
         informe: h.informe,
         nCompra: '',
+        hojaOrigen: hojaSheetName[key],
+        filaOrigen: h.fila,
       });
     });
   });
@@ -2107,6 +2114,8 @@ function buildInformes() {
       origen: /proveedor/i.test(ot.origen) ? 'Proveedor externo' : 'Mecánicos propios',
       informe: ot.informe,
       nCompra: ot.nCompra,
+      hojaOrigen: 'OT PROVEEDORES',
+      filaOrigen: ot.fila,
     });
   });
 
@@ -3413,6 +3422,31 @@ let infFilter = 'all';
 let infFilterOrigen = 'all';
 let infSearch = '';
 
+// URL del mismo Web App que ya usan el generador de OT y el importador de pedidos.
+const INFORMES_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxxhdDqIYgMlcAXvvu-Rt6wp9xFmDtZOHC5Y234lVOlx20_X4vhJiWJ-97x2ZK6TkWd/exec';
+
+async function guardarNCompra(hoja, fila, valor, inputEl){
+  if(!hoja || !fila){
+    alert('No se pudo identificar de qué hoja/fila viene este informe, así que no se puede guardar automáticamente. Cargalo directo en el Sheet.');
+    return;
+  }
+  if(!INFORMES_WEBAPP_URL || INFORMES_WEBAPP_URL.includes('PEGAR_AQUI')){
+    alert('⚠️ Falta configurar INFORMES_WEBAPP_URL en el código del dashboard (es la misma URL /exec que ya usás en el generador de OT).');
+    return;
+  }
+  if(inputEl) inputEl.style.opacity = '0.5';
+  try{
+    await fetch(INFORMES_WEBAPP_URL, {
+      method:'post', mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ accion:'actualizarNCompra', hoja, fila, valor }),
+    });
+  }catch(e){
+    console.error('Error guardando N° Compra:', e);
+  }
+  if(inputEl) inputEl.style.opacity = '1';
+}
+
 function renderInformesPage(){
   const data = G.informes || [];
   const el = document.getElementById('kpi-informes');
@@ -3509,7 +3543,10 @@ function renderInformesTable(){
       <td style="font-size:11px;color:var(--txt2);max-width:220px">${i.falla||'—'}</td>
       <td style="font-size:11px;color:var(--txt2)">${i.responsable||'—'}</td>
       <td><span class="inf-origen-badge ${origenCls[i.origen]||'inf-origen-mecanico'}">${i.origen}</span></td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)">${i.nCompra||'—'}</td>
+      <td>
+        <input type="text" class="inf-ncompra-input" value="${i.nCompra||''}" placeholder="— cargar —"
+          onchange="guardarNCompra('${(i.hojaOrigen||'').replace(/'/g,"&#39;")}', ${i.filaOrigen||0}, this.value, this)">
+      </td>
       <td>${infLinkCell(i.informe)}</td>
     </tr>`;
   }).join('');
