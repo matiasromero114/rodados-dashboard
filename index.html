@@ -817,6 +817,11 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 #gantt-edit-panel .gantt-divider { height: 1px; background: var(--border); margin: 14px 0; }
 #gantt-edit-panel .gantt-history-list { list-style: none; }
 #gantt-edit-panel .gantt-history-item { font-size: 10px; color: var(--txt3); padding: 3px 0; border-bottom: 1px solid var(--border); font-family: 'DM Mono', monospace; }
+#despWrap{position:relative}
+#despFsExit{display:none;position:absolute;right:14px;bottom:14px;z-index:5;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;padding:8px 14px;border-radius:6px;border:1px solid var(--blue);background:rgba(11,17,24,.92);color:var(--blue);cursor:pointer}
+#despWrap.full{position:fixed;inset:0;z-index:2000;background:#0b1118}
+#despWrap.full iframe{height:100vh!important;min-height:0!important;border:0!important;border-radius:0!important}
+#despWrap.full #despFsExit{display:block}
 </style>
 </head>
 <body>
@@ -1404,8 +1409,11 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 
 <!-- ══════════════════════════ GANTT FLOTA (Integrado) ══════════════════════════ -->
 <div id="page-despiece" class="page">
-  <div class="slabel">🔩 DESPIECE MÁQUINAS — LONKING CDM 856 (856-01 CANTERA · 856-02 CEVIL)</div>
-  <iframe id="despFrame" title="Despiece Lonking CDM 856" allow="fullscreen" style="width:100%;height:calc(100vh - 170px);min-height:520px;border:1px solid var(--border2);border-radius:8px;background:#0b1118;display:block"></iframe>
+  <div class="slabel" style="display:flex;align-items:center;gap:12px"><span>🔩 DESPIECE MÁQUINAS — LONKING CDM 856 (856-01 CANTERA · 856-02 CEVIL)</span><span style="flex:1"></span><button class="refresh-btn" id="despFsBtn" onclick="despieceFs()" style="white-space:nowrap">⛶ PANTALLA COMPLETA</button></div>
+  <div id="despWrap">
+    <iframe id="despFrame" title="Despiece Lonking CDM 856" allow="fullscreen" style="width:100%;height:calc(100vh - 170px);min-height:520px;border:1px solid var(--border2);border-radius:8px;background:#0b1118;display:block"></iframe>
+    <button id="despFsExit" onclick="despieceFs()">✕ SALIR DE PANTALLA COMPLETA</button>
+  </div>
 </div>
 
 <div id="page-ganttflota" class="page">
@@ -4199,6 +4207,16 @@ window.addEventListener('load',()=>setTimeout(loadAllData,500));
 </script>
 
 <script>
+function despieceFs(){
+  const w=document.getElementById('despWrap');if(!w)return;
+  const on=!w.classList.contains('full');
+  w.classList.toggle('full',on);document.body.style.overflow=on?'hidden':'';
+  const b=document.getElementById('despFsBtn');if(b)b.textContent=on?'✕ SALIR':'⛶ PANTALLA COMPLETA';
+  try{if(on&&w.requestFullscreen)w.requestFullscreen().catch(()=>{});else if(!on&&document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch(e){}
+}
+document.addEventListener('fullscreenchange',()=>{const w=document.getElementById('despWrap');if(w&&w.classList.contains('full')&&!document.fullscreenElement)despieceFs()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const w=document.getElementById('despWrap');if(w&&w.classList.contains('full'))despieceFs()}});
+
 function despieceLoad(){
   const fr=document.getElementById('despFrame');if(!fr||fr.dataset.ok)return;
   try{
