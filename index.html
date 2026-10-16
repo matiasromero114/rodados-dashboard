@@ -1440,6 +1440,14 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   </div>
 </div>
 
+<div id="page-despTY" class="page">
+  <div class="slabel" style="display:flex;align-items:center;gap:12px"><span>🏭 DESPIECE — TOYOTA 8FD45N (AUTOELEVADOR)</span><span style="flex:1"></span><button class="refresh-btn" id="despTYFsBtn" onclick="despieceFs('despTY')" style="white-space:nowrap">⛶ PANTALLA COMPLETA</button></div>
+  <div id="despTYWrap" class="despWrap">
+    <iframe id="despTYFrame" title="🏭 DESPIECE — TOYOTA 8FD45N (AUTOELEVADOR)" allow="fullscreen" style="width:100%;height:calc(100vh - 170px);min-height:520px;border:1px solid var(--border2);border-radius:8px;background:#0b1118;display:block"></iframe>
+    <button class="despFsExit" onclick="despieceFs('despTY')">✕ SALIR DE PANTALLA COMPLETA</button>
+  </div>
+</div>
+
 <div id="page-ganttflota" class="page">
   <div class="gantt-main-layout">
     <aside class="gantt-sidebar">
@@ -3694,7 +3702,7 @@ const NAV_STRUCTURE = {
   informes:    { icon:'🗂️', label:'INFORMES',              type:'page' },
   indicadores: { icon:'📈', label:'INDICADORES',           type:'group', children:['kpis','services'] },
   gestion:     { icon:'🗃️', label:'GESTIÓN',               type:'group', children:['checklist','pedidos','ganttflota'] },
-  despiece:    { icon:'🔩', label:'DESPIECE MÁQUINAS',     type:'group', children:['despLK','despDS','despKM','despCT'] },
+  despiece:    { icon:'🔩', label:'DESPIECE MÁQUINAS',     type:'group', children:['despLK','despDS','despKM','despCT','despTY'] },
 };
 const PAGE_META = {
   palas:     { icon:'🦾', label:'PALAS',            sub:'Datos y mantenimiento' },
@@ -3709,6 +3717,7 @@ const PAGE_META = {
   despDS:    { icon:'🏗️', label:'DOOSAN D40S',      sub:'Doosan 01 · Doosan 02' },
   despKM:    { icon:'⛏️', label:'KOMATSU D61EX-15', sub:'Topadora D61EX-15E0' },
   despCT:    { icon:'🛞', label:'CATERPILLAR 938K', sub:'Pala cargadora 938K' },
+  despTY:    { icon:'🏭', label:'TOYOTA 8FD45N',    sub:'Autoelevador 4,5 t' },
 };
 
 let navStack = [{type:'home'}];
@@ -3744,7 +3753,7 @@ function mostrarEstadoNav(){
     const pageEl = document.getElementById('page-' + top.pageId);
     if (pageEl) pageEl.classList.add('on');
     if (top.pageId === 'ganttflota') ganttRender();
-    if (top.pageId === 'despLK' || top.pageId === 'despDS' || top.pageId === 'despKM' || top.pageId === 'despCT') despieceLoad(top.pageId);
+    if (top.pageId === 'despLK' || top.pageId === 'despDS' || top.pageId === 'despKM' || top.pageId === 'despCT' || top.pageId === 'despTY') despieceLoad(top.pageId);
   }
 
   const btnAtras = document.getElementById('btnAtras');
@@ -4235,7 +4244,7 @@ window.addEventListener('load',()=>setTimeout(loadAllData,500));
 </script>
 
 <script>
-const DESP_SRC={despLK:'despiece_lonking.html',despDS:'despiece_doosan.html',despKM:'despiece_komatsu.html',despCT:'despiece_caterpillar.html'};
+const DESP_SRC={despLK:'despiece_lonking.html',despDS:'despiece_doosan.html',despKM:'despiece_komatsu.html',despCT:'despiece_caterpillar.html',despTY:'despiece_toyota.html'};
 async function despieceLoad(pid){
   const fr=document.getElementById(pid+'Frame');if(!fr||fr.dataset.ok)return;
   fr.dataset.ok='1';
