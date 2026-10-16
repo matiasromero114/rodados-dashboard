@@ -1621,19 +1621,17 @@ async function fetchExternalSheet(sheetId, gid) {
 
 function parseCSV(text) {
   const rows = [];
-  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    const cols = []; let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') { if (inQ && line[i+1]==='"') { cur+='"'; i++; } else inQ=!inQ; }
-      else if (c === ',' && !inQ) { cols.push(cur.trim()); cur=''; }
-      else cur += c;
-    }
-    cols.push(cur.trim());
-    rows.push(cols);
+  const s = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  let row = [], cur = '', inQ = false;
+  const endRow = () => { row.push(cur.trim()); cur = ''; if (!(row.length === 1 && row[0] === '')) rows.push(row); row = []; };
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '"') { if (inQ && s[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+    else if (c === ',' && !inQ) { row.push(cur.trim()); cur = ''; }
+    else if (c === '\n' && !inQ) endRow();
+    else cur += c;
   }
+  if (cur !== '' || row.length) endRow();
   return rows;
 }
 
@@ -1674,6 +1672,7 @@ async function loadAllData() {
     const total = G.histPalas.length + G.histCam.length + G.histAut.length;
     setStatus('ok', `✅ ${G.fleet.length} unidades · ${total} trabajos · ${G.services.length} services · ${G.checklistPalas.length+G.checklistAut.length} inspecciones · ${G.pedidos.length} pedidos · ${G.insumos.length} mov. insumos · ${G.informes.length} informes`);
     renderAll();
+    try{ despPush(); }catch(e){ console.warn('DESPIECE push:', e); }
   } catch(e) {
     setStatus('err','❌ ' + e.message);
     console.error(e);
@@ -1740,6 +1739,7 @@ function parseDisponibilidad(rows) {
   // Coincidencia exacta (no por substring) para no confundir "ESTADO" con "ESTADO EQUIPO"
   const iEstado = headers.findIndex(h=>h==='ESTADO');
   const iFechaPlan = headers.findIndex(h=>h==='FECHA PLANIFICADA');
+  const iTiempo = headers.findIndex(h=>h==='TIEMPO');
   const hist = [];
   for (let i = hdrIdx+1; i < rows.length; i++) {
     const r = rows[i];
@@ -1750,7 +1750,7 @@ function parseDisponibilidad(rows) {
     const tipo = (r[iTipo]||'').trim().toUpperCase();
     const tipoNorm = tipo.includes('PREV')?'Preventivo':tipo.includes('CORR')?'Correctivo':'';
     if (!tipoNorm) continue;
-    hist.push({ unit, tipo:tipoNorm, ini:(r[iIni]||'').trim(), fin:(r[iFin]||'').trim(), desc:(r[iDesc]||'').trim(), falla:(r[iFalla]||'').trim(), resp:(r[iResp]||'').trim(), informe:(iInforme>=0?(r[iInforme]||'').trim():''), estadoEquipo:(iEstadoEq>=0?(r[iEstadoEq]||'').trim():''), estado:(iEstado>=0?(r[iEstado]||'').trim():''), fechaPlan:(iFechaPlan>=0?(r[iFechaPlan]||'').trim():''), fila:i+1 });
+    hist.push({ unit, tipo:tipoNorm, ini:(r[iIni]||'').trim(), fin:(r[iFin]||'').trim(), desc:(r[iDesc]||'').trim(), falla:(r[iFalla]||'').trim(), resp:(r[iResp]||'').trim(), informe:(iInforme>=0?(r[iInforme]||'').trim():''), estadoEquipo:(iEstadoEq>=0?(r[iEstadoEq]||'').trim():''), estado:(iEstado>=0?(r[iEstado]||'').trim():''), fechaPlan:(iFechaPlan>=0?(r[iFechaPlan]||'').trim():''), tiempo:(iTiempo>=0?(r[iTiempo]||'').trim():''), fila:i+1 });
   }
   return hist;
 }
@@ -4244,7 +4244,17 @@ window.addEventListener('load',()=>setTimeout(loadAllData,500));
 </script>
 
 <script>
-const DESP_SRC={despLK:'despiece_lonking_v7.html',despDS:'despiece_doosan.html',despKM:'despiece_komatsu.html',despCT:'despiece_caterpillar.html',despTY:'despiece_toyota.html'};
+const DESP_SRC={despLK:'despiece_lonking_v10.html',despDS:'despiece_doosan_v3.html',despKM:'despiece_komatsu_v3.html',despCT:'despiece_caterpillar_v3.html',despTY:'despiece_toyota_v4.html'};
+window.__despPayload=null;
+function despPush(){
+  const p={type:'rodados-hist',aut:G.histAut,palas:G.histPalas,ot:G.otProveedores};
+  window.__despPayload=p;
+  document.querySelectorAll('iframe[id$="Frame"]').forEach(f=>{try{f.contentWindow.postMessage(p,'*')}catch(e){}});
+}
+window.addEventListener('message',e=>{
+  if(!e.data||e.data.type!=='rodados-hist-ready'||!window.__despPayload)return;
+  try{e.source.postMessage(window.__despPayload,'*')}catch(_){}
+});
 async function despieceLoad(pid){
   const fr=document.getElementById(pid+'Frame');if(!fr||fr.dataset.ok)return;
   fr.dataset.ok='1';
