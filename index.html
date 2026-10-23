@@ -1378,6 +1378,8 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
     <div class="ccard"><div class="ctitle">Origen del Trabajo <span class="cbadge">DISTRIBUCIÓN</span></div><div class="ch" style="height:220px"><canvas id="ch-inf-origen"></canvas></div></div>
   </div>
 
+  <div id="gom-panel"></div>
+
   <div class="slabel">LISTADO DE INFORMES</div>
   <div class="tbl-wrap" style="overflow-x:auto">
     <div class="tbl-filters">
@@ -1385,6 +1387,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
       <button class="fbtn"    onclick="filterInformes('PALA',this)">🦾 PALAS</button>
       <button class="fbtn"    onclick="filterInformes('CAMION',this)">🚛 CAMIONES</button>
       <button class="fbtn"    onclick="filterInformes('AUTOELEVADOR',this)">🏗️ AUTOEL.</button>
+      <button class="fbtn"    onclick="filterInformes('GOM',this)">🛞 GOMERÍA</button>
       <button class="fbtn"    onclick="filterInformesOrigen('Mecánicos propios',this)">🔧 MECÁNICOS</button>
       <button class="fbtn"    onclick="filterInformesOrigen('Proveedor externo',this)">🏭 PROVEEDORES</button>
       <input class="fsearch" id="inf-search" placeholder="Buscar equipo, falla, responsable..." oninput="searchInformes(this.value)">
@@ -1394,7 +1397,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
         <thead>
           <tr>
             <th>FECHA</th><th>EQUIPO</th><th>MODELO</th><th>TIPO MTTO</th>
-            <th>FALLA / REQUERIMIENTO</th><th>RESPONSABLE</th><th>ORIGEN</th><th>N° COMPRA</th><th>INFORME</th>
+            <th>FALLA / REQUERIMIENTO</th><th>RESPONSABLE</th><th>ORIGEN</th><th>MONTO s/IVA</th><th>N° COMPRA</th><th>INFORME</th>
           </tr>
         </thead>
         <tbody id="informes-tbody"></tbody>
@@ -2091,6 +2094,12 @@ function parseOTProveedores(rows) {
   const iInforme = fi(['INFORME']);
   const iTipoMtto = fi(['TIPO MTTO', 'TIPO DE MANTENIMIENTO']);
   const iNCompra  = fi(['N COMPRA', 'N° COMPRA', 'NUMERO DE COMPRA']);
+  const iTipoInf = fi(['TIPO INFORME']);
+  const iMonto   = fi(['MONTO']);
+  const iCubPos  = fi(['CUB POSICION']);
+  const iCubMed  = fi(['CUB MEDIDA']);
+  const iCubProb = fi(['CUB PROBLEMA']);
+  const iCubTrab = fi(['CUB TRABAJO']);
 
   const out = [];
   for (let i = 1; i < rows.length; i++) {
@@ -2111,6 +2120,12 @@ function parseOTProveedores(rows) {
       informe,
       tipoMtto: (iTipoMtto>=0?(r[iTipoMtto]||'').trim():''),
       nCompra:  (iNCompra>=0?(r[iNCompra]||'').trim():''),
+      tipoInforme: (iTipoInf>=0?(r[iTipoInf]||'').trim():''),
+      monto:    (iMonto>=0?(r[iMonto]||'').trim():''),
+      cubPosicion: (iCubPos>=0?(r[iCubPos]||'').trim():''),
+      cubMedida:   (iCubMed>=0?(r[iCubMed]||'').trim():''),
+      cubProblema: (iCubProb>=0?(r[iCubProb]||'').trim():''),
+      cubTrabajo:  (iCubTrab>=0?(r[iCubTrab]||'').trim():''),
       fila: i+1,
     });
   }
@@ -2118,6 +2133,15 @@ function parseOTProveedores(rows) {
 }
 
 // ── UNIFICAR INFORMES (mecánicos propios + OT proveedores) ──
+function parseMonto(x){
+  x = String(x==null?'':x).trim(); if(!x) return 0;
+  let n = x.replace(/[^\d.,-]/g,'');
+  if(n.includes(',') && n.includes('.')) n = n.lastIndexOf(',')>n.lastIndexOf('.') ? n.replace(/\./g,'').replace(',','.') : n.replace(/,/g,'');
+  else if(n.includes(',')) n = /,\d{1,2}$/.test(n) ? n.replace(',','.') : n.replace(/,/g,'');
+  else if(/\.\d{3}(\.|$)/.test(n)) n = n.replace(/\./g,'');
+  n = parseFloat(n); return isFinite(n)?n:0;
+}
+function fmtPesos(n){ return '$ '+(+n).toLocaleString('es-AR',{maximumFractionDigits:2}); }
 function buildInformes() {
   const out = [];
 
@@ -2159,6 +2183,7 @@ function buildInformes() {
       origen: /proveedor/i.test(ot.origen) ? 'Proveedor externo' : 'Mecánicos propios',
       informe: ot.informe,
       nCompra: ot.nCompra,
+      tipoInforme: ot.tipoInforme, monto: parseMonto(ot.monto), cubPosicion: ot.cubPosicion, cubProblema: ot.cubProblema, cubTrabajo: ot.cubTrabajo,
       hojaOrigen: 'OT PROVEEDORES',
       filaOrigen: ot.fila,
     });
@@ -3513,6 +3538,7 @@ function renderInformesPage(){
   }
   buildChartInformesEquipo(data);
   buildChartInformesOrigen(data);
+  renderGomPanel(data);
   renderInformesTable();
 }
 
@@ -3520,6 +3546,32 @@ function renderInformesPage(){
 // una URL real (empieza con http) — el CSV de Sheets no trae la URL de
 // celdas con fórmula =HYPERLINK(...), solo el texto visible, así que ese
 // caso se muestra como texto plano en vez de armar un link roto.
+function renderGomPanel(data){
+  const el = document.getElementById('gom-panel'); if(!el) return;
+  const g = data.filter(i=>i.tipoInforme==='Gomería');
+  if(!g.length){ el.innerHTML=''; return; }
+  const now = new Date(), mesKey = (now.getMonth()+1)+'/'+now.getFullYear();
+  const total = g.reduce((a,i)=>a+(i.monto||0),0);
+  const delMes = g.filter(i=>{const p=(i.fecha||'').split('/');return p.length>=3&&(parseInt(p[1])+'/'+p[2])===mesKey;});
+  const mesTot = delMes.reduce((a,i)=>a+(i.monto||0),0);
+  const por = {};
+  const ts=f=>{const p=(f||'').split('/');return p.length<3?0:new Date(+p[2],+p[1]-1,+p[0]).getTime()};
+  g.forEach(i=>{ const k=i.modelo||'—'; (por[k]=por[k]||{n:0,m:0,ult:'',prob:{},pos:{}}); const o=por[k]; o.n++; o.m+=i.monto||0;
+    if(!o.ult||ts(i.fecha)>ts(o.ult)) o.ult=i.fecha;
+    if(i.cubProblema) o.prob[i.cubProblema]=(o.prob[i.cubProblema]||0)+1;
+    if(i.cubPosicion) o.pos[i.cubPosicion]=(o.pos[i.cubPosicion]||0)+1; });
+  const top = m => { const e=Object.entries(m).sort((a,b)=>b[1]-a[1])[0]; return e?e[0]+(e[1]>1?' ('+e[1]+')':''):'—'; };
+  const filas = Object.entries(por).sort((a,b)=>b[1].m-a[1].m);
+  const mayor = filas[0];
+  el.innerHTML = '<div class="slabel">🛞 GOMERÍA / CUBIERTAS</div><div class="kpi-row">'+
+    kpiCard('TRABAJOS DE GOMERÍA', g.length, 'Histórico', 'kc-b')+
+    kpiCard('GASTO TOTAL (s/IVA)', fmtPesos(total), 'Histórico', 'kc-g')+
+    kpiCard('GASTO DEL MES', fmtPesos(mesTot), delMes.length+' trabajos', 'kc-c')+
+    kpiCard('UNIDAD CON MÁS GASTO', mayor?mayor[0]:'—', mayor?fmtPesos(mayor[1].m):'', 'kc-p')+'</div>'+
+    '<div class="tbl-wrap" style="overflow-x:auto;margin-bottom:18px"><div style="min-width:760px"><table><thead><tr><th>UNIDAD</th><th>TRABAJOS</th><th>GASTO s/IVA</th><th>ÚLTIMO</th><th>PROBLEMA MÁS FRECUENTE</th><th>POSICIÓN MÁS FRECUENTE</th></tr></thead><tbody>'+
+    filas.map(([u,o])=>`<tr><td><div class="uname" style="font-size:12px">${u}</div></td><td>${o.n}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtPesos(o.m)}</td><td style="font-size:11px;color:var(--txt2)">${o.ult||'—'}</td><td style="font-size:11px;color:var(--txt2)">${top(o.prob)}</td><td style="font-size:11px;color:var(--txt2)">${top(o.pos)}</td></tr>`).join('')+
+    '</tbody></table></div></div>';
+}
 function infLinkCell(informe){
   if (!informe) return '<span style="color:var(--txt3);font-style:italic;font-size:10px">Sin PDF</span>';
   const esUrl = /^https?:\/\//i.test(informe.trim());
@@ -3563,7 +3615,8 @@ function renderInformesTable(){
   const tbody = document.getElementById('informes-tbody');
   if(!tbody) return;
   let filtered = G.informes || [];
-  if(infFilter!=='all') filtered = filtered.filter(i=>i.equipoTipo===infFilter);
+  if(infFilter==='GOM') filtered = filtered.filter(i=>i.tipoInforme==='Gomería');
+  else if(infFilter!=='all') filtered = filtered.filter(i=>i.equipoTipo===infFilter);
   if(infFilterOrigen!=='all') filtered = filtered.filter(i=>i.origen===infFilterOrigen);
   if(infSearch) filtered = filtered.filter(i=>
     (i.modelo||'').toLowerCase().includes(infSearch) ||
@@ -3573,7 +3626,7 @@ function renderInformesTable(){
   function parseFechaDMY(f){ const p=(f||'').split('/'); if(p.length<3) return 0; return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0])).getTime(); }
   filtered = [...filtered].sort((a,b)=>parseFechaDMY(b.fecha)-parseFechaDMY(a.fecha));
 
-  if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="9" class="no-data">Sin informes en esta categoría</td></tr>'; return; }
+  if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="10" class="no-data">Sin informes en esta categoría</td></tr>'; return; }
 
   const equipoIco = {PALA:'🦾', CAMION:'🚛', AUTOELEVADOR:'🏗️', OTRO:'🔧'};
   const origenCls = {'Mecánicos propios':'inf-origen-mecanico', 'Proveedor externo':'inf-origen-externo'};
@@ -3588,6 +3641,7 @@ function renderInformesTable(){
       <td style="font-size:11px;color:var(--txt2);max-width:220px">${i.falla||'—'}</td>
       <td style="font-size:11px;color:var(--txt2)">${i.responsable||'—'}</td>
       <td><span class="inf-origen-badge ${origenCls[i.origen]||'inf-origen-mecanico'}">${i.origen}</span></td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2);white-space:nowrap">${i.monto?fmtPesos(i.monto):'—'}</td>
       <td>
         <input type="text" class="inf-ncompra-input" value="${i.nCompra||''}" placeholder="— cargar —"
           onchange="guardarNCompra('${(i.hojaOrigen||'').replace(/'/g,"&#39;")}', ${i.filaOrigen||0}, this.value, this)">
@@ -4244,7 +4298,7 @@ window.addEventListener('load',()=>setTimeout(loadAllData,500));
 </script>
 
 <script>
-const DESP_SRC={despLK:'despiece_lonking_v10.html',despDS:'despiece_doosan_v3.html',despKM:'despiece_komatsu_v4.html',despCT:'despiece_caterpillar_v3.html',despTY:'despiece_toyota_v4.html'};
+const DESP_SRC={despLK:'despiece_lonking_v11.html',despDS:'despiece_doosan_v4.html',despKM:'despiece_komatsu_v5.html',despCT:'despiece_caterpillar_v4.html',despTY:'despiece_toyota_v5.html'};
 window.__despPayload=null;
 function despPush(){
   const p={type:'rodados-hist',aut:G.histAut,palas:G.histPalas,ot:G.otProveedores};
