@@ -116,6 +116,12 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 .p-g::before{background:var(--good);}
 .p-a{background:rgba(255,193,7,0.1);color:var(--warn);border:1px solid rgba(255,193,7,0.2);}
 .p-a::before{background:var(--warn);animation:blink 1.5s infinite;}
+.p-n{background:rgba(120,144,156,0.12);color:#78909c;border:1px solid rgba(120,144,156,0.3);}
+.kc-n::before{background:linear-gradient(90deg,#78909c,transparent);}
+.kc-n .kvalue{color:#78909c;}
+.kpi-row.k7{grid-template-columns:repeat(7,1fr);}
+@media(max-width:1400px){.kpi-row.k7{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:900px){.kpi-row.k7{grid-template-columns:repeat(2,1fr);}}
 .p-r{background:rgba(255,61,61,0.1);color:var(--crit);border:1px solid rgba(255,61,61,0.2);}
 .p-r::before{background:var(--crit);animation:blink 1s infinite;}
 .obs{font-size:11px;color:var(--txt2);max-width:280px;line-height:1.4;}
@@ -130,7 +136,8 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 .mbar{margin-top:12px;height:2px;background:var(--border);border-radius:2px;overflow:hidden;}
 .mbar-fill{height:100%;border-radius:2px;transition:width 1.2s ease;}
 .mcard-desc{font-size:11px;color:var(--txt3);margin-top:6px;line-height:1.4;}
-.apanels{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+.adot-n{background:#78909c;}
+.apanels{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:24px;}
 .apanel{background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
 .apanel-hdr{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .apanel-title{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--txt2);}
@@ -903,6 +910,10 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
       <div class="apanel-hdr"><span class="apanel-title">🟡 Con Alertas</span><span class="abadge ab-a" id="badge-alert">—</span></div>
       <div id="list-alert"></div>
     </div>
+    <div class="apanel" id="panel-rel" style="display:none">
+      <div class="apanel-hdr"><span class="apanel-title">🔎 En Relevamiento <span style="font-weight:normal;font-size:10px;opacity:.7">(no cuentan en el %)</span></span><span class="abadge ab-a" id="badge-rel">—</span></div>
+      <div id="list-rel"></div>
+    </div>
   </div>
   <div class="slabel">FLOTA COMPLETA</div>
   <div class="tbl-wrap" style="overflow-x:auto;">
@@ -1657,6 +1668,8 @@ async function loadAllData() {
     if (dispRes.status === 'rejected') throw new Error('No se pudo cargar DISPONIBILIDAD: ' + dispRes.reason.message);
 
     G.fleet     = parseDisponibilidad(dispRes.value);
+    G.fleetRel  = G.fleet.filter(u=>u.status==='rel');
+    G.fleet     = G.fleet.filter(u=>u.status!=='rel');
     G.histPalas = palasRes.status === 'fulfilled' ? parseHistorial(palasRes.value) : [];
     G.histCam   = camRes.status   === 'fulfilled' ? parseHistorial(camRes.value)   : [];
     G.histAut   = autRes.status   === 'fulfilled' ? parseHistorial(autRes.value)   : [];
@@ -1718,7 +1731,8 @@ function parseDisponibilidad(rows) {
     if (!sector) continue;
     const statRaw = (r[iStat]||'').toUpperCase();
     let status = 'good';
-    if (statRaw.includes('MANTENIMIENTO')||statRaw.includes('FUERA')) status='bad';
+    if (statRaw.includes('RELEV')) status='rel';
+    else if (statRaw.includes('MANTENIMIENTO')||statRaw.includes('FUERA')) status='bad';
     else if (statRaw.includes('ALERTA')) status='alert';
     fleet.push({ unit, model:(r[iModel]||'').trim(), sector:sector.toUpperCase(), status, obs:(r[iObs]||'').trim() });
   }
@@ -2100,6 +2114,8 @@ function parseOTProveedores(rows) {
   const iCubMed  = fi(['CUB MEDIDA']);
   const iCubProb = fi(['CUB PROBLEMA']);
   const iCubTrab = fi(['CUB TRABAJO']);
+  const iFalla  = fi(['FALLAS']);
+  const iTiempo = fi(['TIEMPO']);
 
   const out = [];
   for (let i = 1; i < rows.length; i++) {
@@ -2126,6 +2142,8 @@ function parseOTProveedores(rows) {
       cubMedida:   (iCubMed>=0?(r[iCubMed]||'').trim():''),
       cubProblema: (iCubProb>=0?(r[iCubProb]||'').trim():''),
       cubTrabajo:  (iCubTrab>=0?(r[iCubTrab]||'').trim():''),
+      falla:    (iFalla>=0?(r[iFalla]||'').trim():''),
+      tiempo:   (iTiempo>=0?(r[iTiempo]||'').trim():''),
       fila: i+1,
     });
   }
@@ -2172,7 +2190,7 @@ function buildInformes() {
   });
 
   (G.otProveedores||[]).forEach(ot => {
-    const tipoMap = { 'Pala cargadora/Topadora':'PALA', 'Camion':'CAMION', 'Autoelevador':'AUTOELEVADOR' };
+    const tipoMap = { 'Pala cargadora/Topadora':'PALA', 'Camion':'CAMION', 'Camioneta':'CAMION', 'Autoelevador':'AUTOELEVADOR' };
     out.push({
       fecha: ot.fecha,
       equipoTipo: tipoMap[ot.tipoEquipo] || 'OTRO',
@@ -2208,7 +2226,7 @@ function renderAll() {
   renderChecklistPage();
   renderPedidosPage();
   renderInformesPage();
-  renderFleetRows(G.fleet,'overview-fleet-tbody');
+  renderFleetRows([...G.fleet,...(G.fleetRel||[])],'overview-fleet-tbody');
   updateClock();
 }
 
@@ -2218,6 +2236,7 @@ function renderOverview() {
   const good=f.filter(u=>u.status==='good').length;
   const alertCount=f.filter(u=>u.status==='alert').length;
   const bad=f.filter(u=>u.status==='bad').length;
+  const relList=(G.fleetRel||[]), relN=relList.length;
   const operat=good+alertCount;
   const dispPct=total>0?Math.round(operat/total*100):0;
   const allHist=[...G.histPalas,...G.histCam,...G.histAut];
@@ -2227,8 +2246,10 @@ function renderOverview() {
     <div class="kcard kc-g"><div class="klabel">BUEN ESTADO</div><div class="kvalue">${good}</div><div class="ksub">Sin obs. críticas</div></div>
     <div class="kcard kc-a"><div class="klabel">EN ALERTA</div><div class="kvalue">${alertCount}</div><div class="ksub">Atención pronta</div></div>
     <div class="kcard kc-r"><div class="klabel">FUERA DE SERVICIO</div><div class="kvalue">${bad}</div><div class="ksub">En mantenimiento</div></div>
-    <div class="kcard kc-c"><div class="klabel">TOTAL FLOTA</div><div class="kvalue">${total}</div><div class="ksub">Unidades registradas</div></div>
+    ${relN?`<div class="kcard kc-n"><div class="klabel">EN RELEVAMIENTO</div><div class="kvalue">${relN}</div><div class="ksub">No cuentan en el %</div></div>`:''}
+    <div class="kcard kc-c"><div class="klabel">TOTAL FLOTA</div><div class="kvalue">${total}</div><div class="ksub">${relN?'Sin las unidades en relevamiento':'Unidades registradas'}</div></div>
     <div class="kcard kc-p"><div class="klabel">% PREVENTIVO</div><div class="kvalue">${prevPct}%</div><div class="ksub">Del total trabajos</div></div>`;
+  document.getElementById('kpi-overview').classList.toggle('k7',relN>0);
   const palasOp=f.filter(u=>/PALA|LONKING|LIUGONG|CAT|KOMATSU|TOPADORA/.test(u.unit.toUpperCase())&&u.status!=='bad').length;
   const palasTot=f.filter(u=>/PALA|LONKING|LIUGONG|CAT|KOMATSU|TOPADORA/.test(u.unit.toUpperCase())).length;
   const camOp=f.filter(u=>/AXOR|ATRON|CAMION|TATU|BATEA/.test(u.unit.toUpperCase())&&u.status!=='bad').length;
@@ -2259,6 +2280,8 @@ function renderOverview() {
     <div class="mcard"><span class="mcard-ico">🔩</span><div class="mcard-name">PREVENTIVO vs CORRECTIVO</div><div class="mcard-val">${prevPct}%</div><div class="mcard-unit">trabajos preventivos</div><div class="mbar"><div class="mbar-fill" style="width:${prevPct}%;background:linear-gradient(90deg,var(--cyan),var(--blue))"></div></div><div class="mcard-desc">${prevPct>=70?'✅ En target (>70%)':'⚠️ Por debajo del objetivo'}</div></div>`;
   renderAlertList(f.filter(u=>u.status==='bad'), 'list-bad', 'adot-r', 'badge-bad');
   renderAlertList(f.filter(u=>u.status==='alert'),'list-alert','adot-a','badge-alert');
+  renderAlertList(relList,'list-rel','adot-n','badge-rel');
+  { const pn=document.getElementById('panel-rel'); if(pn) pn.style.display=relN?'':'none'; }
   destroyCharts();
   buildChartEstado(good,alertCount,bad);
   buildChartSector();
@@ -2285,7 +2308,7 @@ function renderFleetRows(data,targetId) {
     return mF&&mS;
   });
   if(!filtered.length){tbody.innerHTML='<tr><td colspan="5" class="no-data">Sin resultados</td></tr>';return;}
-  const sMap={good:{label:'OPERATIVA',cls:'p-g'},alert:{label:'ALERTA',cls:'p-a'},bad:{label:'EN MANTENIMIENTO',cls:'p-r'}};
+  const sMap={good:{label:'OPERATIVA',cls:'p-g'},alert:{label:'ALERTA',cls:'p-a'},bad:{label:'EN MANTENIMIENTO',cls:'p-r'},rel:{label:'EN RELEVAMIENTO',cls:'p-n'}};
   tbody.innerHTML=filtered.map(u=>{const s=sMap[u.status]||sMap.good;return`<tr><td><div class="uname">${u.unit}</div></td><td><div class="umodel">${u.model||'—'}</div></td><td><span class="stag">${u.sector}</span></td><td><span class="pill ${s.cls}">${s.label}</span></td><td class="obs">${u.obs||'<span class="obs-none">Sin observaciones</span>'}</td></tr>`;}).join('');
 }
 
@@ -3556,7 +3579,7 @@ function renderGomPanel(data){
   const mesTot = delMes.reduce((a,i)=>a+(i.monto||0),0);
   const por = {};
   const ts=f=>{const p=(f||'').split('/');return p.length<3?0:new Date(+p[2],+p[1]-1,+p[0]).getTime()};
-  g.forEach(i=>{ const k=i.modelo||'—'; (por[k]=por[k]||{n:0,m:0,ult:'',prob:{},pos:{}}); const o=por[k]; o.n++; o.m+=i.monto||0;
+  g.forEach(i=>{ const k=i.modelo||'—'; (por[k]=por[k]||{n:0,m:0,ult:'',prob:{},pos:{}}); const o=por[k]; o.n++; o.m+=i.monto||0; if(i.tipoMtto==='Correctivo')o.c=(o.c||0)+1; if(i.tipoMtto==='Preventivo')o.p=(o.p||0)+1;
     if(!o.ult||ts(i.fecha)>ts(o.ult)) o.ult=i.fecha;
     if(i.cubProblema) o.prob[i.cubProblema]=(o.prob[i.cubProblema]||0)+1;
     if(i.cubPosicion) o.pos[i.cubPosicion]=(o.pos[i.cubPosicion]||0)+1; });
@@ -3568,8 +3591,8 @@ function renderGomPanel(data){
     kpiCard('GASTO TOTAL (s/IVA)', fmtPesos(total), 'Histórico', 'kc-g')+
     kpiCard('GASTO DEL MES', fmtPesos(mesTot), delMes.length+' trabajos', 'kc-c')+
     kpiCard('UNIDAD CON MÁS GASTO', mayor?mayor[0]:'—', mayor?fmtPesos(mayor[1].m):'', 'kc-p')+'</div>'+
-    '<div class="tbl-wrap" style="overflow-x:auto;margin-bottom:18px"><div style="min-width:760px"><table><thead><tr><th>UNIDAD</th><th>TRABAJOS</th><th>GASTO s/IVA</th><th>ÚLTIMO</th><th>PROBLEMA MÁS FRECUENTE</th><th>POSICIÓN MÁS FRECUENTE</th></tr></thead><tbody>'+
-    filas.map(([u,o])=>`<tr><td><div class="uname" style="font-size:12px">${u}</div></td><td>${o.n}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtPesos(o.m)}</td><td style="font-size:11px;color:var(--txt2)">${o.ult||'—'}</td><td style="font-size:11px;color:var(--txt2)">${top(o.prob)}</td><td style="font-size:11px;color:var(--txt2)">${top(o.pos)}</td></tr>`).join('')+
+    '<div class="tbl-wrap" style="overflow-x:auto;margin-bottom:18px"><div style="min-width:760px"><table><thead><tr><th>UNIDAD</th><th>TRABAJOS</th><th>GASTO s/IVA</th><th>ÚLTIMO</th><th>CORRECTIVOS</th><th>PREVENTIVOS</th></tr></thead><tbody>'+
+    filas.map(([u,o])=>`<tr><td><div class="uname" style="font-size:12px">${u}</div></td><td>${o.n}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtPesos(o.m)}</td><td style="font-size:11px;color:var(--txt2)">${o.ult||'—'}</td><td style="font-size:11px;color:var(--txt2)">${o.c||0}</td><td style="font-size:11px;color:var(--txt2)">${o.p||0}</td></tr>`).join('')+
     '</tbody></table></div></div>';
 }
 function infLinkCell(informe){
@@ -4298,7 +4321,7 @@ window.addEventListener('load',()=>setTimeout(loadAllData,500));
 </script>
 
 <script>
-const DESP_SRC={despLK:'despiece_lonking_v11.html',despDS:'despiece_doosan_v4.html',despKM:'despiece_komatsu_v5.html',despCT:'despiece_caterpillar_v4.html',despTY:'despiece_toyota_v5.html'};
+const DESP_SRC={despLK:'despiece_lonking_v12.html',despDS:'despiece_doosan_v5.html',despKM:'despiece_komatsu_v6.html',despCT:'despiece_caterpillar_v5.html',despTY:'despiece_toyota_v6.html'};
 window.__despPayload=null;
 function despPush(){
   const p={type:'rodados-hist',aut:G.histAut,palas:G.histPalas,ot:G.otProveedores};
