@@ -254,6 +254,9 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 .inf-link:hover{background:rgba(0,170,255,0.18);border-color:var(--blue);}
 .inf-ncompra-input{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--cyan);padding:5px 8px;border-radius:4px;width:100px;transition:border-color 0.2s;}
 .inf-ncompra-input:focus{outline:none;border-color:var(--blue);}
+.inf-monto-input{width:110px;color:var(--txt);text-align:right;}
+.inf-saved{border-color:#00e676 !important;box-shadow:0 0 0 1px #00e676;}
+.inf-err{border-color:#ff3d3d !important;box-shadow:0 0 0 1px #ff3d3d;}
 .inf-ncompra-input::placeholder{color:var(--txt3);}
 
 /* ============ GANTT FLOTA (Integrado) ============ */
@@ -1757,6 +1760,8 @@ function parseDisponibilidad(rows) {
   const iEstado = headers.findIndex(h=>h==='ESTADO');
   const iFechaPlan = headers.findIndex(h=>h==='FECHA PLANIFICADA');
   const iTiempo = headers.findIndex(h=>h==='TIEMPO');
+  const iNCompraH = headers.findIndex(h=>h.includes('N COMPRA')||h.includes('N° COMPRA'));
+  const iMontoH = headers.findIndex(h=>h==='MONTO'||h.indexOf('MONTO ')===0);
   const hist = [];
   for (let i = hdrIdx+1; i < rows.length; i++) {
     const r = rows[i];
@@ -1767,7 +1772,7 @@ function parseDisponibilidad(rows) {
     const tipo = (r[iTipo]||'').trim().toUpperCase();
     const tipoNorm = tipo.includes('PREV')?'Preventivo':tipo.includes('CORR')?'Correctivo':'';
     if (!tipoNorm) continue;
-    hist.push({ unit, tipo:tipoNorm, ini:(r[iIni]||'').trim(), fin:(r[iFin]||'').trim(), desc:(r[iDesc]||'').trim(), falla:(r[iFalla]||'').trim(), resp:(r[iResp]||'').trim(), informe:(iInforme>=0?(r[iInforme]||'').trim():''), estadoEquipo:(iEstadoEq>=0?(r[iEstadoEq]||'').trim():''), estado:(iEstado>=0?(r[iEstado]||'').trim():''), fechaPlan:(iFechaPlan>=0?(r[iFechaPlan]||'').trim():''), tiempo:(iTiempo>=0?(r[iTiempo]||'').trim():''), fila:i+1 });
+    hist.push({ unit, tipo:tipoNorm, ini:(r[iIni]||'').trim(), fin:(r[iFin]||'').trim(), desc:(r[iDesc]||'').trim(), falla:(r[iFalla]||'').trim(), resp:(r[iResp]||'').trim(), informe:(iInforme>=0?(r[iInforme]||'').trim():''), estadoEquipo:(iEstadoEq>=0?(r[iEstadoEq]||'').trim():''), estado:(iEstado>=0?(r[iEstado]||'').trim():''), fechaPlan:(iFechaPlan>=0?(r[iFechaPlan]||'').trim():''), tiempo:(iTiempo>=0?(r[iTiempo]||'').trim():''), nCompra:(iNCompraH>=0?(r[iNCompraH]||'').trim():''), monto:(iMontoH>=0?(r[iMontoH]||'').trim():''), fila:i+1 });
   }
   return hist;
 }
@@ -2182,7 +2187,7 @@ function buildInformes() {
         responsable: h.resp,
         origen: 'Mecánicos propios',
         informe: h.informe,
-        nCompra: '',
+        nCompra: h.nCompra||'', monto: parseMonto(h.monto),
         hojaOrigen: hojaSheetName[key],
         filaOrigen: h.fila,
       });
@@ -3518,6 +3523,46 @@ let infSearch = '';
 // URL del mismo Web App que ya usan el generador de OT y el importador de pedidos.
 const INFORMES_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxxhdDqIYgMlcAXvvu-Rt6wp9xFmDtZOHC5Y234lVOlx20_X4vhJiWJ-97x2ZK6TkWd/exec';
 
+let INF_ROWS = [];
+async function guardarCampoInforme(idx, campo, el){
+  const i = INF_ROWS[idx]; if(!i) return;
+  const hoja = i.hojaOrigen, fila = i.filaOrigen;
+  if(!hoja || !fila){ alert('No se pudo identificar de qué hoja/fila viene este informe. Cargalo directo en el Sheet.'); return; }
+  let valor = el.value.trim();
+  if(campo==='monto'){
+    const n = parseMonto(valor);
+    if(valor && !n && !/^[\s0.,$-]*$/.test(valor)){ alert('Monto inválido. Escribí solo el número, por ejemplo 145000 o 145000,50'); return; }
+    valor = valor ? String(n) : '';
+  }
+  el.classList.remove('inf-saved','inf-err'); el.style.opacity = '0.5';
+  try{
+    await fetch(INFORMES_WEBAPP_URL, { method:'post', mode:'no-cors', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({ accion: campo==='monto' ? 'actualizarMonto' : 'actualizarNCompra', hoja, fila, valor, informe: i.informe||'' }) });
+  }catch(e){ console.error(e); el.style.opacity='1'; el.classList.add('inf-err'); alert('No se pudo conectar para guardar. Revisá la conexión e intentá de nuevo.'); return; }
+  el.style.opacity = '1';
+  // El navegador no puede leer la respuesta del script, así que se verifica leyendo la hoja:
+  const coincide = (rows)=>{
+    const hdr = (rows[0]||[]).map(h=>String(h||'').toUpperCase().trim());
+    const col = campo==='monto' ? hdr.findIndex(h=>h==='MONTO'||h.indexOf('MONTO ')===0) : hdr.findIndex(h=>h.includes('N COMPRA')||h.includes('N° COMPRA'));
+    if(col<0) return false;
+    const cel = String((rows[fila-1]||[])[col]||'').trim();
+    return campo==='monto' ? parseMonto(cel)===(valor?Number(valor):0) : cel===valor;
+  };
+  let ok = false;
+  for(const espera of [3500, 7000]){
+    await new Promise(r=>setTimeout(r, espera));
+    try{ ok = coincide(await fetchSheet(hoja)); }catch(e){ ok = false; }
+    if(ok) break;
+  }
+  if(ok){
+    if(campo==='monto'){ i.monto = valor?Number(valor):0; try{ renderGomPanel(G.informes); }catch(e){} } else i.nCompra = valor;
+    el.classList.add('inf-saved'); setTimeout(()=>el.classList.remove('inf-saved'), 2500);
+  } else {
+    el.classList.add('inf-err');
+    alert('⚠ No se pudo confirmar que se guardó en la hoja "'+hoja+'".\n\nPosibles causas: el script de Google no está actualizado a la última versión (hay que publicar "Nueva versión"), o la planilla cambió desde que se abrió el dashboard (probá con el botón ACTUALIZAR y volvé a cargarlo).');
+  }
+}
+
 async function guardarNCompra(hoja, fila, valor, inputEl){
   if(!hoja || !fila){
     alert('No se pudo identificar de qué hoja/fila viene este informe, así que no se puede guardar automáticamente. Cargalo directo en el Sheet.');
@@ -3654,7 +3699,8 @@ function renderInformesTable(){
   const equipoIco = {PALA:'🦾', CAMION:'🚛', AUTOELEVADOR:'🏗️', OTRO:'🔧'};
   const origenCls = {'Mecánicos propios':'inf-origen-mecanico', 'Proveedor externo':'inf-origen-externo'};
 
-  tbody.innerHTML = filtered.map(i=>{
+  INF_ROWS = filtered;
+  tbody.innerHTML = filtered.map((i,idx)=>{
     const tipoBadge = i.tipoMtto ? `<span class="htag ${i.tipoMtto==='Preventivo'?'htag-p':'htag-c'}">${i.tipoMtto.toUpperCase()}</span>` : '<span style="color:var(--txt3)">—</span>';
     return `<tr>
       <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt2)">${i.fecha||'—'}</td>
@@ -3664,10 +3710,10 @@ function renderInformesTable(){
       <td style="font-size:11px;color:var(--txt2);max-width:220px">${i.falla||'—'}</td>
       <td style="font-size:11px;color:var(--txt2)">${i.responsable||'—'}</td>
       <td><span class="inf-origen-badge ${origenCls[i.origen]||'inf-origen-mecanico'}">${i.origen}</span></td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2);white-space:nowrap">${i.monto?fmtPesos(i.monto):'—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2);white-space:nowrap"><input type="text" inputmode="decimal" class="inf-ncompra-input inf-monto-input" value="${i.monto?String(i.monto).replace('.',','):''}" placeholder="— $ —" title="Monto sin IVA" onchange="guardarCampoInforme(${idx},'monto',this)"></td>
       <td>
         <input type="text" class="inf-ncompra-input" value="${i.nCompra||''}" placeholder="— cargar —"
-          onchange="guardarNCompra('${(i.hojaOrigen||'').replace(/'/g,"&#39;")}', ${i.filaOrigen||0}, this.value, this)">
+          onchange="guardarCampoInforme(${idx},'nCompra',this)">
       </td>
       <td>${infLinkCell(i.informe)}</td>
     </tr>`;
