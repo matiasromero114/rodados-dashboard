@@ -1411,7 +1411,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
         <thead>
           <tr>
             <th>FECHA</th><th>EQUIPO</th><th>MODELO</th><th>TIPO MTTO</th>
-            <th>FALLA / REQUERIMIENTO</th><th>RESPONSABLE</th><th>ORIGEN</th><th>MONTO s/IVA</th><th>N° COMPRA</th><th>INFORME</th>
+            <th>FALLA / REQUERIMIENTO</th><th>RESPONSABLE</th><th>ORIGEN</th><th>MONTO</th><th>N° COMPRA</th><th>INFORME</th>
           </tr>
         </thead>
         <tbody id="informes-tbody"></tbody>
@@ -3617,28 +3617,34 @@ function renderInformesPage(){
 function renderGomPanel(data){
   const el = document.getElementById('gom-panel'); if(!el) return;
   const g = data.filter(i=>i.tipoInforme==='Gomería');
-  if(!g.length){ el.innerHTML=''; return; }
-  const now = new Date(), mesKey = (now.getMonth()+1)+'/'+now.getFullYear();
-  const total = g.reduce((a,i)=>a+(i.monto||0),0);
-  const delMes = g.filter(i=>{const p=(i.fecha||'').split('/');return p.length>=3&&(parseInt(p[1])+'/'+p[2])===mesKey;});
-  const mesTot = delMes.reduce((a,i)=>a+(i.monto||0),0);
-  const por = {};
-  const ts=f=>{const p=(f||'').split('/');return p.length<3?0:new Date(+p[2],+p[1]-1,+p[0]).getTime()};
-  g.forEach(i=>{ const k=i.modelo||'—'; (por[k]=por[k]||{n:0,m:0,ult:'',prob:{},pos:{}}); const o=por[k]; o.n++; o.m+=i.monto||0; if(i.tipoMtto==='Correctivo')o.c=(o.c||0)+1; if(i.tipoMtto==='Preventivo')o.p=(o.p||0)+1;
-    if(!o.ult||ts(i.fecha)>ts(o.ult)) o.ult=i.fecha;
-    if(i.cubProblema) o.prob[i.cubProblema]=(o.prob[i.cubProblema]||0)+1;
-    if(i.cubPosicion) o.pos[i.cubPosicion]=(o.pos[i.cubPosicion]||0)+1; });
-  const top = m => { const e=Object.entries(m).sort((a,b)=>b[1]-a[1])[0]; return e?e[0]+(e[1]>1?' ('+e[1]+')':''):'—'; };
-  const filas = Object.entries(por).sort((a,b)=>b[1].m-a[1].m);
-  const mayor = filas[0];
-  el.innerHTML = '<div class="slabel">🛞 GOMERÍA / CUBIERTAS</div><div class="kpi-row">'+
-    kpiCard('TRABAJOS DE GOMERÍA', g.length, 'Histórico', 'kc-b')+
-    kpiCard('GASTO TOTAL (s/IVA)', fmtPesos(total), 'Histórico', 'kc-g')+
-    kpiCard('GASTO DEL MES', fmtPesos(mesTot), delMes.length+' trabajos', 'kc-c')+
-    kpiCard('UNIDAD CON MÁS GASTO', mayor?mayor[0]:'—', mayor?fmtPesos(mayor[1].m):'', 'kc-p')+'</div>'+
-    '<div class="tbl-wrap" style="overflow-x:auto;margin-bottom:18px"><div style="min-width:760px"><table><thead><tr><th>UNIDAD</th><th>TRABAJOS</th><th>GASTO s/IVA</th><th>ÚLTIMO</th><th>CORRECTIVOS</th><th>PREVENTIVOS</th></tr></thead><tbody>'+
-    filas.map(([u,o])=>`<tr><td><div class="uname" style="font-size:12px">${u}</div></td><td>${o.n}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${fmtPesos(o.m)}</td><td style="font-size:11px;color:var(--txt2)">${o.ult||'—'}</td><td style="font-size:11px;color:var(--txt2)">${o.c||0}</td><td style="font-size:11px;color:var(--txt2)">${o.p||0}</td></tr>`).join('')+
-    '</tbody></table></div></div>';
+  let html = '';
+  if(g.length){
+    const now = new Date(), mesKey = (now.getMonth()+1)+'/'+now.getFullYear();
+    const total = g.reduce((a,i)=>a+(i.monto||0),0);
+    const delMes = g.filter(i=>{const p=(i.fecha||'').split('/');return p.length>=3&&(parseInt(p[1])+'/'+p[2])===mesKey;});
+    const mesTot = delMes.reduce((a,i)=>a+(i.monto||0),0);
+    const por = {};
+    g.forEach(i=>{ const k=i.modelo||'—'; por[k]=(por[k]||0)+(i.monto||0); });
+    const mayor = Object.entries(por).sort((a,b)=>b[1]-a[1])[0];
+    html += '<div class="slabel">🛞 GOMERÍA / CUBIERTAS</div><div class="kpi-row">'+
+      kpiCard('TRABAJOS DE GOMERÍA', g.length, 'Histórico', 'kc-b')+
+      kpiCard('GASTO TOTAL (s/IVA)', fmtPesos(total), 'Histórico', 'kc-g')+
+      kpiCard('GASTO DEL MES', fmtPesos(mesTot), delMes.length+' trabajos', 'kc-c')+
+      kpiCard('UNIDAD CON MÁS GASTO', mayor?mayor[0]:'—', mayor?fmtPesos(mayor[1]):'', 'kc-p')+'</div>';
+  }
+  // Gasto total de la columna MONTO (todos los informes), con el equipo y el tipo de equipo que más gasta
+  const conMonto = data.filter(i=>(i.monto||0)>0);
+  const totalG = conMonto.reduce((a,i)=>a+i.monto,0);
+  const porEq = {}, porTipo = {};
+  const tipoLbl = {PALA:'Palas / Topadora', CAMION:'Camiones y camionetas', AUTOELEVADOR:'Autoelevadores', OTRO:'Otros'};
+  conMonto.forEach(i=>{ const k=i.modelo||'—'; porEq[k]=(porEq[k]||0)+i.monto; const t=tipoLbl[i.equipoTipo]||'Otros'; porTipo[t]=(porTipo[t]||0)+i.monto; });
+  const topEq = Object.entries(porEq).sort((a,b)=>b[1]-a[1])[0];
+  const topTipo = Object.entries(porTipo).sort((a,b)=>b[1]-a[1])[0];
+  html += '<div class="slabel">💰 GASTO (COLUMNA MONTO)</div><div class="kpi-row" style="margin-bottom:18px">'+
+    kpiCard('GASTO TOTAL', conMonto.length?fmtPesos(totalG):'—', conMonto.length+(conMonto.length===1?' informe con monto':' informes con monto'), 'kc-g')+
+    kpiCard('EQUIPO CON MÁS GASTO', topEq?topEq[0]:'—', topEq?fmtPesos(topEq[1]):'Sin montos cargados', 'kc-p')+
+    kpiCard('TIPO DE EQUIPO CON MÁS GASTO', topTipo?topTipo[0]:'—', topTipo?fmtPesos(topTipo[1]):'Sin montos cargados', 'kc-c')+'</div>';
+  el.innerHTML = html;
 }
 function infLinkCell(informe){
   if (!informe) return '<span style="color:var(--txt3);font-style:italic;font-size:10px">Sin PDF</span>';
@@ -3710,7 +3716,7 @@ function renderInformesTable(){
       <td style="font-size:11px;color:var(--txt2);max-width:220px">${i.falla||'—'}</td>
       <td style="font-size:11px;color:var(--txt2)">${i.responsable||'—'}</td>
       <td><span class="inf-origen-badge ${origenCls[i.origen]||'inf-origen-mecanico'}">${i.origen}</span></td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2);white-space:nowrap"><input type="text" inputmode="decimal" class="inf-ncompra-input inf-monto-input" value="${i.monto?String(i.monto).replace('.',','):''}" placeholder="— $ —" title="Monto sin IVA" onchange="guardarCampoInforme(${idx},'monto',this)"></td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt2);white-space:nowrap"><input type="text" inputmode="decimal" class="inf-ncompra-input inf-monto-input" value="${i.monto?String(i.monto).replace('.',','):''}" placeholder="— $ —" title="Monto" onchange="guardarCampoInforme(${idx},'monto',this)"></td>
       <td>
         <input type="text" class="inf-ncompra-input" value="${i.nCompra||''}" placeholder="— cargar —"
           onchange="guardarCampoInforme(${idx},'nCompra',this)">
