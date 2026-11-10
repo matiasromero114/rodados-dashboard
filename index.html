@@ -1038,7 +1038,7 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <div class="mcard-row" id="kpi-adv-cards"></div>
   <div class="slabel">EVOLUCIÓN Y ANÁLISIS</div>
   <div class="chart1">
-    <div class="ccard"><div class="ctitle">Tendencia de Disponibilidad <span class="cbadge">ÚLTIMOS 6 MESES</span></div><div class="ch-tall"><canvas id="ch-tendencia"></canvas></div></div>
+    <div class="ccard"><div class="ctitle">Tendencia de Disponibilidad <span class="cbadge">REGISTRO DIARIO</span></div><div class="ch-tall"><canvas id="ch-tendencia"></canvas></div></div>
   </div>
   <div class="charts3">
     <div class="ccard"><div class="ctitle">MTTR por Tipo <span class="cbadge">DÍAS</span></div><div class="ch"><canvas id="ch-mttr"></canvas></div></div>
@@ -1063,6 +1063,43 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
   <div class="kpi-row" id="kpi-uptime"></div>
   <div class="chart1">
     <div class="ccard"><div class="ctitle">Uptime por Equipo <span class="cbadge">% DEL PERÍODO ANALIZADO</span></div><div class="ch-tall"><canvas id="ch-uptime-equipo"></canvas></div></div>
+  </div>
+</div>
+
+<div id="page-tipos" class="page">
+  <div class="slabel">TIPOS DE TRABAJO — PREVENTIVO · CORRECTIVO PROACTIVO · CORRECTIVO REACTIVO</div>
+  <div class="tbl-filters" id="tipos-periodo">
+    <button class="fbtn" onclick="tiposSetPeriodo(30,this)">30 DÍAS</button>
+    <button class="fbtn on" onclick="tiposSetPeriodo(90,this)">90 DÍAS</button>
+    <button class="fbtn" onclick="tiposSetPeriodo(365,this)">12 MESES</button>
+    <button class="fbtn" onclick="tiposSetPeriodo(0,this)">TODO</button>
+  </div>
+  <div class="mcard-row" id="tipos-kpis"></div>
+  <div class="ped-kpi-sheet-note" id="tipos-nota"></div>
+  <div class="charts2">
+    <div class="ccard"><div class="ctitle">Distribución por horas <span class="cbadge">HORAS-HOMBRE</span></div><div class="ch" style="height:240px"><canvas id="ch-tipos-dona"></canvas></div></div>
+    <div class="ccard"><div class="ctitle">Evolución mensual <span class="cbadge">HORAS</span></div><div class="ch" style="height:240px"><canvas id="ch-tipos-mes"></canvas></div></div>
+  </div>
+  <div class="chart1">
+    <div class="ccard"><div class="ctitle">Horas por equipo y tipo <span class="cbadge">SOLO CLASIFICADOS</span></div><div class="ch-tall"><canvas id="ch-tipos-equipo"></canvas></div></div>
+  </div>
+
+  <div class="slabel">🔁 REINCIDENTES — MISMA FALLA EN EL MISMO EQUIPO (2 O MÁS VECES)</div>
+  <div class="tbl-wrap" style="overflow-x:auto"><table>
+    <thead><tr><th>EQUIPO</th><th>FALLA</th><th>VECES</th><th>ÚLTIMA</th><th>HORAS</th><th>BASE</th></tr></thead>
+    <tbody id="tipos-reinc"></tbody></table></div>
+
+  <div class="slabel">💲 COSTO POR EQUIPO (COLUMNA MONTO)</div>
+  <div class="charts2">
+    <div class="ccard"><div class="ctitle">Gasto por equipo <span class="cbadge">TOP 10 · $</span></div><div class="ch" style="height:260px"><canvas id="ch-tipos-costo"></canvas></div></div>
+    <div class="tbl-wrap" style="overflow-x:auto"><table>
+      <thead><tr><th>EQUIPO</th><th>TRABAJOS CON MONTO</th><th style="text-align:right">TOTAL</th></tr></thead>
+      <tbody id="tipos-costo-tbody"></tbody></table></div>
+  </div>
+
+  <div class="slabel">📉 TENDENCIA DE DISPONIBILIDAD (REGISTRO DIARIO)</div>
+  <div class="chart1">
+    <div class="ccard"><div class="ctitle">Disponibilidad diaria <span class="cbadge">% · SIN "EN RELEVAMIENTO"</span></div><div class="ch-tall"><canvas id="ch-tipos-disp"></canvas></div></div>
   </div>
 </div>
 
@@ -1611,6 +1648,7 @@ let G = {
   insumos: [],
   otProveedores: [],
   informes: [],
+  dispHist: [],
   charts: {},
 };
 
@@ -1629,6 +1667,26 @@ async function fetchSheet(sheetName) {
   return parseCSV(await res.text());
 }
 
+async function fetchSheetByName(name) {
+  const url = `https://docs.google.com/spreadsheets/d/${getSheetId()}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(name)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status} al cargar "${name}"`);
+  return parseCSV(await res.text());
+}
+function parseDispHist(rows){
+  if(!rows||rows.length<2) return [];
+  const h=rows[0].map(x=>(x||'').toUpperCase().trim());
+  const iF=h.indexOf('FECHA'), iP=h.findIndex(x=>x.includes('% DISP'));
+  if(iF<0||iP<0) return []; // si la hoja no existe, Google devuelve otra hoja: se descarta
+  const iA=h.indexOf('EN ALERTA'), iO=h.indexOf('FUERA DE SERVICIO'), iL=h.findIndex(x=>x.startsWith('UNIDADES FUERA'));
+  const out=[];
+  rows.slice(1).forEach(r=>{
+    const f=(r[iF]||'').trim(); const p=parseFloat(String(r[iP]||'').replace(',','.'));
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(f)||!isFinite(p)) return;
+    out.push({fecha:f,pct:p,alerta:iA>=0?+r[iA]||0:0,fuera:iO>=0?+r[iO]||0:0,lista:iL>=0?(r[iL]||''):''});
+  });
+  return out.sort((a,b)=>a.fecha<b.fecha?-1:1);
+}
 async function fetchExternalSheet(sheetId, gid) {
   const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
   const res = await fetch(url);
@@ -1686,6 +1744,8 @@ async function loadAllData() {
     try { G.insumos = parseControlInsumos(await fetchSheet(SHEET_NAMES.controlInsumos)); } catch(e) { G.insumos = []; console.warn('CONTROL INSUMOS:', e); }
     try { G.otProveedores = parseOTProveedores(await fetchSheet(SHEET_NAMES.otProveedores)); } catch(e) { G.otProveedores = []; console.warn('OT PROVEEDORES:', e); }
 
+    try { G.dispHist = parseDispHist(await fetchSheetByName('HISTORIAL DISPONIBILIDAD')); } catch(e) { G.dispHist = []; console.warn('HIST DISP:', e); }
+
     G.informes = buildInformes();
 
     const total = G.histPalas.length + G.histCam.length + G.histAut.length;
@@ -1741,6 +1801,19 @@ function parseDisponibilidad(rows) {
   }
   return fleet;
 }
+  function claseCanon(v){
+    const t=String(v||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    if(t.includes('PROACT')) return 'proact';
+    if(t.includes('REACT')) return 'react';
+    if(t.includes('PREV')) return 'prev';
+    return '';
+  }
+  function horasDeTiempo(v){
+    v=String(v||'').trim(); if(!v) return 0;
+    const m=v.match(/^(\d+):(\d{1,2})(?::(\d{1,2}))?$/);
+    if(m) return (+m[1])+(+m[2])/60+((+m[3]||0)/3600);
+    const n=parseFloat(v.replace(',','.')); return isFinite(n)?n:0;
+  }
   function parseHistorial(rows) {
   if (!rows.length) return [];
   let hdrIdx = rows.findIndex(r => r.some(c => { const v=(c||'').trim().toUpperCase(); return v==='MODELO'||v.includes('TIPO MANT')||v.includes('DOMINIO')||v.includes('FECHA INICIO'); }));
@@ -1762,6 +1835,7 @@ function parseDisponibilidad(rows) {
   const iTiempo = headers.findIndex(h=>h==='TIEMPO');
   const iNCompraH = headers.findIndex(h=>h.includes('N COMPRA')||h.includes('N° COMPRA'));
   const iMontoH = headers.findIndex(h=>h==='MONTO'||h.indexOf('MONTO ')===0);
+  const iClasif = headers.findIndex(h=>h==='CLASIFICACION'||h==='CLASIFICACIÓN');
   const hist = [];
   for (let i = hdrIdx+1; i < rows.length; i++) {
     const r = rows[i];
@@ -1772,7 +1846,7 @@ function parseDisponibilidad(rows) {
     const tipo = (r[iTipo]||'').trim().toUpperCase();
     const tipoNorm = tipo.includes('PREV')?'Preventivo':tipo.includes('CORR')?'Correctivo':'';
     if (!tipoNorm) continue;
-    hist.push({ unit, tipo:tipoNorm, ini:(r[iIni]||'').trim(), fin:(r[iFin]||'').trim(), desc:(r[iDesc]||'').trim(), falla:(r[iFalla]||'').trim(), resp:(r[iResp]||'').trim(), informe:(iInforme>=0?(r[iInforme]||'').trim():''), estadoEquipo:(iEstadoEq>=0?(r[iEstadoEq]||'').trim():''), estado:(iEstado>=0?(r[iEstado]||'').trim():''), fechaPlan:(iFechaPlan>=0?(r[iFechaPlan]||'').trim():''), tiempo:(iTiempo>=0?(r[iTiempo]||'').trim():''), nCompra:(iNCompraH>=0?(r[iNCompraH]||'').trim():''), monto:(iMontoH>=0?(r[iMontoH]||'').trim():''), fila:i+1 });
+    hist.push({ unit, tipo:tipoNorm, ini:(r[iIni]||'').trim(), fin:(r[iFin]||'').trim(), desc:(r[iDesc]||'').trim(), falla:(r[iFalla]||'').trim(), resp:(r[iResp]||'').trim(), informe:(iInforme>=0?(r[iInforme]||'').trim():''), estadoEquipo:(iEstadoEq>=0?(r[iEstadoEq]||'').trim():''), estado:(iEstado>=0?(r[iEstado]||'').trim():''), fechaPlan:(iFechaPlan>=0?(r[iFechaPlan]||'').trim():''), tiempo:(iTiempo>=0?(r[iTiempo]||'').trim():''), nCompra:(iNCompraH>=0?(r[iNCompraH]||'').trim():''), monto:(iMontoH>=0?(r[iMontoH]||'').trim():''), clasif:claseCanon((iClasif>=0?(r[iClasif]||''):'')), horas:horasDeTiempo((iTiempo>=0?(r[iTiempo]||''):'')), fila:i+1 });
   }
   return hist;
 }
@@ -2224,6 +2298,7 @@ function renderAll() {
   renderHistorial('cam',  G.histCam);
   renderHistorial('aut',  G.histAut);
   renderKPIPage();
+  renderTiposPage();
   renderServicesPage();
   renderInsumosPage();
   renderCostosPage();
@@ -3777,7 +3852,105 @@ function buildChartAutFallas(){buildBarChart('ch-aut-fallas',G.histAut,h=>h.fall
 function buildChartAutResp(){buildBarChart('ch-aut-resp',G.histAut,h=>h.resp,'');}
 function buildChartAutEquipo(){buildBarChart('ch-aut-equipo',G.histAut,h=>h.unit,'total-aut-equipo');}
 
-function buildChartTendencia(){
+
+// ═══════════════════════════════════════════════════════
+//  TIPOS DE TRABAJO (preventivo / proactivo / reactivo)
+// ═══════════════════════════════════════════════════════
+let TIPOS_PERIODO = 90;
+function tiposSetPeriodo(d,btn){ TIPOS_PERIODO=d; document.querySelectorAll('#tipos-periodo .fbtn').forEach(b=>b.classList.remove('on')); if(btn)btn.classList.add('on'); renderTiposPage(); }
+function _fechaDMY(s){ const p=String(s||'').split('/'); if(p.length<3) return null; const d=new Date(+p[2],+p[1]-1,+p[0]); return isNaN(d)?null:d; }
+function _fmtH(h){ return (Math.round(h*10)/10).toLocaleString('es-AR')+' h'; }
+const TIPOS_DEF = { prev:{n:'Preventivo',c:C.green}, proact:{n:'Correctivo proactivo',c:C.amber}, react:{n:'Correctivo reactivo',c:C.red} };
+function renderTiposPage(){
+  if(!document.getElementById('tipos-kpis')) return;
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  const desde = TIPOS_PERIODO ? new Date(hoy.getTime()-TIPOS_PERIODO*86400000) : null;
+  const all=[];
+  [['Pala',G.histPalas],['Camión',G.histCam],['Autoelevador',G.histAut]].forEach(([tipoEq,hist])=>hist.forEach(h=>all.push({...h,tipoEq})));
+  const enPeriodo = all.filter(h=>{ if(!desde) return true; const d=_fechaDMY(h.ini); return d && d>=desde; });
+  const clas = enPeriodo.filter(h=>h.clasif);
+  const sin  = enPeriodo.length - clas.length;
+  const horas={prev:0,proact:0,react:0}, cant={prev:0,proact:0,react:0};
+  clas.forEach(h=>{ horas[h.clasif]+=h.horas; cant[h.clasif]++; });
+  const totH=horas.prev+horas.proact+horas.react;
+  const pct=k=>totH?Math.round(horas[k]/totH*100):0;
+
+  const card=(k,ico)=>`<div class="mcard"><span class="mcard-ico">${ico}</span><div class="mcard-name">${TIPOS_DEF[k].n.toUpperCase()}</div><div class="mcard-val" style="color:${TIPOS_DEF[k].c}">${totH?pct(k)+'%':'—'}</div><div class="mcard-unit">${_fmtH(horas[k])} · ${cant[k]} trabajos</div></div>`;
+  document.getElementById('tipos-kpis').innerHTML =
+    card('prev','🛠️')+card('proact','🔍')+card('react','🚨')+
+    `<div class="mcard"><span class="mcard-ico">📋</span><div class="mcard-name">SIN CLASIFICAR (HISTÓRICO)</div><div class="mcard-val">${sin}</div><div class="mcard-unit">trabajos anteriores al nuevo criterio</div></div>`;
+
+  document.getElementById('tipos-nota').innerHTML = totH||clas.length
+    ? 'ℹ️ Los porcentajes se calculan por <b>horas-hombre</b> (columna TIEMPO) y solo con trabajos que tienen <b>CLASIFICACION</b>. Los anteriores al nuevo criterio quedan como "sin clasificar" y no se reinterpretan.'
+    : 'ℹ️ Todavía no hay trabajos clasificados en este período. La clasificación empieza a llenarse cuando los mecánicos usen la nueva pregunta <b>"Clasificación del trabajo"</b> del formulario (script v20). Mientras tanto, los trabajos existentes figuran como "sin clasificar".';
+
+  // Dona
+  mkChart('ch-tipos-dona',{type:'doughnut',data:{labels:Object.values(TIPOS_DEF).map(x=>x.n),datasets:[{data:[horas.prev,horas.proact,horas.react].map(v=>Math.round(v*10)/10),backgroundColor:Object.values(TIPOS_DEF).map(x=>x.c),borderColor:'#0b1118',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:pluginDef}});
+
+  // Mensual (todo el historial clasificado, últimos 6 meses)
+  const meses={};
+  all.filter(h=>h.clasif).forEach(h=>{ const d=_fechaDMY(h.ini); if(!d) return; const k=d.getFullYear()*100+d.getMonth(); (meses[k]=meses[k]||{prev:0,proact:0,react:0})[h.clasif]+=h.horas; });
+  const ks=Object.keys(meses).sort().slice(-6);
+  const lbl=k=>{ const y=Math.floor(k/100), m=k%100; return String(m+1).padStart(2,'0')+'/'+String(y).slice(-2); };
+  mkChart('ch-tipos-mes',{type:'bar',data:{labels:ks.map(lbl),datasets:Object.keys(TIPOS_DEF).map(k=>({label:TIPOS_DEF[k].n,data:ks.map(m=>Math.round(meses[m][k]*10)/10),backgroundColor:TIPOS_DEF[k].c,borderRadius:3}))},options:{responsive:true,maintainAspectRatio:false,scales:{x:{...scalesDef.x,stacked:true},y:{...scalesDef.y,stacked:true}},plugins:pluginDef}});
+
+  // Por equipo
+  const porEq={};
+  clas.forEach(h=>{ const o=porEq[h.unit]=porEq[h.unit]||{prev:0,proact:0,react:0}; o[h.clasif]+=h.horas; });
+  const eqs=Object.keys(porEq).sort((a,b)=>(porEq[b].prev+porEq[b].proact+porEq[b].react)-(porEq[a].prev+porEq[a].proact+porEq[a].react)).slice(0,15);
+  mkChart('ch-tipos-equipo',{type:'bar',data:{labels:eqs,datasets:Object.keys(TIPOS_DEF).map(k=>({label:TIPOS_DEF[k].n,data:eqs.map(e=>Math.round(porEq[e][k]*10)/10),backgroundColor:TIPOS_DEF[k].c,borderRadius:3}))},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{...scalesDef.x,stacked:true},y:{...scalesDef.y,stacked:true}},plugins:pluginDef}});
+
+  // Reincidentes: correctivo reactivo clasificado + histórico marcado "Correctivo" sin clasificar
+  const norm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+  const grp={};
+  enPeriodo.forEach(h=>{
+    const esReact = h.clasif==='react';
+    const esHistCorr = !h.clasif && h.tipo==='Correctivo';
+    if(!esReact && !esHistCorr) return;
+    const falla=norm(h.falla); if(!falla) return;
+    const k=h.unit+'||'+falla;
+    const g=grp[k]=grp[k]||{unit:h.unit,falla:h.falla,n:0,horas:0,ult:null,nClas:0,nHist:0};
+    g.n++; g.horas+=h.horas; const d=_fechaDMY(h.ini); if(d&&(!g.ult||d>g.ult)) g.ult=d;
+    if(esReact) g.nClas++; else g.nHist++;
+  });
+  const reinc=Object.values(grp).filter(g=>g.n>=2).sort((a,b)=>b.n-a.n||b.horas-a.horas).slice(0,20);
+  document.getElementById('tipos-reinc').innerHTML = reinc.length
+    ? reinc.map(g=>`<tr><td>${g.unit}</td><td>${g.falla}</td><td><b style="color:${g.n>=3?'var(--red)':'var(--amber)'}">${g.n}</b></td><td>${g.ult?g.ult.toLocaleDateString('es-AR'):'—'}</td><td>${_fmtH(g.horas)}</td><td style="font-size:9px;color:var(--txt3)">${g.nClas?g.nClas+' clasif.':''}${g.nClas&&g.nHist?' + ':''}${g.nHist?g.nHist+' histórico':''}</td></tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:var(--txt3);padding:14px">Sin reincidencias en el período.</td></tr>';
+
+  // Costo por equipo (G.informes, columna MONTO)
+  const cEq={};
+  (G.informes||[]).forEach(i=>{ if(!i.monto) return; if(desde){ const d=_fechaDMY(i.fecha); if(!d||d<desde) return; } const o=cEq[i.modelo]=cEq[i.modelo]||{n:0,t:0}; o.n++; o.t+=i.monto; });
+  const top=Object.entries(cEq).sort((a,b)=>b[1].t-a[1].t).slice(0,10);
+  mkChart('ch-tipos-costo',{type:'bar',data:{labels:top.map(x=>x[0]),datasets:[{label:'Gasto',data:top.map(x=>Math.round(x[1].t)),backgroundColor:C.purple,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{...scalesDef,x:{...scalesDef.x,ticks:{...scalesDef.x.ticks,callback:v=>'$'+(v/1000).toLocaleString('es-AR')+'k'}}},plugins:{...pluginDef,legend:{display:false}}}});
+  document.getElementById('tipos-costo-tbody').innerHTML = top.length
+    ? top.map(([e,o])=>`<tr><td>${e}</td><td>${o.n}</td><td style="text-align:right">${fmtPesos(o.t)}</td></tr>`).join('')
+    : '<tr><td colspan="3" style="text-align:center;color:var(--txt3);padding:14px">Sin montos cargados en el período.</td></tr>';
+
+  buildChartDispDiaria('ch-tipos-disp');
+}
+
+// Tendencia real de disponibilidad (hoja HISTORIAL DISPONIBILIDAD)
+function buildChartDispDiaria(id){
+  const hist=G.dispHist||[];
+  const el=document.getElementById(id); if(!el) return;
+  if(hist.length<2){
+    if(G.charts[id]){try{G.charts[id].destroy();}catch{} delete G.charts[id];}
+    const cx=el.getContext('2d'); cx.clearRect(0,0,el.width,el.height);
+    el.parentElement.insertAdjacentHTML('beforeend','');
+    let msg=el.parentElement.querySelector('.nodata-msg');
+    if(!msg){ msg=document.createElement('div'); msg.className='nodata-msg'; msg.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--txt3);font-size:11px;padding:20px'; el.parentElement.style.position='relative'; el.parentElement.appendChild(msg); }
+    msg.textContent=hist.length===1?'Hay 1 día registrado. La tendencia aparece desde el segundo día.':'Todavía no hay historial. Se empieza a guardar con el próximo envío automático (script de disponibilidad v2).';
+    return;
+  }
+  const msg=el.parentElement.querySelector('.nodata-msg'); if(msg) msg.remove();
+  const last=hist.slice(-60);
+  mkChart(id,{type:'line',data:{labels:last.map(h=>h.fecha.slice(8)+'/'+h.fecha.slice(5,7)),datasets:[{label:'Disponibilidad %',data:last.map(h=>h.pct),borderColor:C.blue,backgroundColor:'rgba(0,170,255,0.08)',fill:true,tension:0.3,pointBackgroundColor:last.map(h=>h.pct>=85?C.green:h.pct>=70?C.amber:C.red),pointRadius:3},{label:'Objetivo 90%',data:last.map(()=>90),borderColor:C.muted,borderDash:[6,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,scales:{...scalesDef,y:{...scalesDef.y,min:50,max:100,ticks:{...scalesDef.y.ticks,callback:v=>v+'%'}}},plugins:pluginDef}});
+}
+
+function buildChartTendencia(){ return buildChartDispDiaria('ch-tendencia');
+}
+function _buildChartTendenciaVieja(){
   const f=G.fleet,total=f.length||1;
   const base=Math.round(f.filter(u=>u.status!=='bad').length/total*100);
   const trend=[base-4,base-2,base-6,base+2,base-1,base].map(v=>Math.min(100,Math.max(0,v)));
@@ -3829,7 +4002,7 @@ const NAV_STRUCTURE = {
   overview:    { icon:'📊', label:'RESUMEN',              type:'page' },
   flota:       { icon:'🚜', label:'MANTENIMIENTO DE FLOTA',type:'group', children:['palas','camiones','autoel'] },
   informes:    { icon:'🗂️', label:'INFORMES',              type:'page' },
-  indicadores: { icon:'📈', label:'INDICADORES',           type:'group', children:['kpis','services'] },
+  indicadores: { icon:'📈', label:'INDICADORES',           type:'group', children:['kpis','tipos','services'] },
   gestion:     { icon:'🗃️', label:'GESTIÓN',               type:'group', children:['checklist','pedidos','ganttflota'] },
   despiece:    { icon:'🔩', label:'DESPIECE MÁQUINAS',     type:'group', children:['despLK','despDS','despKM','despCT','despTY'] },
 };
@@ -3838,6 +4011,7 @@ const PAGE_META = {
   camiones:  { icon:'🚛', label:'CAMIONES',         sub:'Datos y mantenimiento' },
   autoel:    { icon:'🏗️', label:'AUTOELEVADORES',   sub:'Datos y mantenimiento' },
   kpis:      { icon:'📈', label:'KPIs',             sub:'Indicadores avanzados y backlog' },
+  tipos:     { icon:'🧭', label:'TIPOS DE TRABAJO', sub:'Preventivo · proactivo · reactivo' },
   services:  { icon:'🔧', label:'SERVICES',         sub:'Planificación e insumos' },
   checklist: { icon:'📋', label:'INSPECCIONES',     sub:'Checklist diario' },
   pedidos:   { icon:'📦', label:'PEDIDOS',          sub:'Gestión de compras' },
