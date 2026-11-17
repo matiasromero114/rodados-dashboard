@@ -199,6 +199,30 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 .flota-card.agro:hover{border-color:var(--green);box-shadow:0 10px 28px rgba(0,230,118,0.15);}
 .flota-tag{display:inline-block;margin-top:14px;padding:4px 10px;border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;border:1px solid var(--border);color:var(--txt2);}
 .flota-card.agro .flota-tag{border-color:rgba(0,230,118,0.4);color:var(--green);}
+/* inicio: datos en vivo, alertas, últimos trabajos */
+.flota-live{display:flex;gap:18px;justify-content:center;margin-top:18px;flex-wrap:wrap;}
+.flota-live .fl-big{font-family:'Rajdhani',sans-serif;font-size:40px;font-weight:700;line-height:1;}
+.flota-live .fl-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--txt3);text-transform:uppercase;margin-top:4px;}
+.flota-live .fl-item{text-align:center;min-width:70px;}
+.flota-live .fl-sm{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;line-height:40px;}
+.root-meta{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:-6px 0 10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt3);letter-spacing:1px;}
+.root-meta b{color:var(--txt2);font-weight:600;}
+.root-meta .rm-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+.alert-strip{display:flex;flex-direction:column;gap:8px;margin-bottom:24px;}
+.alert-item{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border);border-left:4px solid var(--amber);border-radius:8px;padding:10px 14px;cursor:pointer;transition:all .2s;font-size:12px;color:var(--txt1);}
+.alert-item:hover{background:var(--bg3);transform:translateX(3px);}
+.alert-item.red{border-left-color:var(--red);} .alert-item.ok{border-left-color:var(--green);cursor:default;} .alert-item.ok:hover{transform:none;background:var(--bg2);}
+.alert-item .ai-ico{font-size:18px;width:24px;text-align:center;}
+.alert-item .ai-txt{flex:1;line-height:1.45;} .alert-item .ai-txt small{color:var(--txt3);font-size:10px;}
+.alert-item .ai-go{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--blue);letter-spacing:1px;white-space:nowrap;}
+.ult-list{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px;}
+.ult-row{display:grid;grid-template-columns:92px 1.3fr 110px 2fr auto;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;color:var(--txt1);}
+.ult-row:last-child{border-bottom:none;}
+.ult-row .ur-f{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt3);}
+.ult-row .ur-t{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;padding:3px 8px;border-radius:10px;text-align:center;}
+.ult-row .ur-d{color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ult-row a{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--blue);text-decoration:none;letter-spacing:1px;}
+@media(max-width:700px){.flota-live{gap:10px;}.flota-live .fl-item{min-width:58px;}.flota-live .fl-big{font-size:32px;}.ult-row{grid-template-columns:80px 1fr auto;}.ult-row .ur-t,.ult-row .ur-d{display:none;}}
 .agro-empty{background:var(--bg2);border:1px dashed var(--border);border-radius:10px;padding:40px 24px;text-align:center;color:var(--txt3);font-size:12px;line-height:1.7;}
 .agro-empty b{color:var(--txt1);}
 @media(max-width:700px){.flota-grid{grid-template-columns:1fr;}.flota-card{min-height:200px;padding:40px 20px;}}
@@ -891,20 +915,26 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 <!-- ══════════════════════════ INICIO: ELEGIR FLOTA ══════════════════════════ -->
 <div id="page-root" class="page on">
   <div class="slabel">🏠 MENÚ PRINCIPAL — ELEGÍ LA FLOTA</div>
+  <div class="root-meta"><span id="root-saludo"></span><span id="root-datos"><span class="rm-dot" style="background:var(--amber)"></span>Cargando datos del Sheet…</span></div>
   <div class="flota-grid">
     <div class="nav-card flota-card" onclick="navEntrarFlota('industrial')">
       <span class="nav-card-icon">🏭</span>
       <div class="nav-card-title">FLOTA INDUSTRIAL</div>
       <div class="nav-card-sub">Palas · Camiones · Autoelevadores · Topadora</div>
-      <span class="flota-tag">6 SECCIONES</span>
+      <div class="flota-live" id="live-industrial"><div class="fl-item"><div class="fl-sm" style="color:var(--txt3)">…</div><div class="fl-lbl">cargando</div></div></div>
     </div>
     <div class="nav-card flota-card agro" onclick="navEntrarFlota('agricola')">
       <span class="nav-card-icon">🚜</span>
       <div class="nav-card-title">FLOTA AGRÍCOLA</div>
       <div class="nav-card-sub">Tractores · Implementos · Maquinaria agrícola</div>
       <span class="flota-tag">EN PREPARACIÓN</span>
+      <div class="flota-live"><div class="fl-item"><div class="fl-sm" style="color:var(--txt3)">—</div><div class="fl-lbl">sin máquinas cargadas</div></div></div>
     </div>
   </div>
+  <div class="slabel">🔔 PARA ATENDER HOY</div>
+  <div class="alert-strip" id="root-alertas"><div class="alert-item ok"><span class="ai-ico">⏳</span><span class="ai-txt">Cargando…</span></div></div>
+  <div class="slabel">🕑 ÚLTIMOS TRABAJOS</div>
+  <div class="ult-list" id="root-ultimos"><div class="ult-row" style="grid-template-columns:1fr"><span class="ur-d">Cargando…</span></div></div>
 </div>
 
 <!-- ══════════════════════════ FLOTA AGRÍCOLA ══════════════════════════ -->
@@ -1790,6 +1820,7 @@ async function loadAllData() {
     try { G.dispHist = parseDispHist(await fetchSheetByName('HISTORIAL DISPONIBILIDAD')); } catch(e) { G.dispHist = []; console.warn('HIST DISP:', e); }
 
     G.informes = buildInformes();
+    G.ultimaCarga = new Date();
 
     const total = G.histPalas.length + G.histCam.length + G.histAut.length;
     setStatus('ok', `✅ ${G.fleet.length} unidades · ${total} trabajos · ${G.services.length} services · ${G.checklistPalas.length+G.checklistAut.length} inspecciones · ${G.pedidos.length} pedidos · ${G.insumos.length} mov. insumos · ${G.informes.length} informes`);
@@ -1798,6 +1829,7 @@ async function loadAllData() {
   } catch(e) {
     setStatus('err','❌ ' + e.message);
     console.error(e);
+    try { renderRootPage(e.message); } catch(x) {}
   }
   document.getElementById('loading').classList.add('hide');
 }
@@ -2336,6 +2368,7 @@ function buildInformes() {
 //  RENDER ALL
 // ═══════════════════════════════════════════════════════
 function renderAll() {
+  try { renderRootPage(); } catch(e) { console.warn('INICIO:', e); }
   renderOverview();
   renderHistorial('palas',G.histPalas);
   renderHistorial('cam',  G.histCam);
@@ -4076,6 +4109,12 @@ function navAtras(){
   if(navStack.length > 1) navStack.pop();
   mostrarEstadoNav();
 }
+function navIr(pageId, groupId){
+  navStack = [{type:'root'},{type:'home'}];
+  if (groupId) navStack.push({type:'group', groupId});
+  navStack.push({type:'page', pageId});
+  mostrarEstadoNav();
+}
 function navEntrarFlota(f){
   navStack.push(f === 'agricola' ? {type:'agro'} : {type:'home'});
   mostrarEstadoNav();
@@ -4094,6 +4133,7 @@ function mostrarEstadoNav(){
   document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
 
   if (top.type === 'root') {
+    try { if (G.ultimaCarga) renderRootPage(); } catch(e) {}
     document.getElementById('page-root').classList.add('on');
   } else if (top.type === 'agro') {
     document.getElementById('page-agro').classList.add('on');
@@ -4117,6 +4157,70 @@ function mostrarEstadoNav(){
   if (btnInicio) btnInicio.style.display = mostrarBotones ? 'inline-block' : 'none';
 
   window.scrollTo(0, 0);
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  PORTADA: datos en vivo, alertas, últimos trabajos
+// ═══════════════════════════════════════════════════════
+function _rootFecha(s){ const p=String(s||'').split('/'); if(p.length<3) return null; const d=new Date(+p[2],+p[1]-1,+p[0]); return isNaN(d)?null:d; }
+function _esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function renderRootPage(errMsg){
+  // saludo y hora de los datos
+  const ahora=new Date(), h=ahora.getHours();
+  const sal=document.getElementById('root-saludo');
+  if(sal) sal.innerHTML=(h<13?'Buen día':h<20?'Buenas tardes':'Buenas noches')+' · <b>'+ahora.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})+'</b>';
+  const dat=document.getElementById('root-datos');
+  if(dat){
+    if(errMsg) dat.innerHTML='<span class="rm-dot" style="background:var(--red)"></span>No se pudieron cargar los datos del Sheet';
+    else if(G.ultimaCarga){
+      const c=G.ultimaCarga, hoy=c.toDateString()===ahora.toDateString();
+      dat.innerHTML='<span class="rm-dot" style="background:var(--green)"></span>Datos del Sheet: <b>'+(hoy?'hoy':c.toLocaleDateString('es-AR'))+' '+c.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false})+'</b> · <span style="cursor:pointer;color:var(--blue)" onclick="loadAllData()">ACTUALIZAR ↻</span>';
+    }
+  }
+  if(errMsg){
+    const al=document.getElementById('root-alertas');
+    if(al) al.innerHTML='<div class="alert-item red"><span class="ai-ico">❌</span><span class="ai-txt">No se pudieron cargar los datos.<br><small>'+_esc(errMsg)+'</small></span></div>';
+    return;
+  }
+
+  // 1) datos en vivo de la flota industrial (EN RELEVAMIENTO no cuenta)
+  const f=G.fleet||[], total=f.length;
+  const fuera=f.filter(u=>u.status==='bad'), alerta=f.filter(u=>u.status==='alert');
+  const oper=total-fuera.length, pct=total?Math.round(oper/total*100):0;
+  const live=document.getElementById('live-industrial');
+  if(live) live.innerHTML = total ? `
+    <div class="fl-item"><div class="fl-big" style="color:${dispColor(pct)}">${pct}%</div><div class="fl-lbl">disponible · ${oper}/${total}</div></div>
+    <div class="fl-item"><div class="fl-sm" style="color:var(--red)">${fuera.length}</div><div class="fl-lbl">fuera de uso</div></div>
+    <div class="fl-item"><div class="fl-sm" style="color:var(--amber)">${alerta.length}</div><div class="fl-lbl">en alerta</div></div>`
+    : '<div class="fl-item"><div class="fl-sm" style="color:var(--txt3)">—</div><div class="fl-lbl">sin datos de disponibilidad</div></div>';
+
+  // 2) alertas
+  const al=[];
+  if(fuera.length) al.push({c:'red',i:'🔴',t:`<b>${fuera.length} ${fuera.length===1?'unidad fuera de uso':'unidades fuera de uso'}:</b> ${fuera.slice(0,4).map(u=>_esc(u.unit)).join(', ')}${fuera.length>4?' y '+(fuera.length-4)+' más':''}`,go:"navIr('overview')",lbl:'VER FLOTA →'});
+  try{
+    const ov = typeof window.ganttVencidos==='function' ? window.ganttVencidos() : [];
+    const uv=[...new Set(ov.map(o=>o.unidad))];
+    if(uv.length) al.push({c:'red',i:'🛢️',t:`<b>${uv.length} ${uv.length===1?'unidad con service vencido':'unidades con service vencido'}</b> según el Gantt: ${uv.slice(0,4).map(_esc).join(', ')}${uv.length>4?' y '+(uv.length-4)+' más':''}<br><small>Si el service ya se hizo, actualizá la fecha del último service de esa unidad en el Gantt.</small>`,go:"navIr('ganttflota','gestion')",lbl:'VER GANTT →'});
+  }catch(e){ console.warn('Gantt vencidos:',e); }
+  const pend=(G.pedidos||[]).filter(p=>!p.fechaRec);
+  const urg=pend.filter(p=>p.urgencia==='Crítico'||p.urgencia==='Urgente');
+  if(pend.length) al.push({c:urg.length?'red':'',i:'📦',t:`<b>${pend.length} ${pend.length===1?'pedido pendiente':'pedidos pendientes'} de recepción</b>${urg.length?` · <span style="color:var(--red)">${urg.length} urgente${urg.length>1?'s':''} o crítico${urg.length>1?'s':''}</span>`:''}`,go:"navIr('pedidos','gestion')",lbl:'VER PEDIDOS →'});
+  const hace30=new Date(Date.now()-30*86400000);
+  const sinOC=(G.informes||[]).filter(i=>{ const d=_rootFecha(i.fecha); return d&&d>=hace30&&!String(i.nCompra||'').trim(); });
+  if(sinOC.length) al.push({c:'',i:'🧾',t:`<b>${sinOC.length} ${sinOC.length===1?'informe':'informes'} de los últimos 30 días sin N° de compra</b>`,go:"navIr('informes')",lbl:'VER INFORMES →'});
+  const elA=document.getElementById('root-alertas');
+  if(elA) elA.innerHTML = al.length
+    ? al.map(a=>`<div class="alert-item ${a.c}" onclick="${a.go}"><span class="ai-ico">${a.i}</span><span class="ai-txt">${a.t}</span><span class="ai-go">${a.lbl}</span></div>`).join('')
+    : '<div class="alert-item ok"><span class="ai-ico">✅</span><span class="ai-txt">Sin pendientes urgentes en la flota industrial.</span></div>';
+
+  // 4) últimos trabajos
+  const ult=(G.informes||[]).map(i=>({...i,_d:_rootFecha(i.fecha)})).filter(i=>i._d).sort((a,b)=>b._d-a._d||(b.filaOrigen||0)-(a.filaOrigen||0)).slice(0,5);
+  const col=t=>/prev/i.test(t)?'var(--green)':/corr/i.test(t)?'var(--red)':'var(--txt3)';
+  const elU=document.getElementById('root-ultimos');
+  if(elU) elU.innerHTML = ult.length
+    ? ult.map(i=>`<div class="ult-row"><span class="ur-f">${_esc(i.fecha)}</span><span><b>${_esc(i.modelo)}</b></span><span class="ur-t" style="color:${col(i.tipoMtto)};border:1px solid ${col(i.tipoMtto)}">${_esc((i.tipoMtto||'—').toUpperCase())}</span><span class="ur-d" title="${_esc(i.falla)}">${_esc(i.falla)}</span>${i.informe?`<a href="${_esc(i.informe)}" target="_blank" rel="noopener">VER PDF →</a>`:'<span></span>'}</div>`).join('')
+    : '<div class="ult-row" style="grid-template-columns:1fr"><span class="ur-d">Todavía no hay informes cargados.</span></div>';
 }
 
 function renderHomeCards(){
@@ -4594,6 +4698,13 @@ window.addEventListener('load',()=>setTimeout(loadAllData,500));
     }
   }
   window.ganttRender = ganttRender;
+  window.ganttVencidos = function(){
+    const END=addDays(ganttViewStart,ganttViewDays), today=new Date(), out=[];
+    ganttUnits.forEach(u=>{ const{motor}=getSchedule(u);
+      motor.forEach((d,i)=>{ if(d>=ganttViewStart&&d<=END){ const e=getEffDate(u.id,'motor',i,d); if(e<today) out.push({unidad:u.name,fecha:e}); } });
+    });
+    return out;
+  };
 })();
 </script>
 
