@@ -190,6 +190,18 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 .nav-card-icon{font-size:44px;margin-bottom:16px;display:block;}
 .nav-card-title{font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--txt1);margin-bottom:8px;}
 .nav-card-sub{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt3);letter-spacing:1px;text-transform:uppercase;}
+.flota-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;margin:10px 0 24px;}
+.flota-card{padding:64px 28px;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.flota-card .nav-card-icon{font-size:72px;margin-bottom:20px;}
+.flota-card .nav-card-title{font-size:26px;letter-spacing:4px;}
+.flota-card .nav-card-sub{font-size:10px;margin-top:6px;}
+.flota-card.agro::before{background:linear-gradient(90deg,var(--green),#9be15d);}
+.flota-card.agro:hover{border-color:var(--green);box-shadow:0 10px 28px rgba(0,230,118,0.15);}
+.flota-tag{display:inline-block;margin-top:14px;padding:4px 10px;border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;border:1px solid var(--border);color:var(--txt2);}
+.flota-card.agro .flota-tag{border-color:rgba(0,230,118,0.4);color:var(--green);}
+.agro-empty{background:var(--bg2);border:1px dashed var(--border);border-radius:10px;padding:40px 24px;text-align:center;color:var(--txt3);font-size:12px;line-height:1.7;}
+.agro-empty b{color:var(--txt1);}
+@media(max-width:700px){.flota-grid{grid-template-columns:1fr;}.flota-card{min-height:200px;padding:40px 20px;}}
 @media(max-width:1000px){.nav-card-grid{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:600px){.nav-card-grid{grid-template-columns:1fr;}}
 
@@ -876,9 +888,40 @@ tbody tr:hover td{background:rgba(0,170,255,0.03);}
 
 <main class="main">
 
-<!-- ══════════════════════════ HOME (TARJETAS PRINCIPALES) ══════════════════════════ -->
-<div id="page-home" class="page on">
-  <div class="slabel">🏠 MENÚ PRINCIPAL</div>
+<!-- ══════════════════════════ INICIO: ELEGIR FLOTA ══════════════════════════ -->
+<div id="page-root" class="page on">
+  <div class="slabel">🏠 MENÚ PRINCIPAL — ELEGÍ LA FLOTA</div>
+  <div class="flota-grid">
+    <div class="nav-card flota-card" onclick="navEntrarFlota('industrial')">
+      <span class="nav-card-icon">🏭</span>
+      <div class="nav-card-title">FLOTA INDUSTRIAL</div>
+      <div class="nav-card-sub">Palas · Camiones · Autoelevadores · Topadora</div>
+      <span class="flota-tag">6 SECCIONES</span>
+    </div>
+    <div class="nav-card flota-card agro" onclick="navEntrarFlota('agricola')">
+      <span class="nav-card-icon">🌾</span>
+      <div class="nav-card-title">FLOTA AGRÍCOLA</div>
+      <div class="nav-card-sub">Tractores · Implementos · Maquinaria agrícola</div>
+      <span class="flota-tag">EN PREPARACIÓN</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ FLOTA AGRÍCOLA ══════════════════════════ -->
+<div id="page-agro" class="page">
+  <div class="slabel">🌾 FLOTA AGRÍCOLA</div>
+  <div class="agro-empty">
+    <div style="font-size:40px;margin-bottom:10px">🚜</div>
+    <b>Sección en preparación</b><br>
+    Acá se va a gestionar el mantenimiento de la flota agrícola: listado de máquinas,<br>
+    mantenimiento, services, inspecciones y despieces, igual que en la flota industrial.<br>
+    <span style="font-size:10px">Se habilita a medida que se carguen las máquinas.</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════ FLOTA INDUSTRIAL (TARJETAS) ══════════════════════════ -->
+<div id="page-home" class="page">
+  <div class="slabel">🏭 FLOTA INDUSTRIAL</div>
   <div class="nav-card-grid" id="home-cards"></div>
 </div>
 
@@ -4023,14 +4066,18 @@ const PAGE_META = {
   despTY:    { icon:'🏗️', label:'TOYOTA 8FD45N',    sub:'Autoelevador 4,5 t' },
 };
 
-let navStack = [{type:'home'}];
+let navStack = [{type:'root'}];
 
 function navHome(){
-  navStack = [{type:'home'}];
+  navStack = [{type:'root'}];
   mostrarEstadoNav();
 }
 function navAtras(){
   if(navStack.length > 1) navStack.pop();
+  mostrarEstadoNav();
+}
+function navEntrarFlota(f){
+  navStack.push(f === 'agricola' ? {type:'agro'} : {type:'home'});
   mostrarEstadoNav();
 }
 function navEntrarGrupo(groupId){
@@ -4046,7 +4093,11 @@ function mostrarEstadoNav(){
   const top = navStack[navStack.length - 1];
   document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
 
-  if (top.type === 'home') {
+  if (top.type === 'root') {
+    document.getElementById('page-root').classList.add('on');
+  } else if (top.type === 'agro') {
+    document.getElementById('page-agro').classList.add('on');
+  } else if (top.type === 'home') {
     renderHomeCards();
     document.getElementById('page-home').classList.add('on');
   } else if (top.type === 'group') {
