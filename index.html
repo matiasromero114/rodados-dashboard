@@ -4198,11 +4198,6 @@ function renderRootPage(errMsg){
   // 2) alertas
   const al=[];
   if(fuera.length) al.push({c:'red',i:'🔴',t:`<b>${fuera.length} ${fuera.length===1?'unidad fuera de uso':'unidades fuera de uso'}:</b> ${fuera.slice(0,4).map(u=>_esc(u.unit)).join(', ')}${fuera.length>4?' y '+(fuera.length-4)+' más':''}`,go:"navIr('overview')",lbl:'VER FLOTA →'});
-  try{
-    const ov = typeof window.ganttVencidos==='function' ? window.ganttVencidos() : [];
-    const uv=[...new Set(ov.map(o=>o.unidad))];
-    if(uv.length) al.push({c:'red',i:'🛢️',t:`<b>${uv.length} ${uv.length===1?'unidad con service vencido':'unidades con service vencido'}</b> según el Gantt: ${uv.slice(0,4).map(_esc).join(', ')}${uv.length>4?' y '+(uv.length-4)+' más':''}<br><small>Si el service ya se hizo, actualizá la fecha del último service de esa unidad en el Gantt.</small>`,go:"navIr('ganttflota','gestion')",lbl:'VER GANTT →'});
-  }catch(e){ console.warn('Gantt vencidos:',e); }
   const pend=(G.pedidos||[]).filter(p=>!p.fechaRec);
   const urg=pend.filter(p=>p.urgencia==='Crítico'||p.urgencia==='Urgente');
   if(pend.length) al.push({c:urg.length?'red':'',i:'📦',t:`<b>${pend.length} ${pend.length===1?'pedido pendiente':'pedidos pendientes'} de recepción</b>${urg.length?` · <span style="color:var(--red)">${urg.length} urgente${urg.length>1?'s':''} o crítico${urg.length>1?'s':''}</span>`:''}`,go:"navIr('pedidos','gestion')",lbl:'VER PEDIDOS →'});
